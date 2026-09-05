@@ -19,6 +19,9 @@ const (
 	ActionProductUpdate Action = "product:update"
 	// ActionProductStockUpdate は、商品在庫の増減操作（admin）を表します。
 	ActionProductStockUpdate Action = "product:stock:update"
+	// ActionProductDiscontinue は、商品の廃番操作と、その影響の見積もりの参照（admin）を表します。
+	// 見積もりは廃番を実行できる主体だけが見るべき情報なので、実行と同じ権限で守ります。
+	ActionProductDiscontinue Action = "product:discontinue"
 	// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。
 	ActionProductListLowStock Action = "product:low-stock:list"
 	// ActionProductReadUnpublished は、未公開商品を含む商品の参照操作（admin）を表します。

@@ -265,6 +265,26 @@ func (p *Product) IsPublished() bool { return IsPublished(p.publishedAt) }
 // 同じ定義を当てられるよう、エンティティのメソッドとは別に値に対する形でも公開します。
 func IsPublished(publishedAt *time.Time) bool { return publishedAt != nil }
 
+// Discontinue は、商品を廃番にします。廃番は取り扱いの終了なので、同時に公開を取り下げます。
+// 既に廃番の商品は状態が変わらず、エラーも返しません（廃番は取り消せないため、二度目の要求は
+// 一度目と同じ状態を指しています）。
+//
+// 日時は引数で受け取ります。ドメインは時刻へ直接依存せず、時刻境界から供給された now を使うためです。
+// now がゼロ値の場合は ErrInvalidDiscontinuedAt を返します。
+func (p *Product) Discontinue(now time.Time) error {
+	if now.IsZero() {
+		return xerrors.Wrap(ErrInvalidDiscontinuedAt, "now is required")
+	}
+	if p.IsDiscontinued() {
+		return nil
+	}
+
+	p.discontinuedAt = &now
+	p.publishedAt = nil
+
+	return nil
+}
+
 // IsDiscontinued は、商品が廃番かどうかを返します。廃番とは廃番日時が設定されていることを指します。
 func (p *Product) IsDiscontinued() bool { return IsDiscontinued(p.discontinuedAt) }
 

@@ -73,6 +73,36 @@ func (mr *MockUsecaseMockRecorder) CreateProduct(ctx, authn, params any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProduct", reflect.TypeOf((*MockUsecase)(nil).CreateProduct), ctx, authn, params)
 }
 
+// DiscontinueProduct mocks base method.
+func (m *MockUsecase) DiscontinueProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params product.DiscontinueProductParams) (product.DiscontinueProductView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DiscontinueProduct", ctx, authn, id, params)
+	ret0, _ := ret[0].(product.DiscontinueProductView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DiscontinueProduct indicates an expected call of DiscontinueProduct.
+func (mr *MockUsecaseMockRecorder) DiscontinueProduct(ctx, authn, id, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DiscontinueProduct", reflect.TypeOf((*MockUsecase)(nil).DiscontinueProduct), ctx, authn, id, params)
+}
+
+// GetDiscontinueImpact mocks base method.
+func (m *MockUsecase) GetDiscontinueImpact(ctx context.Context, authn *auth.Authn, id uuid.UUID) (product.DiscontinueImpactView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDiscontinueImpact", ctx, authn, id)
+	ret0, _ := ret[0].(product.DiscontinueImpactView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDiscontinueImpact indicates an expected call of GetDiscontinueImpact.
+func (mr *MockUsecaseMockRecorder) GetDiscontinueImpact(ctx, authn, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDiscontinueImpact", reflect.TypeOf((*MockUsecase)(nil).GetDiscontinueImpact), ctx, authn, id)
+}
+
 // GetProduct mocks base method.
 func (m *MockUsecase) GetProduct(ctx context.Context, authn *auth.Authn, params product.GetProductParams) (product.ProductView, error) {
 	m.ctrl.T.Helper()

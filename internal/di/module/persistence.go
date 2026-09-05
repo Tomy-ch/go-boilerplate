@@ -1,6 +1,7 @@
 package module
 
 import (
+	productdiscontinuecs "go-boilerplate/internal/infrastructure/rdb/command_service/product"     // sample-api:line
 	dashboardqs "go-boilerplate/internal/infrastructure/rdb/query_service/dashboard"              // sample-api:line
 	productimageqs "go-boilerplate/internal/infrastructure/rdb/query_service/product"             // sample-api:line
 	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking"   // sample-api:line
@@ -8,6 +9,7 @@ import (
 	purchasefeedqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/feed"       // sample-api:line
 	purchasesummaryqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/summary" // sample-api:line
 	cartrepo "go-boilerplate/internal/infrastructure/rdb/repository/cart"                         // sample-api:line
+	couponrepo "go-boilerplate/internal/infrastructure/rdb/repository/coupon"                     // sample-api:line
 	inquiryrepo "go-boilerplate/internal/infrastructure/rdb/repository/inquiry"                   // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                            // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/product"                               // sample-api:line
@@ -41,6 +43,7 @@ func persistenceModule() fx.Option {
 				purchaserepo.New,
 				purchasestatusrepo.New,
 				cartrepo.New,
+				couponrepo.New,
 				inquiryrepo.New, // sample-api:line
 				// sample-api:end
 			),
@@ -52,6 +55,8 @@ func persistenceModule() fx.Option {
 				productimageqs.New,
 				// productrankingqs: 商品売上ランキング（docs/spec/usecase/product/ranking.md § Overview）
 				productrankingqs.New,
+				// 同パッケージ: 廃番の影響見積もり（docs/spec/usecase/product.md § 廃番）
+				productimageqs.NewDiscontinueImpactQueryService,
 				// purchasedetailqs / purchasefeedqs: 集約跨ぎ read 投影（docs/spec/usecase/purchase.md § GET 詳細 / GET 一覧）
 				purchasedetailqs.New,
 				purchasefeedqs.New,
@@ -63,10 +68,13 @@ func persistenceModule() fx.Option {
 			),
 		),
 		fx.Module("command_service",
-			// このサブモジュールは意図的に空です。集約横断の書き込みを 1 件も持たない
-			// システムには登録するものが無く、空であること自体は欠陥ではありません
-			// （ADR-0032 (lightweight-cqrs) § Implementation status）。
-			fx.Provide(),
+			fx.Provide(
+				// sample-api:begin
+				// productdiscontinuecs: 廃番に伴う代替クーポンの一括発行。受給者が述語でしか決まらず
+				// 分解できないため CommandService に置く（docs/spec/usecase/product.md § 廃番、ADR-0034）
+				productdiscontinuecs.New,
+				// sample-api:end
+			),
 		),
 		fx.Module("system_cqrs",
 			fx.Provide(

@@ -28,6 +28,7 @@ get:
     - $ref: '../../components/parameters/period/OrderedBeforeParam.yaml'
     - $ref: '../../components/parameters/purchase/PurchaseStatusCodesParam.yaml'
     - $ref: '../../components/parameters/purchase/IncludeOtherUsersParam.yaml'
+    - $ref: '../../components/parameters/purchase/PurchaseProductIdParam.yaml'
   responses:
     '200':
       description: cursor ページネーションで取得した購入履歴一覧

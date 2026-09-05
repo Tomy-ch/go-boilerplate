@@ -163,6 +163,10 @@ paths:
     $ref: './paths/v1/products/count.yaml'
   /v1/products/{productId}:
     $ref: './paths/v1/products/productId.yaml'
+  /v1/products/{productId}/discontinue:
+    $ref: './paths/v1/products/productId/discontinue.yaml'
+  /v1/products/{productId}/discontinue-impact:
+    $ref: './paths/v1/products/productId/discontinue-impact.yaml'
   /v1/products/{productId}/stock:
     $ref: './paths/v1/products/productId/stock.yaml'
   /v1/products/ranking/quantity:

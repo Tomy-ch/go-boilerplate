@@ -37,6 +37,7 @@ get:
     - $ref: '../../components/parameters/product/MaxQuantityParam.yaml'
     - $ref: '../../components/parameters/product/SortParam.yaml'
     - $ref: '../../components/parameters/product/IncludeUnpublishedParam.yaml'
+    - $ref: '../../components/parameters/product/DiscontinuedParam.yaml'
   responses:
     '200':
       description: cursor ページネーションで取得した商品一覧

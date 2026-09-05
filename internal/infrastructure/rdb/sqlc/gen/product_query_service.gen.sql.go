@@ -13,6 +13,89 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
+const countDiscontinueImpactCarts = `-- name: CountDiscontinueImpactCarts :one
+SELECT COUNT(*)
+FROM cart_items AS ci
+WHERE ci.product_id = $1
+`
+
+// === source: database/dml/query_service/product/count_discontinue_impact_carts.sql ===
+// 廃番の影響を受けるカートの件数を返す。ゲストのカートも数える。
+// 実行側の CountDiscontinueAffectedCarts と同じ条件を持つ。片方だけを変えてはならない
+// （見積もりと実行が食い違うと、押す前に見せた数字の意味が失われる）。
+// 行はロックしないため、返した値は返した瞬間から古くなる。
+//
+//	SELECT COUNT(*)
+//	FROM cart_items AS ci
+//	WHERE ci.product_id = $1
+func (q *Queries) CountDiscontinueImpactCarts(ctx context.Context, productID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countDiscontinueImpactCarts, productID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countDiscontinueImpactInProgressPurchases = `-- name: CountDiscontinueImpactInProgressPurchases :one
+SELECT COUNT(DISTINCT p.id)
+FROM purchases AS p
+INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
+INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+WHERE pd.product_id = $1
+    AND NOT (ps.code = ANY($2::SMALLINT[]))
+`
+
+type CountDiscontinueImpactInProgressPurchasesParams struct {
+	ProductID           uuid.UUID
+	TerminalStatusCodes []int16
+}
+
+// === source: database/dml/query_service/product/count_discontinue_impact_in_progress_purchases.sql ===
+// 廃番を阻む進行中の購入の件数を返す。
+// 「進行中」は購入集約が定義する（Status.IsTerminal の否定）ため、終端のステータス code を
+// 呼び出し側から受け取り、SQL 側に規則を書き写さない。
+// 行はロックしないため、返した値は返した瞬間から古くなる。実行時に改めて判定される。
+//
+//	SELECT COUNT(DISTINCT p.id)
+//	FROM purchases AS p
+//	INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
+//	INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+//	WHERE pd.product_id = $1
+//	    AND NOT (ps.code = ANY($2::SMALLINT[]))
+func (q *Queries) CountDiscontinueImpactInProgressPurchases(ctx context.Context, arg *CountDiscontinueImpactInProgressPurchasesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countDiscontinueImpactInProgressPurchases, arg.ProductID, arg.TerminalStatusCodes)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countDiscontinueImpactUsers = `-- name: CountDiscontinueImpactUsers :one
+SELECT COUNT(DISTINCT c.owner_id)
+FROM cart_items AS ci
+INNER JOIN carts AS c ON c.id = ci.cart_id
+INNER JOIN users AS u ON u.id = c.owner_id
+WHERE ci.product_id = $1
+    AND u.deleted_at IS NULL
+`
+
+// === source: database/dml/query_service/product/count_discontinue_impact_users.sql ===
+// クーポンの受給対象になる確定済みユーザーの数を返す。
+// 実行側の SelectDiscontinueCouponRecipients と同じ条件を持つ。片方だけを変えてはならない。
+// ゲストのカートと退会済みユーザーを除くため、CountDiscontinueImpactCarts 以下になる。
+// 行はロックしないため、返した値は返した瞬間から古くなる。
+//
+//	SELECT COUNT(DISTINCT c.owner_id)
+//	FROM cart_items AS ci
+//	INNER JOIN carts AS c ON c.id = ci.cart_id
+//	INNER JOIN users AS u ON u.id = c.owner_id
+//	WHERE ci.product_id = $1
+//	    AND u.deleted_at IS NULL
+func (q *Queries) CountDiscontinueImpactUsers(ctx context.Context, productID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countDiscontinueImpactUsers, productID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const listExistingProductImagePaths = `-- name: ListExistingProductImagePaths :many
 SELECT DISTINCT pi.image_path
 FROM product_images AS pi

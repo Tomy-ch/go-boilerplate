@@ -102,6 +102,17 @@ FROM purchase_details AS d
 WHERE d.purchase_id = @purchase_id_param
 ORDER BY d.id;
 
+-- === source: database/dml/repository/purchase/select_purchase_status_codes_by_product_id.sql ===
+-- name: SelectPurchaseStatusCodesByProductID :many
+-- 指定商品を明細に持つ購入が取っているステータスの code を重複なく返す。
+-- 進行中かどうかで絞らないのは、その判定を購入集約（Status.IsTerminal）が持つためで、
+-- SQL 側に同じ規則を書き写さない（理由は docs/spec/domain/purchase.md の FindStatusesByProductID）。
+SELECT DISTINCT ps.code
+FROM purchases AS p
+INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
+INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+WHERE pd.product_id = sqlc.arg('product_id');
+
 -- === source: database/dml/repository/purchase/select_purchase_status_codes_by_user_id.sql ===
 -- name: SelectPurchaseStatusCodesByUserID :many
 -- 指定ユーザーの購入が取っているステータス code を重複なく返す。

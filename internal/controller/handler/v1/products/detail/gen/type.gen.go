@@ -64,6 +64,70 @@ type ProductCategoryRef struct {
 	Name string `json:"name"`
 }
 
+// ProductDiscontinueImpactResponse 商品を廃番にしたときの影響の見積もり。押す前に規模を見せるための読み取りです。
+// **行をロックしないため、返した瞬間から古くなります。** 実行時の件数がこれと一致する保証はなく、
+// 実際に何が起きたかは実行の応答が返します。
+// affectedCartCount と affectedUserCount が一致しないのは実行時と同じ理由で、ゲストのカートは
+// 影響を受けますがクーポンの受給者にはならないためです。
+type ProductDiscontinueImpactResponse struct {
+	// AffectedCartCount この商品の明細を持つカートの件数。所有者が確定していないゲストのカートも含みます。
+	//
+	// Example: 12
+	AffectedCartCount int64 `json:"affectedCartCount"`
+
+	// AffectedUserCount クーポンの受給対象になる確定済みユーザーの数。ゲストのカートと退会済みユーザーは含みません。 そのため affectedCartCount 以下になります。
+	//
+	// Example: 9
+	AffectedUserCount int64 `json:"affectedUserCount"`
+
+	// InProgressPurchaseCount この商品を含む進行中の購入の件数。1 件でもあれば廃番は 409 で拒まれます。 どの購入かは GET /v1/purchases に productId を指定して辿れます。
+	//
+	// Example: 2
+	InProgressPurchaseCount int64 `json:"inProgressPurchaseCount"`
+}
+
+// ProductDiscontinuePostRequest 商品廃番のリクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+// 廃番の代替として発行するクーポンの条件を指定します。発行の条件をサーバーが固定せず要求で受けるのは、
+// 何をどれだけ補償するかが業務の判断であり、この API はその判断を実行するだけだからです。
+// **楽観ロックのバージョンは受け取りません。** 廃番は属性の書き換えではなく命令であり、実行の可否は
+// 商品の現在値ではなく進行中の購入の有無で決まります。そのため 409 は「進行中の購入がある」の一義です。
+type ProductDiscontinuePostRequest struct {
+	// CouponDiscountRate 代替クーポンの値引き率。対象額に掛ける乗数を、正確な十進量を保つ decimal 文字列で表します （例 "0.10" は 10% 引き）。0 より大きく 1 以下である必要があり、範囲外は 422 を返します。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+	//
+	// Example: 0.10
+	CouponDiscountRate string `json:"couponDiscountRate"`
+
+	// CouponValidityDays 代替クーポンの有効期間（日数）。発行日時からこの日数だけ有効です。 上限 365 は placeholder で、実要件が立った時点で改めます。
+	//
+	// Example: 30
+	CouponValidityDays int32 `json:"couponValidityDays"`
+}
+
+// ProductDiscontinueResponse 商品廃番の実行結果。何が起きたかを件数で返します。
+// affectedCartCount と affectedUserCount は一致しません。カートは所有者が確定していなくても持てるため、
+// ゲストのカートは影響を受けますがクーポンの受給者にはなりません。退会済みユーザーも対象外です。
+type ProductDiscontinueResponse struct {
+	// AffectedCartCount この商品の明細を持っていたカートの件数。所有者が確定していないゲストのカートも含みます。 明細は取り除かれず、以降の取得で discontinued の issue が立ちます。
+	//
+	// Example: 12
+	AffectedCartCount int64 `json:"affectedCartCount"`
+
+	// AffectedUserCount クーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは含みません。 そのため affectedCartCount 以下になります。
+	//
+	// Example: 9
+	AffectedUserCount int64 `json:"affectedUserCount"`
+
+	// DiscontinuedAt 廃番が確定した日時。サーバーの時刻で決まるため、要求では指定できません。
+	//
+	// Example: 2026-09-05T00:00:00Z
+	DiscontinuedAt time.Time `json:"discontinuedAt"`
+
+	// IssuedCouponCount 実際に発行したクーポンの枚数。受給者 1 人につき 1 枚です。
+	//
+	// Example: 9
+	IssuedCouponCount int64 `json:"issuedCouponCount"`
+}
+
 // ProductImageInput 商品へ紐付ける画像 1 件。imagePath には画像アップロード（POST /v1/products/images）で得たパスを渡します。
 type ProductImageInput struct {
 	// DisplaySort 同一商品内での表示順。1 から数えます。同じ商品の中で重複する値を送ると業務不変条件違反として 422 を返します。 欠番は許容し、送られた値をそのまま保持します。
@@ -230,6 +294,9 @@ type ProductStockPatchRequest struct {
 	Delta int32 `json:"delta"`
 }
 
+// IdempotencyKeyParam Example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+type IdempotencyKeyParam = string
+
 // IncludeUnpublishedParam Example: false
 type IncludeUnpublishedParam = bool
 
@@ -272,8 +339,19 @@ type GetProductsDetailParams struct {
 	IncludeUnpublished *IncludeUnpublishedParam `form:"includeUnpublished,omitempty" json:"includeUnpublished,omitempty"`
 }
 
+// PostProductsDiscontinueParams defines parameters for PostProductsDiscontinue.
+type PostProductsDiscontinueParams struct {
+	// IdempotencyKey 冪等キー。非冪等な変更操作（作成系など）で、同一キーによるリトライを重複実行なく
+	// 安全にするための識別子。サーバは同一 (認証主体, キー) の再送を初回結果のリプレイとして扱う。
+	// このヘッダを宣言する操作は、ハンドラが必ず idempotency.Run 経由で処理する契約（完全性テストで機械検証）。
+	IdempotencyKey *IdempotencyKeyParam `json:"Idempotency-Key,omitempty"`
+}
+
 // PatchProductsDetailJSONRequestBody defines body for PatchProductsDetail for application/json ContentType.
 type PatchProductsDetailJSONRequestBody = ProductPatchRequest
+
+// PostProductsDiscontinueJSONRequestBody defines body for PostProductsDiscontinue for application/json ContentType.
+type PostProductsDiscontinueJSONRequestBody = ProductDiscontinuePostRequest
 
 // PatchProductsStockJSONRequestBody defines body for PatchProductsStock for application/json ContentType.
 type PatchProductsStockJSONRequestBody = ProductStockPatchRequest

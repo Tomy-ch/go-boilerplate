@@ -1,0 +1,29 @@
+type: object
+description: |
+  商品廃番のリクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+  廃番の代替として発行するクーポンの条件を指定します。発行の条件をサーバーが固定せず要求で受けるのは、
+  何をどれだけ補償するかが業務の判断であり、この API はその判断を実行するだけだからです。
+  **楽観ロックのバージョンは受け取りません。** 廃番は属性の書き換えではなく命令であり、実行の可否は
+  商品の現在値ではなく進行中の購入の有無で決まります。そのため 409 は「進行中の購入がある」の一義です。
+additionalProperties: false
+required:
+  - couponDiscountRate
+  - couponValidityDays
+properties:
+  couponDiscountRate:
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: >-
+      代替クーポンの値引き率。対象額に掛ける乗数を、正確な十進量を保つ decimal 文字列で表します
+      （例 "0.10" は 10% 引き）。0 より大きく 1 以下である必要があり、範囲外は 422 を返します。
+      JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+    example: "0.10"
+  couponValidityDays:
+    type: integer
+    format: int32
+    minimum: 1
+    maximum: 365
+    description: >-
+      代替クーポンの有効期間（日数）。発行日時からこの日数だけ有効です。
+      上限 365 は placeholder で、実要件が立った時点で改めます。
+    example: 30

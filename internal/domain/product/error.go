@@ -35,6 +35,8 @@ var (
 	ErrInvalidCreatedAt = xerrors.Wrap(errInvalid, "createdAt failed")
 	// ErrInvalidVersion は、楽観ロックのバージョンの検証に失敗した場合のエラーです。
 	ErrInvalidVersion = xerrors.Wrap(errInvalid, "version failed")
+	// ErrInvalidDiscontinuedAt は、廃番日時の検証に失敗した場合のエラーです。
+	ErrInvalidDiscontinuedAt = xerrors.Wrap(errInvalid, "discontinuedAt failed")
 	// ErrDiscontinuedCannotBePublished は、廃番の商品に公開日時が設定されている場合のエラーです。
 	// 同じ内容の再送でも時間の経過でも解消しません（廃番の不可逆性は docs/spec/domain/product.md の
 	// discontinuedAt / Cross-field Invariants を参照）。

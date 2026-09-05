@@ -1,0 +1,12 @@
+name: productId
+in: query
+description: |
+  指定した商品を含む購入だけに絞ります。指定しない場合は絞りません。
+  廃番が進行中の購入を理由に拒まれたとき、どの購入が残っているのかを辿るために用います。
+  所有権のフィルタは変わりません。既定では自分の購入のみが母集団で、他ユーザーの購入まで見るには
+  includeOtherUsers=true（管理者のみ）を併せて指定します。
+required: false
+schema:
+  type: string
+  format: uuid
+  example: "b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"

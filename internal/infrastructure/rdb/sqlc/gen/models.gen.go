@@ -47,6 +47,32 @@ type Carts struct {
 	UpdatedAt time.Time
 }
 
+// クーポン
+type Coupons struct {
+	// ID
+	ID uuid.UUID
+	// 受給者のユーザーID
+	UserID uuid.UUID
+	// 値引き種別コード
+	DiscountKind int16
+	// 値引きの値（定額なら金額、定率なら率）
+	DiscountValue decimal.Decimal
+	// 適用範囲種別コード
+	ScopeKind int16
+	// 適用範囲の対象ID（カテゴリIDまたは商品ID。全体のときNULL）
+	ScopeTargetID *uuid.UUID
+	// 有効期限
+	ExpiresAt time.Time
+	// 使用日時
+	UsedAt *time.Time
+	// 発行日時
+	IssuedAt time.Time
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
 // 冪等性キー
 type IdempotencyKeys struct {
 	// ID

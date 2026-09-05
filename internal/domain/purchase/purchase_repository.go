@@ -43,6 +43,10 @@ type Repository interface {
 	// 進行中かどうかで絞り込まないため、その判定（Status.IsTerminal の否定）は呼び出し側が行います。
 	// 購入を 1 件も持たない場合は空を返し、順序は保証しません。
 	FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]Status, error)
+	// FindStatusesByProductID は、指定商品を明細に持つ購入が取っているステータスを重複なく返します。
+	// 進行中かどうかで絞り込まないため、その判定（Status.IsTerminal の否定）は呼び出し側が行います。
+	// 該当する購入が 1 件も無い場合は空を返し、順序は保証しません。
+	FindStatusesByProductID(ctx context.Context, productID uuid.UUID) ([]Status, error)
 	// FindUserIDsWithPurchases は、与えたユーザー ID のうち、購入を 1 件以上持つものを返します。
 	// ステータスは問わず、順序は保証しません。userIDs が空の場合は空を返します。
 	FindUserIDsWithPurchases(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error)

@@ -130,6 +130,13 @@ func (w *ServerInterfaceWrapper) GetProducts(ctx *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter includeUnpublished: %s", err))
 	}
 
+	// ------------- Optional query parameter "discontinued" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "discontinued", ctx.QueryParams(), &params.Discontinued, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter discontinued: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetProducts(ctx, params)
 	return err

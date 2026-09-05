@@ -113,6 +113,70 @@ COMMENT ON COLUMN public.carts.created_at IS '作成日時';
 --
 COMMENT ON COLUMN public.carts.updated_at IS '更新日時';
 --
+-- Name: coupons; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.coupons (
+    id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    discount_kind smallint NOT NULL,
+    discount_value numeric NOT NULL,
+    scope_kind smallint NOT NULL,
+    scope_target_id uuid,
+    expires_at timestamp with time zone NOT NULL,
+    used_at timestamp with time zone,
+    issued_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+--
+-- Name: TABLE coupons; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.coupons IS 'クーポン';
+--
+-- Name: COLUMN coupons.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.id IS 'ID';
+--
+-- Name: COLUMN coupons.user_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.user_id IS '受給者のユーザーID';
+--
+-- Name: COLUMN coupons.discount_kind; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.discount_kind IS '値引き種別コード';
+--
+-- Name: COLUMN coupons.discount_value; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.discount_value IS '値引きの値（定額なら金額、定率なら率）';
+--
+-- Name: COLUMN coupons.scope_kind; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.scope_kind IS '適用範囲種別コード';
+--
+-- Name: COLUMN coupons.scope_target_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.scope_target_id IS '適用範囲の対象ID（カテゴリIDまたは商品ID。全体のときNULL）';
+--
+-- Name: COLUMN coupons.expires_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.expires_at IS '有効期限';
+--
+-- Name: COLUMN coupons.used_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.used_at IS '使用日時';
+--
+-- Name: COLUMN coupons.issued_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.issued_at IS '発行日時';
+--
+-- Name: COLUMN coupons.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.created_at IS '作成日時';
+--
+-- Name: COLUMN coupons.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.coupons.updated_at IS '更新日時';
+--
 -- Name: idempotency_keys; Type: TABLE; Schema: public; Owner: -
 --
 CREATE TABLE public.idempotency_keys (
@@ -1001,6 +1065,11 @@ ALTER TABLE ONLY public.carts
 ALTER TABLE ONLY public.carts
     ADD CONSTRAINT carts_user_id_unique UNIQUE (user_id);
 --
+-- Name: coupons coupons_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.coupons
+    ADD CONSTRAINT coupons_id_primary PRIMARY KEY (id);
+--
 -- Name: idempotency_keys idempotency_keys_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.idempotency_keys
@@ -1210,6 +1279,14 @@ ALTER TABLE ONLY public.users
 --
 CREATE INDEX carts_expires_at_index ON public.carts USING btree (expires_at);
 --
+-- Name: coupons_scope_target_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX coupons_scope_target_id_idx ON public.coupons USING btree (scope_target_id) WHERE (scope_target_id IS NOT NULL);
+--
+-- Name: coupons_user_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX coupons_user_id_idx ON public.coupons USING btree (user_id);
+--
 -- Name: idempotency_keys_expires_at_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX idempotency_keys_expires_at_idx ON public.idempotency_keys USING btree (expires_at);
@@ -1300,6 +1377,11 @@ ALTER TABLE ONLY public.cart_items
 --
 ALTER TABLE ONLY public.carts
     ADD CONSTRAINT carts_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
+--
+-- Name: coupons coupons_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.coupons
+    ADD CONSTRAINT coupons_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
 --
 -- Name: inquiries inquiries_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
