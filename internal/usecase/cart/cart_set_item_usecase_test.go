@@ -826,7 +826,8 @@ func Test_usecase_createOwnerCart(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
-			expired := newOwnerCart(t, userID, now.Add(-time.Hour), newTestCartItem(t, "expired_item", uuidtestkit.NewTestFromSalt(t, "expired_product"), 1, nil))
+			item := newTestCartItem(t, "expired_item", uuidtestkit.NewTestFromSalt(t, "expired_product"), 1, nil)
+			expired := newOwnerCart(t, userID, now.Add(-time.Hour), item)
 
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().CreateOwnerIfAbsent(gomock.Any(), gomock.Any()).Return(expired, nil)
