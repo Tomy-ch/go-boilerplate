@@ -79,6 +79,17 @@ var (
 	// usesDockerRe の取りこぼしを拾う緩いパターン。引用符付き・flow mapping・tag 無しのいずれも
 	// ここへ落ちる。owner/repo 形式の uses: には反応しない（pin-actions の担当）。
 	looseDockerUsesRe = regexp.MustCompile(`\buses[ \t]*:[ \t]*["']?docker://`)
+	// workflow / composite action の service container の `image: <ref>`。ジョブと同じランナー上で
+	// 走り CI の判定に直接効くので、FROM や compose と同じく固定する（docs/design/security.md）。
+	//
+	// compose の image: と同形だが composeImageRe をそのまま当てられない。workflow の image: は
+	// step の with: 配下にも現れ、そちらは ${{ }} で組み立てられて固定のしようがないためである。
+	// ref に ${{ }} を含む行は、この正規表現にも下の loose にも一致させない。
+	serviceImageRe = regexp.MustCompile(
+		`(?m)^([ 	]+image:[ 	]+)((?:[^\s'"$]|\$[^{])+)([ 	]*(?:#.*)?)$`,
+	)
+	// serviceImageRe の取りこぼしを拾う緩いパターン。${{ }} を含む行だけは固定対象でないので外す。
+	serviceImageLoose = regexp.MustCompile(`^[ 	]+image[ 	]*:[ 	]*(?:[^\s$]|\$[^{])`)
 	// lockfile 行: "image:tag" = "sha256:..."
 	lockRe   = regexp.MustCompile(`^"([^"]+)"\s*=\s*"(sha256:[0-9a-f]+)"`)
 	digestRe = regexp.MustCompile(`(?m)^Digest:[ \t]+(sha256:[0-9a-f]+)`)
@@ -176,13 +187,14 @@ func run(args []string, wd func() (string, error)) error {
 	}
 }
 
-// targetFiles は走査対象を返す。Dockerfile の FROM、compose の image:、そして workflow /
-// composite action の uses: docker:// の 3 種で、registry の image を指す参照は書かれた場所に
+// targetFiles は走査対象を返す。Dockerfile の FROM、compose の image:、workflow / composite action の
+// uses: docker:// と services の image: の 4 種で、registry の image を指す参照は書かれた場所に
 // よらずこの機構が固定する（docs/design/security.md）。
 //
-// workflow を含めるのは uses: docker:// を拾うためだけで、uses: owner/repo@<sha> は pin-actions
-// の担当。同じファイルを 2 つの機構が走査するが、掴む行は重ならない。ファイル集合そのものは
-// ghfiles が両者へ与える。
+// workflow は 2 つの target として登録する。target が 1 ファイルにつき 1 つの正規表現しか持たない
+// ためで、uses: docker:// と service の image: は書式が違う。同じファイルを 2 度走査するが掴む行は
+// 重ならない。uses: owner/repo@<sha> は pin-actions の担当で、ファイル集合そのものは ghfiles が
+// 両者へ与える。
 func targetFiles(root string) ([]target, error) {
 	dockerfiles, err := globFiles(root, "docker/*/Dockerfile")
 	if err != nil {
@@ -207,6 +219,7 @@ func targetFiles(root string) ([]target, error) {
 	}
 	for _, f := range workflows {
 		targets = append(targets, target{path: f, re: usesDockerRe, loose: looseDockerUsesRe})
+		targets = append(targets, target{path: f, re: serviceImageRe, loose: serviceImageLoose})
 	}
 	sort.Slice(targets, func(i, j int) bool { return targets[i].path < targets[j].path })
 	return targets, nil
