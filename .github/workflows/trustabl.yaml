@@ -54,7 +54,15 @@ jobs:
       # upload-sarif and comment-on-pr each cost a write scope — `security-events`
       # and `pull-requests` — handed to that binary, so both stay off and the
       # findings ride the step summary and the artifact instead.
+      # `severity-threshold: none` and `risk-score-threshold: 0` are the action's
+      # documented way to disable its gates, but they do not reach the one that
+      # fires here: src/gate.ts fails on the engine's native exit 1 (any medium+
+      # finding) before either threshold is consulted, and no input suppresses it.
+      # The baseline this section describes is exactly a medium+ population, so
+      # the step fails every week. `continue-on-error` restores report-only until
+      # the action separates the two.
       - name: Scan agent configuration
+        continue-on-error: true
         uses: trustabl/trustabl-action@973f666d20b5fbb2e6a4511bd3846e965a08c28b # v0.4.1
         with:
           version: v0.1.6
