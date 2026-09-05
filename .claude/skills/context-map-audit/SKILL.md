@@ -2,7 +2,7 @@
 name: context-map-audit
 description: >-
   Detect drift between `docs/design/context-map.md` and the contact points this system actually has. Re-enumerates the boundary ports and their infrastructure adapters, compares that set against the map's edges, and reports three kinds of divergence — a contact point that exists but has no edge, an edge whose counterpart is gone, and an edge whose structural evidence no longer supports its recorded label (a translating adapter removed, external vocabulary now reaching the inside, a published contract withdrawn). Use it after adding or removing an external dependency, before trusting the map in a design discussion, when a `docs/design/**` or boundary change lands, or on a periodic sweep. Japanese triggers apply too — 「コンテキストマップは最新か」「地図に載っていない外部連携がないか」「接触点の棚卸し」. Read-only: it reports and never edits the map, because a divergence can mean the map is stale OR that the code drifted from a decision, and which one is a human's call. Do NOT use it to create or extend the map (`context-map`), to audit DDD patterns against Evans (`ddd-audit`), or to check README↔code drift (`back-prop`).
-allowed-tools: Bash, Read, Glob, Grep
+allowed-tools: Bash(ls:*), Read, Glob, Grep
 ---
 
 # Context Map Audit

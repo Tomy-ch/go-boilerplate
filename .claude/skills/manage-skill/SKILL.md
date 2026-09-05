@@ -3,7 +3,7 @@ name: manage-skill
 description: >-
   Create, update, evaluate, and optimize skills under this repository's `.claude/skills/`, wrapping Anthropic's official `skill-creator` methodology and layering this repo's conventions on top (English-canonical SKILL.md + mandatory `SKILL.ja.md` translation pair, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.claude/skills/`; ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `canonicalize-doc` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
 argument-hint: '[skill-name] [--update|--new|--optimize]'
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, Skill, Agent
+allowed-tools: Bash(ls:*), Bash(bash .claude/scripts/bootstrap-plugins.sh:*), Bash(make md-skill-lint:*), Read, Write, Edit, Glob, Grep, AskUserQuestion, Skill, Agent
 ---
 
 # Manage Skill
