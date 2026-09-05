@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	mock_coupon "go-boilerplate/internal/domain/coupon/mock"
 	"go-boilerplate/internal/domain/lexicon/money"
 	domainproduct "go-boilerplate/internal/domain/product"
 	mock_category "go-boilerplate/internal/domain/product/category/mock"
 	mock_product "go-boilerplate/internal/domain/product/mock"
 	mock_status "go-boilerplate/internal/domain/product/status/mock"
+	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
@@ -20,6 +22,8 @@ import (
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
 	mock_objectstorage "go-boilerplate/internal/usecase/boundary/objectstorage/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
+	mock_command "go-boilerplate/internal/usecase/product/command/mock"
+	mock_query "go-boilerplate/internal/usecase/product/query/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
@@ -108,19 +112,30 @@ func TestNew(t *testing.T) {
 		storage := mock_objectstorage.NewMockStorage(ctrl)
 		authorizer := mock_authz.NewMockAuthorizer(ctrl)
 		clk := mock_clock.NewMockClock(ctrl)
+		purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+		couponRepo := mock_coupon.NewMockRepository(ctrl)
+		discontinueCmd := mock_command.NewMockCommandService(ctrl)
+		impactQuery := mock_query.NewMockDiscontinueImpactQueryService(ctrl)
 
 		expected := &usecase{
-			tracer:         tf.Usecase(),
-			txm:            txm,
-			repo:           repo,
-			categoryRepo:   categoryRepo,
-			statusRepo:     statusRepo,
-			storage:        storage,
-			authorizer:     authorizer,
-			clock:          clk,
-			maxUploadBytes: 5242880,
+			tracer:                 tf.Usecase(),
+			txm:                    txm,
+			repo:                   repo,
+			categoryRepo:           categoryRepo,
+			statusRepo:             statusRepo,
+			storage:                storage,
+			authorizer:             authorizer,
+			clock:                  clk,
+			maxUploadBytes:         5242880,
+			purchaseRepo:           purchaseRepo,
+			couponRepo:             couponRepo,
+			discontinueCmd:         discontinueCmd,
+			discontinueImpactQuery: impactQuery,
 		}
-		actual := New(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, 5242880, tf)
+		actual := New(
+			txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, 5242880,
+			purchaseRepo, couponRepo, discontinueCmd, impactQuery, tf,
+		)
 
 		assert.Equal(t, expected, actual)
 	})
