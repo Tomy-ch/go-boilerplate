@@ -5,11 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/coupon"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/product/command"
+	"go-boilerplate/pkg/decimal"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -182,21 +184,30 @@ func Test_commandService_IssueDiscontinuationCoupons(t *testing.T) {
 				require.NoError(t, err)
 
 				var (
-					discountKind int16
-					scopeKind    int16
-					target       uuid.UUID
-					owner        uuid.UUID
+					discountKind  int16
+					discountValue decimal.Decimal
+					scopeKind     int16
+					target        uuid.UUID
+					owner         uuid.UUID
+					expiresAt     time.Time
+					issuedAt      time.Time
 				)
 				row := drv.QueryRow(ctx,
-					"SELECT discount_kind, scope_kind, scope_target_id, user_id FROM coupons WHERE scope_target_id = $1",
+					"SELECT discount_kind, discount_value, scope_kind, scope_target_id, user_id, expires_at, issued_at "+
+						"FROM coupons WHERE scope_target_id = $1",
 					*params.Scope.TargetID(),
 				)
-				require.NoError(t, row.Scan(&discountKind, &scopeKind, &target, &owner))
+				require.NoError(t, row.Scan(
+					&discountKind, &discountValue, &scopeKind, &target, &owner, &expiresAt, &issuedAt,
+				))
 
 				assert.Equal(t, coupon.DiscountKindRate.Code(), int(discountKind))
 				assert.Equal(t, coupon.ScopeKindCategory.Code(), int(scopeKind))
 				assert.Equal(t, *params.Scope.TargetID(), target)
 				assert.Equal(t, userID, owner)
+				assert.True(t, params.Discount.Value().Equal(discountValue))
+				assert.True(t, params.ExpiresAt.Equal(expiresAt))
+				assert.True(t, params.IssuedAt.Equal(issuedAt))
 			})
 		})
 
@@ -309,6 +320,19 @@ func Test_commandService_IssueDiscontinuationCoupons(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			_, err := svc.IssueDiscontinuationCoupons(
+				ctx, newIssueParams(t, uuidtestkit.NewTestFromSalt(t, "cs_canceled_product")),
+			)
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
 
 		t.Run("有効期限が発行日時以前の場合、集約の検証で弾き1行も挿入しない", func(t *testing.T) {
 			t.Parallel()

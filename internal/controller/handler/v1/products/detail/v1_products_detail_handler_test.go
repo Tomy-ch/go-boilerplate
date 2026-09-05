@@ -786,6 +786,7 @@ func Test_server_GetProductsDiscontinueImpact(t *testing.T) {
 					_ context.Context, authn *auth.Authn, id uuid.UUID,
 				) (productuc.DiscontinueImpactView, error) {
 					require.NotNil(t, authn)
+					assert.Equal(t, "subject-1", authn.Subject())
 					assert.Equal(t, targetID, id)
 
 					return productuc.DiscontinueImpactView{

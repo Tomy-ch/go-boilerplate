@@ -1387,7 +1387,7 @@ func TestProduct_Discontinue(t *testing.T) {
 			t.Parallel()
 
 			p := newTestProduct(t)
-			require.True(t, p.IsPublished())
+			assert.True(t, p.IsPublished())
 
 			require.NoError(t, p.Discontinue(discontinuedAt))
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -15,7 +16,12 @@ import (
 )
 
 // 既存 seed の FK 対象（users.prefecture_id / purchases.status_id が要求する行）。
-const seedPrefecture = "a03aaec4-3bd6-4bfb-8e47-2fbfa026d344"
+const (
+	seedPrefecture = "a03aaec4-3bd6-4bfb-8e47-2fbfa026d344"
+	// 購入ステータスマスタ（seed 済み）。進行中と終端を 1 つずつ使う。
+	seedShippedStatusID   = "5c9a1f3b-2d4e-4b6f-9c8a-3e0d1f2b4c5d"
+	seedCompletedStatusID = "1904bf76-7d37-4288-bc15-359d2512ac91"
+)
 
 // insertDiscontinueUser は、廃番の影響見積もりが数える確定済みユーザーを挿入します。
 // deleted が true のときは退会済みとして挿入し、母集団から外れることを確かめられるようにします。
@@ -69,6 +75,27 @@ func insertImpactProduct(ctx context.Context, t *testing.T, db driver.DBTX, id u
 			"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id) "+
 			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
 		id, "廃番対象-"+id.String(), nil, 100, 10, nil, seedStatusInStock, seedCategory,
+	)
+	require.NoError(t, err)
+}
+
+// insertImpactPurchase は、対象商品の明細を持つ購入を 1 件挿入します。
+// statusID で進行中と終端を撃ち分け、終端が母集団から外れることを確かめられるようにします。
+func insertImpactPurchase(
+	ctx context.Context, t *testing.T, db driver.DBTX, purchaseID, productID, userID uuid.UUID, statusID string,
+) {
+	t.Helper()
+	_, err := db.Exec(ctx,
+		"INSERT INTO purchases "+
+			"(id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, ordered_at) "+
+			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
+		purchaseID, "code-"+purchaseID.String(), userID, statusID, 100, 0, 0, 100,
+	)
+	require.NoError(t, err)
+
+	_, err = db.Exec(ctx,
+		"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,1,100)",
+		uuidtestkit.NewTestFromSalt(t, "detail_of_"+purchaseID.String()), purchaseID, productID,
 	)
 	require.NoError(t, err)
 }
@@ -202,6 +229,48 @@ func Test_discontinueImpactService_EstimateDiscontinueImpact(t *testing.T) {
 			})
 		})
 
+		t.Run("進行中の購入がある場合、進行中件数に数える", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				productID := uuidtestkit.NewTestFromSalt(t, "impact_inprogress_product")
+				userID := uuidtestkit.NewTestFromSalt(t, "impact_inprogress_user")
+				insertImpactProduct(ctx, t, drv, productID)
+				insertDiscontinueUser(ctx, t, drv, userID, false)
+				insertImpactPurchase(
+					ctx, t, drv,
+					uuidtestkit.NewTestFromSalt(t, "impact_inprogress_purchase"), productID, userID, seedShippedStatusID,
+				)
+
+				got, err := svc.EstimateDiscontinueImpact(ctx, productID)
+
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), got.InProgressPurchaseCount)
+			})
+		})
+
+		t.Run("終端ステータスの購入は進行中件数に数えない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				productID := uuidtestkit.NewTestFromSalt(t, "impact_terminal_product")
+				userID := uuidtestkit.NewTestFromSalt(t, "impact_terminal_user")
+				insertImpactProduct(ctx, t, drv, productID)
+				insertDiscontinueUser(ctx, t, drv, userID, false)
+				insertImpactPurchase(
+					ctx, t, drv,
+					uuidtestkit.NewTestFromSalt(t, "impact_terminal_purchase"), productID, userID, seedCompletedStatusID,
+				)
+
+				got, err := svc.EstimateDiscontinueImpact(ctx, productID)
+
+				require.NoError(t, err)
+				assert.Zero(t, got.InProgressPurchaseCount)
+			})
+		})
+
 		t.Run("他の商品のカートは母集団に入らない", func(t *testing.T) {
 			t.Parallel()
 
@@ -218,6 +287,21 @@ func Test_discontinueImpactService_EstimateDiscontinueImpact(t *testing.T) {
 				require.NoError(t, err)
 				assert.Zero(t, got.AffectedCartCount)
 			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			_, err := svc.EstimateDiscontinueImpact(ctx, uuidtestkit.NewTestFromSalt(t, "impact_canceled"))
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
 }

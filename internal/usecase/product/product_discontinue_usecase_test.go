@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	domaincoupon "go-boilerplate/internal/domain/coupon"
 	domainproduct "go-boilerplate/internal/domain/product"
 	mock_product "go-boilerplate/internal/domain/product/mock"
@@ -217,6 +218,111 @@ func Test_usecase_DiscontinueProduct(t *testing.T) {
 
 			require.ErrorIs(t, err, authz.ErrForbidden)
 		})
+
+		t.Run("商品行のロックに失敗した場合、後続を呼ばずエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			entity := newUpdateTarget(t, 1)
+			u, deps := newDiscontinueTestUsecase(t)
+
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductDiscontinue, gomock.Any()).
+				Return(nil)
+			deps.clock.EXPECT().Now().Return(now)
+			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+			deps.repo.EXPECT().LockByID(gomock.Any(), entity.ID()).Return(nil, domainproduct.ErrVersionConflict)
+			// 購入の照会も更新も発行も行わないことを、EXPECT を置かないことで表す。
+
+			_, err := u.DiscontinueProduct(t.Context(), &auth.Authn{}, entity.ID(), params)
+
+			require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
+		})
+
+		t.Run("購入ステータスの取得に失敗した場合、更新も発行も行わずエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			entity := newUpdateTarget(t, 1)
+			u, deps := newDiscontinueTestUsecase(t)
+
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductDiscontinue, gomock.Any()).
+				Return(nil)
+			deps.clock.EXPECT().Now().Return(now)
+			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+			deps.repo.EXPECT().LockByID(gomock.Any(), entity.ID()).Return(entity, nil)
+			deps.purchaseRepo.EXPECT().
+				FindStatusesByProductID(gomock.Any(), entity.ID()).
+				Return(nil, apperror.ErrCanceled)
+
+			_, err := u.DiscontinueProduct(t.Context(), &auth.Authn{}, entity.ID(), params)
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+			assert.False(t, entity.IsDiscontinued())
+		})
+
+		t.Run("商品の更新に失敗した場合、クーポン発行を行わずエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			entity := newUpdateTarget(t, 1)
+			u, deps := newDiscontinueTestUsecase(t)
+
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductDiscontinue, gomock.Any()).
+				Return(nil)
+			deps.clock.EXPECT().Now().Return(now)
+			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+			deps.repo.EXPECT().LockByID(gomock.Any(), entity.ID()).Return(entity, nil)
+			deps.purchaseRepo.EXPECT().
+				FindStatusesByProductID(gomock.Any(), entity.ID()).
+				Return([]domainpurchase.Status{newTerminalStatus(t)}, nil)
+			deps.repo.EXPECT().Update(gomock.Any(), entity).Return(0, domainproduct.ErrVersionConflict)
+			// 発行を行わないことを、EXPECT を置かないことで表す。
+
+			_, err := u.DiscontinueProduct(t.Context(), &auth.Authn{}, entity.ID(), params)
+
+			require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
+		})
+
+		t.Run("クーポンの発行に失敗した場合、エラーをそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			entity := newUpdateTarget(t, 1)
+			u, deps := newDiscontinueTestUsecase(t)
+
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductDiscontinue, gomock.Any()).
+				Return(nil)
+			deps.clock.EXPECT().Now().Return(now)
+			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+			deps.repo.EXPECT().LockByID(gomock.Any(), entity.ID()).Return(entity, nil)
+			deps.purchaseRepo.EXPECT().
+				FindStatusesByProductID(gomock.Any(), entity.ID()).
+				Return([]domainpurchase.Status{newTerminalStatus(t)}, nil)
+			deps.repo.EXPECT().Update(gomock.Any(), entity).Return(2, nil)
+			deps.cmd.EXPECT().
+				IssueDiscontinuationCoupons(gomock.Any(), gomock.Any()).
+				Return(command.IssueDiscontinuationCouponsResult{}, apperror.ErrCanceled)
+
+			_, err := u.DiscontinueProduct(t.Context(), &auth.Authn{}, entity.ID(), params)
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+
+		t.Run("トランザクションの実行に失敗した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+
+			u, deps := newDiscontinueTestUsecase(t)
+
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductDiscontinue, gomock.Any()).
+				Return(nil)
+			deps.clock.EXPECT().Now().Return(now)
+			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).Return(apperror.ErrCanceled)
+
+			_, err := u.DiscontinueProduct(t.Context(), &auth.Authn{}, newUpdateTarget(t, 1).ID(), params)
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
 	})
 }
 
@@ -268,6 +374,39 @@ func Test_usecase_GetDiscontinueImpact(t *testing.T) {
 			_, err := u.GetDiscontinueImpact(t.Context(), &auth.Authn{}, entity.ID())
 
 			require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
+		})
+
+		t.Run("認可が拒否された場合、商品を引かずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			u, deps := newDiscontinueTestUsecase(t)
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductDiscontinue, gomock.Any()).
+				Return(authz.ErrForbidden)
+			// 商品も見積もりも引かないことを、EXPECT を置かないことで表す。
+
+			_, err := u.GetDiscontinueImpact(t.Context(), &auth.Authn{}, newUpdateTarget(t, 1).ID())
+
+			require.ErrorIs(t, err, authz.ErrForbidden)
+		})
+
+		t.Run("見積もりの取得に失敗した場合、エラーをそのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			entity := newUpdateTarget(t, 1)
+			u, deps := newDiscontinueTestUsecase(t)
+
+			deps.authorizer.EXPECT().
+				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductDiscontinue, gomock.Any()).
+				Return(nil)
+			deps.repo.EXPECT().FindByID(gomock.Any(), entity.ID()).Return(entity, nil)
+			deps.impactQuery.EXPECT().
+				EstimateDiscontinueImpact(gomock.Any(), entity.ID()).
+				Return(query.DiscontinueImpactReadModel{}, apperror.ErrCanceled)
+
+			_, err := u.GetDiscontinueImpact(t.Context(), &auth.Authn{}, entity.ID())
+
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
 }

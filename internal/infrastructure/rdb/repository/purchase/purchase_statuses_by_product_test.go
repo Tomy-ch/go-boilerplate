@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -143,6 +144,53 @@ func Test_repository_FindStatusesByProductID(t *testing.T) {
 
 				require.NoError(t, err)
 				assert.Empty(t, statuses)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			statuses, err := repo.FindStatusesByProductID(ctx, mustParse(t, "fd000000-0000-4000-8000-00000000000f"))
+
+			assert.Nil(t, statuses)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+
+		t.Run("ステータスマスタにドメインの知らないcodeがある場合、再構築のエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				userID := "fc000000-0000-4000-8000-00000000000e"
+				productID := mustParse(t, "fd000000-0000-4000-8000-00000000000e")
+				insertPurchaseOwner(ctx, t, drv, userID)
+				insertProductRow(ctx, t, drv, productID, "未知ステータス対象", 10)
+
+				// 業務キーの解決はドメインが持つため、永続化側に未知の code があれば再構築で弾かれる。
+				unknownStatusID := "fb000000-0000-4000-8000-0000000000ee"
+				_, err := drv.Exec(ctx,
+					"INSERT INTO purchase_statuses (id, code, name, sort_key) VALUES ($1,$2,$3,$4)",
+					unknownStatusID, 99, "未知", 99,
+				)
+				require.NoError(t, err)
+
+				purchaseID := "fe000000-0000-4000-8000-00000000000e"
+				insertPurchaseWithStatus(ctx, t, drv, purchaseID, userID, unknownStatusID, 100, orderedAt)
+				insertPurchaseDetailRow(
+					ctx, t, drv, mustParse(t, "ff000000-0000-4000-8000-00000000000e"), mustParse(t, purchaseID), productID,
+				)
+
+				statuses, serr := repo.FindStatusesByProductID(ctx, productID)
+
+				assert.Nil(t, statuses)
+				require.ErrorIs(t, serr, domainpurchase.ErrInvalidStatusID)
 			})
 		})
 	})
