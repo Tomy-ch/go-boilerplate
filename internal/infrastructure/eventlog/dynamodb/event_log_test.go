@@ -572,3 +572,46 @@ func Test_store_watermarkIsNotAnEvent(t *testing.T) {
 		})
 	})
 }
+
+func Test_store_advanceWatermark(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("event が無くても位置を置ける", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.advanceWatermark(t.Context(), "s", 4))
+
+			got, err := s.AppendedThrough(t.Context(), "s")
+			require.NoError(t, err)
+			assert.Equal(t, realtime.Sequence(4), got)
+		})
+
+		t.Run("前の位置では後戻りしない", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.advanceWatermark(t.Context(), "s", 6))
+			require.NoError(t, s.advanceWatermark(t.Context(), "s", 2))
+
+			got, err := s.AppendedThrough(t.Context(), "s")
+			require.NoError(t, err)
+			assert.Equal(t, realtime.Sequence(6), got)
+		})
+
+		t.Run("同じ位置を繰り返し呼んでも成功する", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.advanceWatermark(t.Context(), "s", 3))
+			require.NoError(t, s.advanceWatermark(t.Context(), "s", 3))
+
+			got, err := s.AppendedThrough(t.Context(), "s")
+			require.NoError(t, err)
+			assert.Equal(t, realtime.Sequence(3), got)
+		})
+	})
+}
