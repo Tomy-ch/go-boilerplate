@@ -31,7 +31,9 @@ SELECT
     p.paid_at,
     p.canceled_at,
     p.shipped_at,
-    p.delivered_at
+    p.delivered_at,
+    p.coupon_id,
+    p.discount_amount
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.id = @id;
