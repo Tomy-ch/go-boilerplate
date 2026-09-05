@@ -59,22 +59,21 @@ func (r *repository) FindActiveByUserID(ctx context.Context, userID uuid.UUID) (
 	return reconstruct(row.Inquiries)
 }
 
-// Create は、問い合わせを 1 件登録します。
-// 同じ利用者の問い合わせが既にある場合は一意制約違反を Conflict として返します。
-func (r *repository) Create(ctx context.Context, i *inquiry.Inquiry) error {
+// CreateIfAbsent は、利用者の問い合わせが無ければ 1 件登録し、確定した問い合わせを返します。
+func (r *repository) CreateIfAbsent(ctx context.Context, i *inquiry.Inquiry) (*inquiry.Inquiry, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, r.db))
 
-	err := db.CreateInquiry(ctx, &gen.CreateInquiryParams{
+	row, err := db.CreateInquiryIfAbsent(ctx, &gen.CreateInquiryIfAbsentParams{
 		ID:     i.ID(),
 		UserID: i.UserID(),
 	})
 	if err != nil {
-		return pgerror.NormalizeError(err)
+		return nil, pgerror.NormalizeError(err)
 	}
-	return nil
+	return reconstruct(row.Inquiries)
 }
 
 // Update は、問い合わせの更新日時を永続化します。

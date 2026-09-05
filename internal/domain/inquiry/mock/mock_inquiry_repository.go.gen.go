@@ -42,18 +42,19 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
-// Create mocks base method.
-func (m *MockRepository) Create(ctx context.Context, arg1 *inquiry.Inquiry) error {
+// CreateIfAbsent mocks base method.
+func (m *MockRepository) CreateIfAbsent(ctx context.Context, arg1 *inquiry.Inquiry) (*inquiry.Inquiry, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "CreateIfAbsent", ctx, arg1)
+	ret0, _ := ret[0].(*inquiry.Inquiry)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// Create indicates an expected call of Create.
-func (mr *MockRepositoryMockRecorder) Create(ctx, arg1 any) *gomock.Call {
+// CreateIfAbsent indicates an expected call of CreateIfAbsent.
+func (mr *MockRepositoryMockRecorder) CreateIfAbsent(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIfAbsent", reflect.TypeOf((*MockRepository)(nil).CreateIfAbsent), ctx, arg1)
 }
 
 // CreateMessage mocks base method.

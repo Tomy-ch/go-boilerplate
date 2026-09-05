@@ -12,7 +12,7 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
-const createInquiry = `-- name: CreateInquiry :exec
+const createInquiryIfAbsent = `-- name: CreateInquiryIfAbsent :one
 INSERT INTO inquiries (
     id,
     user_id
@@ -21,16 +21,27 @@ INSERT INTO inquiries (
     $1,
     $2
 )
+ON CONFLICT ON CONSTRAINT inquiries_user_id_unique DO UPDATE
+    SET
+        user_id = excluded.user_id
+RETURNING inquiries.id, inquiries.user_id, inquiries.created_at, inquiries.updated_at
 `
 
-type CreateInquiryParams struct {
+type CreateInquiryIfAbsentParams struct {
 	ID     uuid.UUID
 	UserID uuid.UUID
 }
 
+type CreateInquiryIfAbsentRow struct {
+	Inquiries Inquiries
+}
+
 // === source: database/dml/repository/inquiry/insert_inquiry.sql ===
-// 問い合わせを新規登録する。利用者の一意制約違反は呼び出し側が衝突として扱う
-// （inquiries_user_id_unique。最初の投稿が並行したときに片方が当たる）。
+// 利用者の問い合わせが無ければ 1 件登録し、既にあればその行をそのまま返す。
+// 一意インデックス（inquiries_user_id_unique）が単一文の中で裁定するため、同一利用者への並行した
+// 作成が競合しても一意制約違反を上げない。存在確認と作成を分けると、その間に他の要求が作った場合に
+// 23505 でトランザクションごと中断してしまい、同じトランザクションの中では続けられなくなる。
+// 衝突時に user_id を同じ値で書き戻すのは、DO NOTHING では RETURNING が行を返さないため。
 //
 //	INSERT INTO inquiries (
 //	    id,
@@ -40,9 +51,20 @@ type CreateInquiryParams struct {
 //	    $1,
 //	    $2
 //	)
-func (q *Queries) CreateInquiry(ctx context.Context, arg *CreateInquiryParams) error {
-	_, err := q.db.Exec(ctx, createInquiry, arg.ID, arg.UserID)
-	return err
+//	ON CONFLICT ON CONSTRAINT inquiries_user_id_unique DO UPDATE
+//	    SET
+//	        user_id = excluded.user_id
+//	RETURNING inquiries.id, inquiries.user_id, inquiries.created_at, inquiries.updated_at
+func (q *Queries) CreateInquiryIfAbsent(ctx context.Context, arg *CreateInquiryIfAbsentParams) (*CreateInquiryIfAbsentRow, error) {
+	row := q.db.QueryRow(ctx, createInquiryIfAbsent, arg.ID, arg.UserID)
+	var i CreateInquiryIfAbsentRow
+	err := row.Scan(
+		&i.Inquiries.ID,
+		&i.Inquiries.UserID,
+		&i.Inquiries.CreatedAt,
+		&i.Inquiries.UpdatedAt,
+	)
+	return &i, err
 }
 
 const getInquiryByID = `-- name: GetInquiryByID :one

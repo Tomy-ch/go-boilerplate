@@ -80,7 +80,7 @@ func NewTransactionManager(
 // （internal/usecase/boundary/tx）の doc を参照。nested（既存 tx 再利用）経路はリトライ対象外（1 回）。
 func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
 	if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
-		return fn(ctx) // nested: savepoint 相当・リトライしない（最外の Do が正規化する）
+		return fn(ctx) // nested: 外側の tx をそのまま使い 1 回だけ実行する（ADR-0035）
 	}
 
 	err := retry.Do(ctx, t.sleeper,
