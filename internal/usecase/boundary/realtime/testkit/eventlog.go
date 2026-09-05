@@ -45,8 +45,8 @@ func NewEventLog() *EventLog {
 	}
 }
 
-// Seed は、Validate も冪等判定も通さずに event を置きます。飛び番や保持期間外の位置など、
-// 正規の Append では作れない状態をテストが直接組み立てるための口です。
+// Seed は、Validate も冪等判定も通さずに event を置きます。飛び番や保持期間外の位置を作れます
+// （EventLog の doc にある専用の口の一つ）。
 func (l *EventLog) Seed(events ...rt.DeliveryEvent) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -56,8 +56,8 @@ func (l *EventLog) Seed(events ...rt.DeliveryEvent) {
 	}
 }
 
-// Hold は、以降の読み取りを、返った関数が呼ばれるまで待たせます。読み取りが進行中である状態を
-// テストが作るための口です。
+// Hold は、以降の読み取りを、返った関数が呼ばれるまで待たせます
+// （EventLog の doc にある専用の口の一つ）。
 func (l *EventLog) Hold() func() {
 	l.mu.Lock()
 	gate := make(chan struct{})
@@ -131,7 +131,7 @@ func (l *EventLog) AppendedThrough(_ context.Context, streamID rt.StreamID) (rt.
 }
 
 // SeedAppendedThrough は、Append を経ずに追記済みの位置を置きます。保持期間で event が消えたあとの
-// 状態など、正規の Append では作れない状態をテストが直接組み立てるための口です。
+// 状態を作れます（EventLog の doc にある専用の口の一つ）。
 func (l *EventLog) SeedAppendedThrough(streamID rt.StreamID, seq rt.Sequence) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -171,7 +171,7 @@ func (l *EventLog) ReadAfter(ctx context.Context, q rt.ReadAfterQuery) (rt.ReadA
 	return rt.ReadAfterResult{Events: found}, nil
 }
 
-// Latest は、stream の最後の event を返します。1 件も無ければ ok=false を返します。
+// Latest は、sequence 昇順に保った slice の末尾を返します。stream が空なら ok=false です。
 func (l *EventLog) Latest(_ context.Context, streamID rt.StreamID) (rt.DeliveryEvent, bool, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -188,7 +188,7 @@ func (l *EventLog) Latest(_ context.Context, streamID rt.StreamID) (rt.DeliveryE
 	return events[len(events)-1], true, nil
 }
 
-// Find は、stream の指定 sequence の event を返します。無ければ ok=false を返します。
+// Find は、stream の slice を走査して sequence の一致する event を返します。無ければ ok=false です。
 func (l *EventLog) Find(_ context.Context, streamID rt.StreamID, seq rt.Sequence) (rt.DeliveryEvent, bool, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
