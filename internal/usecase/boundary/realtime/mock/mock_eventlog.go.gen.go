@@ -55,6 +55,21 @@ func (mr *MockEventLogStoreMockRecorder) Append(ctx, event any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Append", reflect.TypeOf((*MockEventLogStore)(nil).Append), ctx, event)
 }
 
+// AppendedThrough mocks base method.
+func (m *MockEventLogStore) AppendedThrough(ctx context.Context, streamID realtime.StreamID) (realtime.Sequence, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AppendedThrough", ctx, streamID)
+	ret0, _ := ret[0].(realtime.Sequence)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AppendedThrough indicates an expected call of AppendedThrough.
+func (mr *MockEventLogStoreMockRecorder) AppendedThrough(ctx, streamID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AppendedThrough", reflect.TypeOf((*MockEventLogStore)(nil).AppendedThrough), ctx, streamID)
+}
+
 // Find mocks base method.
 func (m *MockEventLogStore) Find(ctx context.Context, streamID realtime.StreamID, seq realtime.Sequence) (realtime.DeliveryEvent, bool, error) {
 	m.ctrl.T.Helper()

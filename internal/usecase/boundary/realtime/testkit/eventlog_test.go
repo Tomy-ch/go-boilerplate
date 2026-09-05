@@ -502,3 +502,80 @@ func TestEventLog_concurrentUse(t *testing.T) {
 		})
 	})
 }
+
+func TestEventLog_AppendedThrough(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("1 度も追記していなければ 0 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := NewEventLog().AppendedThrough(t.Context(), testStream)
+
+			require.NoError(t, err)
+			assert.Equal(t, rt.Sequence(0), got)
+		})
+
+		t.Run("追記した最大の位置を返し後戻りしない", func(t *testing.T) {
+			t.Parallel()
+
+			l := NewEventLog()
+			require.NoError(t, l.Append(t.Context(), event(3, "evt-3")))
+			require.NoError(t, l.Append(t.Context(), event(1, "evt-1")))
+
+			got, err := l.AppendedThrough(t.Context(), testStream)
+
+			require.NoError(t, err)
+			assert.Equal(t, rt.Sequence(3), got)
+		})
+
+		t.Run("Seed は正規の追記ではないので数えない", func(t *testing.T) {
+			t.Parallel()
+
+			l := NewEventLog()
+			l.Seed(event(9, "evt-9"))
+
+			got, err := l.AppendedThrough(t.Context(), testStream)
+
+			require.NoError(t, err)
+			assert.Equal(t, rt.Sequence(0), got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("読めない状態ならエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			l := NewEventLog()
+			l.SetUnavailable(true)
+
+			_, err := l.AppendedThrough(t.Context(), testStream)
+
+			require.Error(t, err)
+		})
+	})
+}
+
+func TestEventLog_SeedAppendedThrough(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Append を経ずに追記済みの位置を置ける", func(t *testing.T) {
+			t.Parallel()
+
+			l := NewEventLog()
+			l.SeedAppendedThrough(testStream, 7)
+
+			got, err := l.AppendedThrough(t.Context(), testStream)
+
+			require.NoError(t, err)
+			assert.Equal(t, rt.Sequence(7), got)
+		})
+	})
+}

@@ -56,7 +56,7 @@ func (s *store) Append(ctx context.Context, event realtime.DeliveryEvent) error 
 		ConditionExpression: aws.String("attribute_not_exists(" + attrStreamID + ")"),
 	})
 	if err == nil {
-		return nil
+		return s.advanceWatermark(ctx, event.StreamID, event.Sequence)
 	}
 
 	if !dynamodbclient.IsConditionalCheckFailed(err) {
@@ -76,7 +76,33 @@ func (s *store) Append(ctx context.Context, event realtime.DeliveryEvent) error 
 		return xerrors.Wrap(realtime.ErrSequenceConflict, "stream "+string(event.StreamID)+" sequence "+event.Sequence.String())
 	}
 
-	return nil
+	return s.advanceWatermark(ctx, event.StreamID, event.Sequence)
+}
+
+// AppendedThrough は、この stream へ追記した最大の位置を返します。1 度も追記していなければ 0 です。
+func (s *store) AppendedThrough(ctx context.Context, streamID realtime.StreamID) (realtime.Sequence, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	out, err := s.c.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName:      aws.String(s.table),
+		Key:            key(streamID, watermarkSequence),
+		ConsistentRead: aws.Bool(true),
+	})
+	if err != nil {
+		return 0, dynamodbclient.Normalize(err, "read the append watermark")
+	}
+
+	if len(out.Item) == 0 {
+		return 0, nil
+	}
+
+	seq, err := dynamodbclient.NumberAttr(out.Item, attrAppendedThrough, itemKind)
+	if err != nil {
+		return 0, err
+	}
+
+	return realtime.Sequence(seq), nil
 }
 
 // ReadAfter は、cursor より後ろを昇順に強い一貫性で読みます。
@@ -123,17 +149,22 @@ func (s *store) ReadAfter(ctx context.Context, q realtime.ReadAfterQuery) (realt
 }
 
 // Latest は、stream の最後の event を降順 1 件の読み取りで返します。
+// watermark item は event ではないので、位置で除きます。
 func (s *store) Latest(ctx context.Context, streamID realtime.StreamID) (realtime.DeliveryEvent, bool, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	out, err := s.c.Query(ctx, &dynamodb.QueryInput{
-		TableName:                 aws.String(s.table),
-		KeyConditionExpression:    aws.String(attrStreamID + " = :s"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{":s": &types.AttributeValueMemberS{Value: string(streamID)}},
-		ConsistentRead:            aws.Bool(true),
-		ScanIndexForward:          aws.Bool(false),
-		Limit:                     aws.Int32(1),
+		TableName:                aws.String(s.table),
+		KeyConditionExpression:   aws.String(attrStreamID + " = :s AND #seq > :watermark"),
+		ExpressionAttributeNames: map[string]string{"#seq": attrSequence},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":s":         &types.AttributeValueMemberS{Value: string(streamID)},
+			":watermark": &types.AttributeValueMemberN{Value: strconv.Itoa(watermarkSequence)},
+		},
+		ConsistentRead:   aws.Bool(true),
+		ScanIndexForward: aws.Bool(false),
+		Limit:            aws.Int32(1),
 	})
 	if err != nil {
 		return realtime.DeliveryEvent{}, false, dynamodbclient.Normalize(err, "latest")
@@ -192,6 +223,29 @@ func originAttr(item map[string]types.AttributeValue) map[string]string {
 	}
 
 	return origin
+}
+
+// advanceWatermark は、追記済みの位置を seq まで進めます。後戻りさせないため、既存が seq 以上なら
+// 書き換えません。event を書いた後に呼ぶので、ここで失敗しても watermark が event を追い越しません
+// （呼出側の retry と Append の冪等性で埋まります）。
+func (s *store) advanceWatermark(ctx context.Context, streamID realtime.StreamID, seq realtime.Sequence) error {
+	_, err := s.c.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName:           aws.String(s.table),
+		Key:                 key(streamID, watermarkSequence),
+		UpdateExpression:    aws.String("SET #w = :seq"),
+		ConditionExpression: aws.String("attribute_not_exists(#w) OR #w < :seq"),
+		ExpressionAttributeNames: map[string]string{
+			"#w": attrAppendedThrough,
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":seq": &types.AttributeValueMemberN{Value: seq.String()},
+		},
+	})
+	if err != nil && !dynamodbclient.IsConditionalCheckFailed(err) {
+		return dynamodbclient.Normalize(err, "advance the append watermark")
+	}
+
+	return nil
 }
 
 // key は、(stream, sequence) の主キーを返します。

@@ -324,7 +324,8 @@ stateDiagram-v2
 | **cursor** | クライアントが見た sequence。ブラウザ再接続時は `Last-Event-ID`、明示的な resume 時は `after`。 |
 | **replay** | 接続が開いたときに cursor 以降の EventLog を読むこと。 |
 | **catch-up** | wakeup を受けて、または periodic（30 s、jitter 付き）schedule で、現在の cursor 以降の EventLog を読むこと。 |
-| **replay floor** | まだ replay できる最古の sequence。保存せず導出する: `cursor + 1` が無く後続が存在する、または存在しても retention より古い、または cursor 自身の item が無い（初期 cursor を除く）→ `410`。 |
+| **replay floor** | まだ replay できる最古の sequence。保存せず導出する: `cursor + 1` が無く後続が存在する、または存在しても retention より古い、または **追記済みの位置以下なのに** cursor 自身の item が無い（初期 cursor を除く）→ `410`。追記済みの位置より*上*の cursor は失効ではない。relay がまだそこまで書いていないだけであり、これを断ると正本を読み直しても同じ cursor が返るため回復できない。 |
+| **append watermark** | relay が stream の EventLog へ書いた最大の sequence。stream ごとに保持し、後戻りしない。event そのものより長く残るため、item が無いときに「retention で消えた」のか「まだ書かれていない」のかを分けられる。 |
 | **wakeup** | SNS → SQS の通知「stream S を cursor の後から読み直せ」。状態を持たず、重複は畳まれ、欠落は catch-up が覆う。 |
 | **blocked stream** | 先頭行が dead の stream。replay されるまで停止。`realtime_blocked_streams` で数える。 |
 | **ticket** | 接続時に提示する opaque な 256-bit credential。hash で保存し、subject / destination / scope / expiry に bind し、5 分の TTL の間は再利用可。 |

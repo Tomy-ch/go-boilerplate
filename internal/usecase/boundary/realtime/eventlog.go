@@ -21,6 +21,10 @@ type EventLogStore interface {
 	Latest(ctx context.Context, streamID StreamID) (DeliveryEvent, bool, error)
 	// Find は、stream の指定 sequence の event を返します。無ければ ok=false を返します。
 	Find(ctx context.Context, streamID StreamID, seq Sequence) (DeliveryEvent, bool, error)
+	// AppendedThrough は、この stream へ追記した最大の位置を返します。1 度も追記していなければ 0 です。
+	// 保持期間で event が消えても後戻りしません。ある位置の event が無いとき、それが「まだ来ていない」のか
+	// 「もう無い」のかは、この値と比べて初めて決まります。
+	AppendedThrough(ctx context.Context, streamID StreamID) (Sequence, error)
 }
 
 // ReadAfterQuery は、cursor 以降の読み取り条件です。
