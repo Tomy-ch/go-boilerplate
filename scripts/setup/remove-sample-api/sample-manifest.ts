@@ -376,6 +376,23 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000024_create_coupons.down.sql",
 
       "internal/domain/coupon",
+      "internal/usecase/coupon",
+      "internal/infrastructure/rdb/repository/coupon",
+      "database/dml/repository/coupon",
+      "database/gen/coupon_repository.gen.sql",
+      "internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go",
+      "database/migrations/000025_add_purchases_coupon_columns.up.sql",
+      "database/migrations/000025_add_purchases_coupon_columns.down.sql",
+      "internal/controller/handler/v1/users/me/coupons",
+      "internal/controller/handler/v1/carts/coupons",
+      "internal/integration/v1_users_me_coupons_test.go",
+      "internal/integration/v1_carts_me_coupons_test.go",
+      "openapi/paths/v1/users/me/coupons.yaml",
+      "openapi/paths/v1/carts/me/coupons.yaml",
+      "openapi/components/schemas/coupons",
+      "openapi/components/responses/coupons",
+      "openapi/components/schemas/carts/CartCouponResponse.yaml",
+      "openapi/components/responses/carts/CartCouponListResponse.yaml",
 
       "database/seed/000041_coupons.sql",
 
