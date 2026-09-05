@@ -301,6 +301,9 @@ type OrderedAfterParam = time.Time
 // OrderedBeforeParam Example: 2026-08-01T00:00:00+09:00
 type OrderedBeforeParam = time.Time
 
+// PurchaseProductIdParam Example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+type PurchaseProductIdParam = openapi_types.UUID
+
 // PurchaseStatusCodesParam Example: [8]
 type PurchaseStatusCodesParam = []int32
 
@@ -362,6 +365,12 @@ type GetPurchasesParams struct {
 	// 並び順・ページ送りの規則は母集団によらず同一（注文日時の降順）です。
 	// ページ送りの間は同じ指定を渡してください（母集団が変わると keyset の連続性は保証されません）。
 	IncludeOtherUsers *IncludeOtherUsersParam `form:"includeOtherUsers,omitempty" json:"includeOtherUsers,omitempty"`
+
+	// ProductId 指定した商品を含む購入だけに絞ります。指定しない場合は絞りません。
+	// 廃番が進行中の購入を理由に拒まれたとき、どの購入が残っているのかを辿るために用います。
+	// 所有権のフィルタは変わりません。既定では自分の購入のみが母集団で、他ユーザーの購入まで見るには
+	// includeOtherUsers=true（管理者のみ）を併せて指定します。
+	ProductId *PurchaseProductIdParam `form:"productId,omitempty" json:"productId,omitempty"`
 }
 
 // PostPurchasesParams defines parameters for PostPurchases.

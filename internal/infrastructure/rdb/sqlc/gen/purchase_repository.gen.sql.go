@@ -527,6 +527,44 @@ func (q *Queries) LockPurchaseByCode(ctx context.Context, code string) (*LockPur
 	return &i, err
 }
 
+const selectPurchaseStatusCodesByProductID = `-- name: SelectPurchaseStatusCodesByProductID :many
+SELECT DISTINCT ps.code
+FROM purchases AS p
+INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE pd.product_id = $1
+`
+
+// === source: database/dml/repository/purchase/select_purchase_status_codes_by_product_id.sql ===
+// 指定商品を明細に持つ購入が取っているステータスの code を重複なく返す。
+// 進行中かどうかで絞らないのは、その判定を購入集約（Status.IsTerminal）が持つためで、
+// SQL 側に同じ規則を書き写さない（理由は docs/spec/domain/purchase.md の FindStatusesByProductID）。
+//
+//	SELECT DISTINCT ps.code
+//	FROM purchases AS p
+//	INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+//	WHERE pd.product_id = $1
+func (q *Queries) SelectPurchaseStatusCodesByProductID(ctx context.Context, productID uuid.UUID) ([]int16, error) {
+	rows, err := q.db.Query(ctx, selectPurchaseStatusCodesByProductID, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int16
+	for rows.Next() {
+		var code int16
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		items = append(items, code)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const selectPurchaseStatusCodesByUserID = `-- name: SelectPurchaseStatusCodesByUserID :many
 SELECT DISTINCT ps.code
 FROM purchases AS p

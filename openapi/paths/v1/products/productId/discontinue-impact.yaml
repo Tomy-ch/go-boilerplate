@@ -1,0 +1,44 @@
+get:
+  operationId: GetProductsDiscontinueImpact
+  tags:
+    - v1/products/detail
+  summary: 商品を廃番にしたときの影響の見積もり
+  description: |
+    指定された UUID に該当する商品を廃番にした場合の影響を、実行前に件数で返します。
+    認証必須で、管理者（admin）のみ実行できます（非 admin は 403）。この見積もりは廃番を実行できる
+    主体だけが見るべき情報であり、廃番そのものと同じ権限で守ります。
+    返すのは影響カート件数・影響利用者数・進行中購入件数の 3 つです。
+    **影響カート件数と影響利用者数は一致しません。** カートは所有者が確定していなくても持てるため、
+    ゲストのカートは影響を受けますがクーポンの受給者にはなりません。退会済みユーザーも対象外です。
+    **行をロックしないため、返した瞬間から古くなります。** 押した結果がこの見積もりと食い違うことは
+    あり、実際に何が起きたかは実行（POST /v1/products/{productId}/discontinue）の応答が返します。
+    進行中購入件数が 1 以上であれば実行は 409 で拒まれます。どの購入かは
+    GET /v1/purchases に productId を指定して辿れます。
+    未公開の商品も対象です。廃番にできるかを調べる読み取りであり、公開状態で母集団を絞る理由がないためです。
+    本 op は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の一時障害で
+    応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../../components/parameters/product/ProductIdParam.yaml'
+  responses:
+    '200':
+      description: 影響の見積もりの取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/responses/products/ProductDiscontinueImpactResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../../components/schemas/errors/Forbidden403.yaml'
+    '404':
+      $ref: '../../../../components/schemas/errors/NotFound404.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'

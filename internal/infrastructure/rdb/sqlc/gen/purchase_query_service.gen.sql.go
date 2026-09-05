@@ -125,8 +125,15 @@ WITH page AS (
             WHERE s.code = ANY($5::SMALLINT[])
         )
     )
+    AND (
+        $6::UUID IS NULL
+        OR EXISTS (
+            SELECT 1 FROM purchase_details AS d
+            WHERE d.purchase_id = p.id AND d.product_id = $6
+        )
+    )
     ORDER BY p.ordered_at DESC, p.id DESC
-    LIMIT $6
+    LIMIT $7
 )
 
 SELECT
@@ -163,6 +170,7 @@ type ListAllPurchasesFeedAfterParams struct {
 	OrderedAfter   *time.Time
 	OrderedBefore  *time.Time
 	StatusCodes    []int16
+	ProductID      *uuid.UUID
 	LimitParam     int32
 }
 
@@ -208,8 +216,15 @@ type ListAllPurchasesFeedAfterRow struct {
 //	            WHERE s.code = ANY($5::SMALLINT[])
 //	        )
 //	    )
+//	    AND (
+//	        $6::UUID IS NULL
+//	        OR EXISTS (
+//	            SELECT 1 FROM purchase_details AS d
+//	            WHERE d.purchase_id = p.id AND d.product_id = $6
+//	        )
+//	    )
 //	    ORDER BY p.ordered_at DESC, p.id DESC
-//	    LIMIT $6
+//	    LIMIT $7
 //	)
 //
 //	SELECT
@@ -245,6 +260,7 @@ func (q *Queries) ListAllPurchasesFeedAfter(ctx context.Context, arg *ListAllPur
 		arg.OrderedAfter,
 		arg.OrderedBefore,
 		arg.StatusCodes,
+		arg.ProductID,
 		arg.LimitParam,
 	)
 	if err != nil {
@@ -299,8 +315,15 @@ WITH page AS (
             WHERE s.code = ANY($3::SMALLINT[])
         )
     )
+    AND (
+        $4::UUID IS NULL
+        OR EXISTS (
+            SELECT 1 FROM purchase_details AS d
+            WHERE d.purchase_id = p.id AND d.product_id = $4
+        )
+    )
     ORDER BY p.ordered_at DESC, p.id DESC
-    LIMIT $4
+    LIMIT $5
 )
 
 SELECT
@@ -335,6 +358,7 @@ type ListAllPurchasesFeedFirstParams struct {
 	OrderedAfter  *time.Time
 	OrderedBefore *time.Time
 	StatusCodes   []int16
+	ProductID     *uuid.UUID
 	LimitParam    int32
 }
 
@@ -380,8 +404,15 @@ type ListAllPurchasesFeedFirstRow struct {
 //	            WHERE s.code = ANY($3::SMALLINT[])
 //	        )
 //	    )
+//	    AND (
+//	        $4::UUID IS NULL
+//	        OR EXISTS (
+//	            SELECT 1 FROM purchase_details AS d
+//	            WHERE d.purchase_id = p.id AND d.product_id = $4
+//	        )
+//	    )
 //	    ORDER BY p.ordered_at DESC, p.id DESC
-//	    LIMIT $4
+//	    LIMIT $5
 //	)
 //
 //	SELECT
@@ -415,6 +446,7 @@ func (q *Queries) ListAllPurchasesFeedFirst(ctx context.Context, arg *ListAllPur
 		arg.OrderedAfter,
 		arg.OrderedBefore,
 		arg.StatusCodes,
+		arg.ProductID,
 		arg.LimitParam,
 	)
 	if err != nil {
@@ -531,8 +563,15 @@ WITH page AS (
                 WHERE s.code = ANY($6::SMALLINT[])
             )
         )
+        AND (
+            $7::UUID IS NULL
+            OR EXISTS (
+                SELECT 1 FROM purchase_details AS d
+                WHERE d.purchase_id = p.id AND d.product_id = $7
+            )
+        )
     ORDER BY p.ordered_at DESC, p.id DESC
-    LIMIT $7
+    LIMIT $8
 )
 
 SELECT
@@ -570,6 +609,7 @@ type ListPurchasesFeedAfterParams struct {
 	OrderedAfter   *time.Time
 	OrderedBefore  *time.Time
 	StatusCodes    []int16
+	ProductID      *uuid.UUID
 	LimitParam     int32
 }
 
@@ -618,8 +658,15 @@ type ListPurchasesFeedAfterRow struct {
 //	                WHERE s.code = ANY($6::SMALLINT[])
 //	            )
 //	        )
+//	        AND (
+//	            $7::UUID IS NULL
+//	            OR EXISTS (
+//	                SELECT 1 FROM purchase_details AS d
+//	                WHERE d.purchase_id = p.id AND d.product_id = $7
+//	            )
+//	        )
 //	    ORDER BY p.ordered_at DESC, p.id DESC
-//	    LIMIT $7
+//	    LIMIT $8
 //	)
 //
 //	SELECT
@@ -656,6 +703,7 @@ func (q *Queries) ListPurchasesFeedAfter(ctx context.Context, arg *ListPurchases
 		arg.OrderedAfter,
 		arg.OrderedBefore,
 		arg.StatusCodes,
+		arg.ProductID,
 		arg.LimitParam,
 	)
 	if err != nil {
@@ -711,8 +759,15 @@ WITH page AS (
                 WHERE s.code = ANY($4::SMALLINT[])
             )
         )
+        AND (
+            $5::UUID IS NULL
+            OR EXISTS (
+                SELECT 1 FROM purchase_details AS d
+                WHERE d.purchase_id = p.id AND d.product_id = $5
+            )
+        )
     ORDER BY p.ordered_at DESC, p.id DESC
-    LIMIT $5
+    LIMIT $6
 )
 
 SELECT
@@ -748,6 +803,7 @@ type ListPurchasesFeedFirstParams struct {
 	OrderedAfter  *time.Time
 	OrderedBefore *time.Time
 	StatusCodes   []int16
+	ProductID     *uuid.UUID
 	LimitParam    int32
 }
 
@@ -794,8 +850,15 @@ type ListPurchasesFeedFirstRow struct {
 //	                WHERE s.code = ANY($4::SMALLINT[])
 //	            )
 //	        )
+//	        AND (
+//	            $5::UUID IS NULL
+//	            OR EXISTS (
+//	                SELECT 1 FROM purchase_details AS d
+//	                WHERE d.purchase_id = p.id AND d.product_id = $5
+//	            )
+//	        )
 //	    ORDER BY p.ordered_at DESC, p.id DESC
-//	    LIMIT $5
+//	    LIMIT $6
 //	)
 //
 //	SELECT
@@ -830,6 +893,7 @@ func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchases
 		arg.OrderedAfter,
 		arg.OrderedBefore,
 		arg.StatusCodes,
+		arg.ProductID,
 		arg.LimitParam,
 	)
 	if err != nil {

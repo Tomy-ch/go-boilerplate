@@ -455,3 +455,65 @@ notes:
     正常な状態と区別がつかないため、年齢述語なしでは正常なアップロードを削除してしまう。
   - 列挙が prefix を無視する実装に当たっても商品画像以外を消さないよう、候補を絞る際に接頭辞を再検査する。
 ```
+
+## Workflow — DiscontinueProduct
+
+```yaml
+- name: DiscontinueProduct
+  signature: DiscontinueProduct(ctx, authn, id, params) (DiscontinueProductView, error)
+  tx_required: true
+  calls:
+    - authz.Authorize             # ActionProductDiscontinue（admin のみ）
+    - coupon.NewRateDiscount      # 要求の率を検証。範囲外はここで 422
+    - coupon.NewCategoryScope     # 適用範囲を検証。廃番商品のカテゴリで固定
+    - clock.Now
+    - product.Repository.LockByID
+    - purchase.Repository.FindStatusesByProductID
+    - discontinuation.EnsureDiscontinuable
+    - product.Product.Discontinue
+    - product.Repository.Update
+    - command.CommandService.IssueDiscontinuationCoupons
+  behavior: |
+    商品を廃番にし、その商品の明細を持っていた確定済みユーザーへ代替クーポンを一括発行する。
+    非公開化と発行は同一トランザクションで、「クーポンだけ配られて商品がまだ買える」状態は
+    observable にならない（ADR-0034 の分岐 3。判別式への当てはめは同 ADR の worked instance）。
+
+    商品行を先にロックしてから進行中の購入を判定する。購入作成が同じ商品行を id 順にロックする経路と
+    直列化されるため、判定から commit まで条件が覆らない（分岐 2 / ADR-0036）。
+
+    既に廃番の商品への再実行は、新たな発行を伴わず現在の状態だけを返す。明細を取り除かない設計のため、
+    毎回発行すると同じ母集団へ重複して配ることになる。3 つの件数はいずれも「その実行が起こしたこと」を
+    表すため、何も起こさない再実行では 0 になる。過去の発行実績は返さない。適用範囲は廃番商品の
+    カテゴリで固定されるため、発行事由（どの商品の廃番が配ったか）は適用範囲からは辿れない。
+  invariants:
+    - カートの明細は取り除かない。以降の取得で discontinued の issue が立ち、理由が利用者に残る
+    - クーポンの受給対象は実行時点で明細を保持していた確定済みユーザーのみ。ゲストと退会済み、および
+      実行後に投入した利用者は対象外
+    - 適用範囲は廃番商品のカテゴリで固定される
+  errors:
+    - 非 admin: 403
+    - 未存在: 404
+    - 進行中の購入が残っている: 409（discontinuation.ErrInProgressPurchaseExists）
+    - 値引き率が範囲外: 422（coupon.ErrInvalidDiscountValue）
+  notes:
+    - 楽観ロックのバージョンを受け取らない。廃番は属性の書き換えではなく命令であり、実行の可否は
+      商品の現在値ではなく進行中の購入の有無で決まる。そのため 409 は「進行中の購入がある」の一義。
+    - 代替クーポンの条件（率・有効期間）を要求で受けるのは、何をどれだけ補償するかが業務の判断であり、
+      この操作はその判断を実行するだけだからである。
+
+- name: GetDiscontinueImpact
+  signature: GetDiscontinueImpact(ctx, authn, id) (DiscontinueImpactView, error)
+  tx_required: false
+  calls:
+    - authz.Authorize             # ActionProductDiscontinue（実行と同じ権限で守る）
+    - product.Repository.FindByID
+    - query.DiscontinueImpactQueryService.EstimateDiscontinueImpact
+  behavior: |
+    廃番にした場合の影響を実行前に件数で返す。行をロックしないため、返した値は実行時の件数と一致する
+    保証を持たない。商品の存在は見積もりの前に確かめる（存在しない商品の影響は 0 件ではなく引けない）。
+  invariants:
+    - AffectedUserCount <= AffectedCartCount（ゲストのカートと退会済みを除くため）
+  errors:
+    - 非 admin: 403
+    - 未存在: 404
+```

@@ -754,6 +754,7 @@ paths:
         - $ref: '#/components/parameters/MaxQuantityParam'
         - $ref: '#/components/parameters/SortParam'
         - $ref: '#/components/parameters/IncludeUnpublishedParam'
+        - $ref: '#/components/parameters/DiscontinuedParam'
       responses:
         '200':
           description: cursor ページネーションで取得した商品一覧
@@ -843,6 +844,7 @@ paths:
         - $ref: '#/components/parameters/MinQuantityParam'
         - $ref: '#/components/parameters/MaxQuantityParam'
         - $ref: '#/components/parameters/IncludeUnpublishedParam'
+        - $ref: '#/components/parameters/DiscontinuedParam'
       responses:
         '200':
           description: 検索条件に一致する商品の件数
@@ -951,6 +953,112 @@ paths:
           $ref: '#/components/responses/Conflict409'
         '422':
           $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/{productId}/discontinue:
+    post:
+      operationId: PostProductsDiscontinue
+      tags:
+        - v1/products/detail
+      summary: 商品の廃番
+      description: |
+        指定された UUID に該当する商品を廃番にします。認証必須で、管理者（admin）のみ実行できます（非 admin は 403）。
+        商品を非公開にし、その商品の明細を持っていた確定済みユーザーへ代替クーポンを一括発行します。
+        非公開化とクーポンの発行は同一トランザクションで原子的に行います。**クーポンだけが配られて商品がまだ
+        買える状態は observable になりません。**
+        **進行中の購入（完了 / キャンセル / 配達済みのいずれでもない購入）がある商品は廃番にできません**（409）。
+        409 はこの一義で、要求が版の食い違いで拒まれることはありません（本操作はバージョンを受け取らないため）。
+        どの購入が残っているかは GET /v1/purchases に productId を指定して辿れます。
+        **カートの明細は取り除きません。** 以降の取得で discontinued の issue が立ち、なぜ買えないのかが
+        利用者に伝わります。黙って明細が減るより、理由が残るほうが正しいためです。
+        クーポンの受給対象は**実行時点でその明細を保持していた確定済みユーザー**です。ゲストのカートは
+        影響を受けますが受給者にはならず、退会済みユーザーも対象外です。実行後に明細を入れた利用者も対象外です。
+        廃番は取り消せません。廃番の商品に公開日時を設定する部分更新は 422 で拒まれます。
+        **Idempotency-Key を受け付けます**。同一キーの再送は初回の結果をそのまま返し、クーポンが二重に
+        発行されることはありません。
+        既に廃番の商品への再実行は、新たな発行を行わずに 200 を返します。3 つの件数はいずれも
+        「その実行が起こしたこと」を表すため、何も起こさない再実行では 0 になります。
+        本 op は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+        - $ref: '#/components/parameters/IdempotencyKeyParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductDiscontinuePostRequest'
+      responses:
+        '200':
+          description: 商品の廃番に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDiscontinueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/{productId}/discontinue-impact:
+    get:
+      operationId: GetProductsDiscontinueImpact
+      tags:
+        - v1/products/detail
+      summary: 商品を廃番にしたときの影響の見積もり
+      description: |
+        指定された UUID に該当する商品を廃番にした場合の影響を、実行前に件数で返します。
+        認証必須で、管理者（admin）のみ実行できます（非 admin は 403）。この見積もりは廃番を実行できる
+        主体だけが見るべき情報であり、廃番そのものと同じ権限で守ります。
+        返すのは影響カート件数・影響利用者数・進行中購入件数の 3 つです。
+        **影響カート件数と影響利用者数は一致しません。** カートは所有者が確定していなくても持てるため、
+        ゲストのカートは影響を受けますがクーポンの受給者にはなりません。退会済みユーザーも対象外です。
+        **行をロックしないため、返した瞬間から古くなります。** 押した結果がこの見積もりと食い違うことは
+        あり、実際に何が起きたかは実行（POST /v1/products/{productId}/discontinue）の応答が返します。
+        進行中購入件数が 1 以上であれば実行は 409 で拒まれます。どの購入かは
+        GET /v1/purchases に productId を指定して辿れます。
+        未公開の商品も対象です。廃番にできるかを調べる読み取りであり、公開状態で母集団を絞る理由がないためです。
+        本 op は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の一時障害で
+        応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '200':
+          description: 影響の見積もりの取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDiscontinueImpactResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -1290,6 +1398,7 @@ paths:
         - $ref: '#/components/parameters/OrderedBeforeParam'
         - $ref: '#/components/parameters/PurchaseStatusCodesParam'
         - $ref: '#/components/parameters/IncludeOtherUsersParam'
+        - $ref: '#/components/parameters/PurchaseProductIdParam'
       responses:
         '200':
           description: cursor ページネーションで取得した購入履歴一覧
@@ -2500,6 +2609,19 @@ components:
         type: boolean
         default: false
         example: false
+    DiscontinuedParam:
+      name: discontinued
+      in: query
+      description: |
+        廃番かどうかで母集団を絞ります。true を指定すると廃番の商品だけ、false を指定すると廃番でない
+        商品だけを返します。指定しない場合は絞りません。
+        **廃番の商品は非公開になる**ため、この軸が意味を持つのは includeUnpublished=true を指定できる
+        管理者（admin）だけです。既定の母集団（公開済みのみ）に対して true を指定すると常に空になります。
+        廃番かどうかは discontinuedAt が設定されているかで決まります（未来の日時にはなりません）。
+      required: false
+      schema:
+        type: boolean
+        example: true
     ProductIdParam:
       name: productId
       in: path
@@ -2569,6 +2691,19 @@ components:
         type: boolean
         default: false
         example: false
+    PurchaseProductIdParam:
+      name: productId
+      in: query
+      description: |
+        指定した商品を含む購入だけに絞ります。指定しない場合は絞りません。
+        廃番が進行中の購入を理由に拒まれたとき、どの購入が残っているのかを辿るために用います。
+        所有権のフィルタは変わりません。既定では自分の購入のみが母集団で、他ユーザーの購入まで見るには
+        includeOtherUsers=true（管理者のみ）を併せて指定します。
+      required: false
+      schema:
+        type: string
+        format: uuid
+        example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
     ShippableLimitParam:
       name: limit
       in: query
@@ -4378,6 +4513,91 @@ components:
           x-go-type-import:
             path: github.com/oapi-codegen/nullable
           x-go-type-skip-optional-pointer: true
+    ProductDiscontinuePostRequest:
+      type: object
+      description: |
+        商品廃番のリクエスト（application/json）。admin のみ実行できます（非 admin は 403）。
+        廃番の代替として発行するクーポンの条件を指定します。発行の条件をサーバーが固定せず要求で受けるのは、
+        何をどれだけ補償するかが業務の判断であり、この API はその判断を実行するだけだからです。
+        **楽観ロックのバージョンは受け取りません。** 廃番は属性の書き換えではなく命令であり、実行の可否は
+        商品の現在値ではなく進行中の購入の有無で決まります。そのため 409 は「進行中の購入がある」の一義です。
+      additionalProperties: false
+      required:
+        - couponDiscountRate
+        - couponValidityDays
+      properties:
+        couponDiscountRate:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 代替クーポンの値引き率。対象額に掛ける乗数を、正確な十進量を保つ decimal 文字列で表します （例 "0.10" は 10% 引き）。0 より大きく 1 以下である必要があり、範囲外は 422 を返します。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+          example: '0.10'
+        couponValidityDays:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 365
+          description: 代替クーポンの有効期間（日数）。発行日時からこの日数だけ有効です。 上限 365 は placeholder で、実要件が立った時点で改めます。
+          example: 30
+    ProductDiscontinueResponse:
+      type: object
+      description: |
+        商品廃番の実行結果。何が起きたかを件数で返します。
+        affectedCartCount と affectedUserCount は一致しません。カートは所有者が確定していなくても持てるため、
+        ゲストのカートは影響を受けますがクーポンの受給者にはなりません。退会済みユーザーも対象外です。
+      required:
+        - discontinuedAt
+        - affectedCartCount
+        - affectedUserCount
+        - issuedCouponCount
+      properties:
+        discontinuedAt:
+          type: string
+          format: date-time
+          description: 廃番が確定した日時。サーバーの時刻で決まるため、要求では指定できません。
+          example: '2026-09-05T00:00:00Z'
+        affectedCartCount:
+          type: integer
+          format: int64
+          description: この実行で影響を受けたカートの件数。所有者が確定していないゲストのカートも含みます。 明細は取り除かれず、以降の取得で discontinued の issue が立ちます。
+          example: 12
+        affectedUserCount:
+          type: integer
+          format: int64
+          description: この実行でクーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは 含みません。そのため affectedCartCount 以下になります。
+          example: 9
+        issuedCouponCount:
+          type: integer
+          format: int64
+          description: この実行で発行したクーポンの枚数。受給者 1 人につき 1 枚です。 既に廃番の商品への再実行では新たな発行を行わないため 0 になります（過去の発行実績ではありません）。
+          example: 9
+    ProductDiscontinueImpactResponse:
+      type: object
+      description: |
+        商品を廃番にしたときの影響の見積もり。押す前に規模を見せるための読み取りです。
+        **行をロックしないため、返した瞬間から古くなります。** 実行時の件数がこれと一致する保証はなく、
+        実際に何が起きたかは実行の応答が返します。
+        affectedCartCount と affectedUserCount が一致しないのは実行時と同じ理由で、ゲストのカートは
+        影響を受けますがクーポンの受給者にはならないためです。
+      required:
+        - affectedCartCount
+        - affectedUserCount
+        - inProgressPurchaseCount
+      properties:
+        affectedCartCount:
+          type: integer
+          format: int64
+          description: この商品の明細を持つカートの件数。所有者が確定していないゲストのカートも含みます。
+          example: 12
+        affectedUserCount:
+          type: integer
+          format: int64
+          description: クーポンの受給対象になる確定済みユーザーの数。ゲストのカートと退会済みユーザーは含みません。 そのため affectedCartCount 以下になります。
+          example: 9
+        inProgressPurchaseCount:
+          type: integer
+          format: int64
+          description: この商品を含む進行中の購入の件数。1 件でもあれば廃番は 409 で拒まれます。 どの購入かは GET /v1/purchases に productId を指定して辿れます。
+          example: 2
     ProductStockPatchRequest:
       type: object
       description: |

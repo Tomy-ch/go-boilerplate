@@ -299,6 +299,9 @@ type CursorAfterParam = string
 // CursorFirstParam Example: 50
 type CursorFirstParam = int
 
+// DiscontinuedParam Example: true
+type DiscontinuedParam = bool
+
 // IncludeUnpublishedParam Example: false
 type IncludeUnpublishedParam = bool
 
@@ -411,6 +414,13 @@ type GetProductsParams struct {
 	// true を指定できるのは管理者（admin）だけで、未認証は 401、管理者でなければ 403 で拒否します。
 	// false を明示した場合は認証を要しません（指定しない場合と同じ扱いです）。
 	IncludeUnpublished *IncludeUnpublishedParam `form:"includeUnpublished,omitempty" json:"includeUnpublished,omitempty"`
+
+	// Discontinued 廃番かどうかで母集団を絞ります。true を指定すると廃番の商品だけ、false を指定すると廃番でない
+	// 商品だけを返します。指定しない場合は絞りません。
+	// **廃番の商品は非公開になる**ため、この軸が意味を持つのは includeUnpublished=true を指定できる
+	// 管理者（admin）だけです。既定の母集団（公開済みのみ）に対して true を指定すると常に空になります。
+	// 廃番かどうかは discontinuedAt が設定されているかで決まります（未来の日時にはなりません）。
+	Discontinued *DiscontinuedParam `form:"discontinued,omitempty" json:"discontinued,omitempty"`
 }
 
 // GetProductsParamsSort defines parameters for GetProducts.

@@ -66,6 +66,7 @@ func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequest
 		MaxPrice:           request.Params.MaxPrice,
 		MinQuantity:        request.Params.MinQuantity,
 		MaxQuantity:        request.Params.MaxQuantity,
+		Discontinued:       request.Params.Discontinued,
 		Cursor:             cursor,
 		Ascending:          isAscending(request.Params.Sort),
 		IncludeUnpublished: ptr.Deref(request.Params.IncludeUnpublished, false),

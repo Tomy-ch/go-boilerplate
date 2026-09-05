@@ -1375,6 +1375,72 @@ func TestProduct_IsPublished(t *testing.T) {
 	})
 }
 
+func TestProduct_Discontinue(t *testing.T) {
+	t.Parallel()
+
+	discontinuedAt := time.Date(2026, time.September, 5, 0, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("廃番日時を設定し、同時に公開を取り下げる", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			assert.True(t, p.IsPublished())
+
+			require.NoError(t, p.Discontinue(discontinuedAt))
+
+			assert.True(t, p.IsDiscontinued())
+			require.NotNil(t, p.DiscontinuedAt())
+			assert.Equal(t, discontinuedAt, *p.DiscontinuedAt())
+			assert.False(t, p.IsPublished())
+			assert.Nil(t, p.PublishedAt())
+		})
+
+		t.Run("既に廃番の場合、状態を変えずエラーも返さない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			require.NoError(t, p.Discontinue(discontinuedAt))
+			snapshot := *p
+
+			require.NoError(t, p.Discontinue(discontinuedAt.Add(24*time.Hour)))
+
+			assert.Equal(t, snapshot, *p)
+			require.NotNil(t, p.DiscontinuedAt())
+			assert.Equal(t, discontinuedAt, *p.DiscontinuedAt())
+		})
+
+		t.Run("未公開の商品も廃番にできる", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.PublishedAt = nil
+			p, err := New(id, attrs, testCreatedAt)
+			require.NoError(t, err)
+
+			require.NoError(t, p.Discontinue(discontinuedAt))
+
+			assert.True(t, p.IsDiscontinued())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nowがゼロ値の場合、ErrInvalidDiscontinuedAtを返しエンティティを一切変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			snapshot := *p
+
+			require.ErrorIs(t, p.Discontinue(time.Time{}), ErrInvalidDiscontinuedAt)
+			assert.Equal(t, snapshot, *p)
+		})
+	})
+}
+
 func TestProduct_IsDiscontinued(t *testing.T) {
 	t.Parallel()
 
@@ -1584,6 +1650,59 @@ func TestProduct_IsLowStock(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.False(t, p.IsLowStock())
+		})
+	})
+}
+
+func TestProduct_ensureDiscontinuationKept(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未廃番の商品は廃番日時が nil のままでも通る", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+
+			require.NoError(t, p.ensureDiscontinuationKept(nil))
+		})
+
+		t.Run("未廃番から廃番への向きは拒まない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+
+			require.NoError(t, p.ensureDiscontinuationKept(ptr.To(testCreatedAt)))
+		})
+
+		t.Run("廃番済みの商品が廃番日時を保ったままなら通る", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			require.NoError(t, p.Discontinue(testCreatedAt))
+
+			require.NoError(t, p.ensureDiscontinuationKept(p.DiscontinuedAt()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("廃番済みの商品を未廃番へ戻そうとした場合、取り消し不可のエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			require.NoError(t, p.Discontinue(testCreatedAt))
+
+			err := p.ensureDiscontinuationKept(nil)
+
+			require.ErrorIs(t, err, ErrDiscontinuationIrreversible)
+			require.ErrorIs(t, err, apperror.ErrValidation)
+
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, []string{FieldDiscontinuedAt}, meta.Details())
 		})
 	})
 }

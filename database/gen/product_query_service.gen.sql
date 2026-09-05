@@ -1,4 +1,39 @@
 
+-- === source: database/dml/query_service/product/count_discontinue_impact_carts.sql ===
+-- name: CountDiscontinueImpactCarts :one
+-- 廃番の影響を受けるカートの件数を返す。ゲストのカートも数える。
+-- 実行側の CountDiscontinueAffectedCarts と同じ条件を持つ。片方だけを変えてはならない
+-- （見積もりと実行が食い違うと、押す前に見せた数字の意味が失われる）。
+-- 見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
+SELECT COUNT(*)
+FROM cart_items AS ci
+WHERE ci.product_id = sqlc.arg('product_id');
+
+-- === source: database/dml/query_service/product/count_discontinue_impact_in_progress_purchases.sql ===
+-- name: CountDiscontinueImpactInProgressPurchases :one
+-- 廃番を阻む進行中の購入の件数を返す。
+-- 終端のステータス code を呼び出し側から受け取る（進行中の定義は
+-- docs/spec/domain/purchase.md の FindStatusesByProductID を参照）。
+-- 見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
+SELECT COUNT(DISTINCT p.id)
+FROM purchases AS p
+INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
+WHERE pd.product_id = sqlc.arg('product_id')
+    AND NOT (ps.code = ANY(sqlc.arg('terminal_status_codes')::SMALLINT[]));
+
+-- === source: database/dml/query_service/product/count_discontinue_impact_users.sql ===
+-- name: CountDiscontinueImpactUsers :one
+-- クーポンの受給対象になる確定済みユーザーの数を返す。
+-- 実行側の SelectDiscontinueCouponRecipients と同じ条件を持つ。片方だけを変えてはならない。
+-- 除外対象と見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
+SELECT COUNT(DISTINCT c.user_id)
+FROM cart_items AS ci
+INNER JOIN carts AS c ON ci.cart_id = c.id
+INNER JOIN users AS u ON c.user_id = u.id
+WHERE ci.product_id = sqlc.arg('product_id')
+    AND u.deleted_at IS NULL;
+
 -- === source: database/dml/query_service/product/select_existing_image_paths.sql ===
 -- name: ListExistingProductImagePaths :many
 -- 与えた画像パスのうち、いずれかの商品が実際に参照しているものを返す。

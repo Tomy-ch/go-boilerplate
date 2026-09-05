@@ -28,6 +28,7 @@ get:
     - $ref: '../../../components/parameters/product/MinQuantityParam.yaml'
     - $ref: '../../../components/parameters/product/MaxQuantityParam.yaml'
     - $ref: '../../../components/parameters/product/IncludeUnpublishedParam.yaml'
+    - $ref: '../../../components/parameters/product/DiscontinuedParam.yaml'
   responses:
     '200':
       description: 検索条件に一致する商品の件数

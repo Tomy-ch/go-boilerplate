@@ -34,8 +34,9 @@ WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
 
 -- === source: database/dml/repository/user/delete_purged_users.sql ===
 -- name: DeleteUserIdentitiesByUserIDs :exec
--- users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る条件は DeleteUsersByIDs の
--- WHERE と揃えること — ずれると、削除されないユーザーの従属行だけが失われる。
+-- users より先に呼ぶこと（FK 違反を避ける）。同じ順序制約は本ファイルの DeleteUserRolesByUserIDs /
+-- DeleteCouponsByUserIDs も持つ。論理削除済みに限る条件は DeleteUsersByIDs の WHERE と揃えること
+-- — ずれると、削除されないユーザーの従属行だけが失われる。
 DELETE FROM user_identities
 WHERE user_id IN (
         SELECT u.id
@@ -45,8 +46,7 @@ WHERE user_id IN (
     );
 
 -- name: DeleteUserRolesByUserIDs :exec
--- users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る理由は
--- DeleteUserIdentitiesByUserIDs と同じ。
+-- 順序制約と論理削除条件の理由は DeleteUserIdentitiesByUserIDs を参照。
 DELETE FROM user_roles
 WHERE user_id IN (
         SELECT u.id
@@ -61,6 +61,17 @@ WHERE user_id IN (
 DELETE FROM users
 WHERE id = ANY(sqlc.arg('ids')::UUID[])
     AND deleted_at IS NOT NULL;
+
+-- name: DeleteCouponsByUserIDs :exec
+-- 順序制約と論理削除条件の理由は DeleteUserIdentitiesByUserIDs を参照。
+-- クーポンを残さない理由は docs/spec/domain/coupon.md の Notes を参照。
+DELETE FROM coupons
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID[])
+            AND u.deleted_at IS NOT NULL
+    );
 
 -- === source: database/dml/repository/user/insert_user.sql ===
 -- name: CreateUser :exec

@@ -5,6 +5,7 @@ import (
 	domainproduct "go-boilerplate/internal/domain/product"           // sample-api:line
 	domaincategory "go-boilerplate/internal/domain/product/category" // sample-api:line
 	domainstatus "go-boilerplate/internal/domain/product/status"     // sample-api:line
+	domainpurchase "go-boilerplate/internal/domain/purchase"         // sample-api:line
 	"go-boilerplate/internal/observability"
 	addressuc "go-boilerplate/internal/usecase/address"                      // sample-api:line
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"                 // sample-api:line
@@ -22,6 +23,8 @@ import (
 	prefectureuc "go-boilerplate/internal/usecase/prefecture"            // sample-api:line
 	productuc "go-boilerplate/internal/usecase/product"                  // sample-api:line
 	categoryuc "go-boilerplate/internal/usecase/product/category"        // sample-api:line
+	productcommand "go-boilerplate/internal/usecase/product/command"     // sample-api:line
+	productquery "go-boilerplate/internal/usecase/product/query"         // sample-api:line
 	rankinguc "go-boilerplate/internal/usecase/product/ranking"          // sample-api:line
 	statusuc "go-boilerplate/internal/usecase/product/status"            // sample-api:line
 	purchaseuc "go-boilerplate/internal/usecase/purchase"                // sample-api:line
@@ -84,7 +87,8 @@ func UsecaseModule() fx.Option {
 
 // sample-api:begin
 // provideProductUsecase は、商品ユースケースを tx / マスタ Repository / object storage / authz /
-// アップロード上限（config 由来）とともに構築します。
+// アップロード上限（config 由来）/ 購入 Repository / 廃番の CommandService・QueryService とともに
+// 構築します。
 func provideProductUsecase(
 	txm txbd.Manager,
 	repo domainproduct.Repository,
@@ -94,9 +98,15 @@ func provideProductUsecase(
 	authorizer authzbd.Authorizer,
 	clk clockbd.Clock,
 	cfg *config.ObjectStorageConfig,
+	purchaseRepo domainpurchase.Repository,
+	discontinueCmd productcommand.CommandService,
+	discontinueImpactQuery productquery.DiscontinueImpactQueryService,
 	tf observability.TracerFactory,
 ) productuc.Usecase {
-	return productuc.New(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, cfg.MaxUploadBytes(), tf)
+	return productuc.New(
+		txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, cfg.MaxUploadBytes(),
+		purchaseRepo, discontinueCmd, discontinueImpactQuery, tf,
+	)
 }
 
 // sample-api:end

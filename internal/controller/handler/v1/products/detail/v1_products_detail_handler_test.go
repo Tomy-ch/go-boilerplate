@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/products/detail/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/idempotency"
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
@@ -29,8 +30,10 @@ import (
 )
 
 const (
-	targetPath = "/v1/products/:productId"
-	stockPath  = "/v1/products/:productId/stock"
+	targetPath            = "/v1/products/:productId"
+	stockPath             = "/v1/products/:productId/stock"
+	discontinuePath       = "/v1/products/:productId/discontinue"
+	discontinueImpactPath = "/v1/products/:productId/discontinue-impact"
 )
 
 // patchPublishedAt は、部分更新リクエストに載せる固定の公開日時です。
@@ -113,10 +116,10 @@ func TestBindHandler(t *testing.T) {
 	tf := observability.NewNoopTracerFactory(t)
 	mockApp := mock_product.NewMockUsecase(gomock.NewController(t))
 
-	BindHandler(e, tf, mockApp)
+	BindHandler(e, tf, mockApp, idempotency.Deps{})
 
 	routes := e.Router().Routes()
-	require.Len(t, routes, 3)
+	require.Len(t, routes, 5)
 	registered := make(map[string]bool, len(routes))
 	for _, r := range routes {
 		registered[r.Method+" "+r.Path] = true
@@ -124,6 +127,8 @@ func TestBindHandler(t *testing.T) {
 	assert.True(t, registered[http.MethodGet+" "+targetPath])
 	assert.True(t, registered[http.MethodPatch+" "+targetPath])
 	assert.True(t, registered[http.MethodPatch+" "+stockPath])
+	assert.True(t, registered[http.MethodPost+" "+discontinuePath])
+	assert.True(t, registered[http.MethodGet+" "+discontinueImpactPath])
 }
 
 func Test_server_GetProductsDetail(t *testing.T) {
@@ -644,6 +649,189 @@ func Test_toPatchFieldImages(t *testing.T) {
 
 			assert.Equal(t, patch.Value([]productuc.ProductImageParams{}), actual)
 			assert.NotEqual(t, patch.Null[[]productuc.ProductImageParams](), actual)
+		})
+	})
+}
+
+func Test_server_PostProductsDiscontinue(t *testing.T) {
+	t.Parallel()
+
+	targetID := uuidtestkit.NewTestFromSalt(t, "discontinue_target")
+	discontinuedAt := time.Date(2026, time.September, 5, 9, 0, 0, 0, time.UTC)
+
+	newRequest := func(rate string, days int32) gen.PostProductsDiscontinueRequestObject {
+		return gen.PostProductsDiscontinueRequestObject{
+			ProductId: targetID.ToPrimitive(),
+			Body: &gen.ProductDiscontinuePostRequest{
+				CouponDiscountRate: rate,
+				CouponValidityDays: days,
+			},
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("値引き率と有効日数をDiscontinueProductParamsへ詰め替えて200と件数を返す", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			view := productuc.DiscontinueProductView{
+				DiscontinuedAt:    discontinuedAt,
+				AffectedCartCount: 12,
+				AffectedUserCount: 9,
+				IssuedCouponCount: 9,
+			}
+
+			mockApp.EXPECT().
+				DiscontinueProduct(gomock.Any(), gomock.Any(), gomock.Any(),
+					gomock.AssignableToTypeOf(productuc.DiscontinueProductParams{})).
+				DoAndReturn(func(
+					_ context.Context, authn *auth.Authn, id uuid.UUID, p productuc.DiscontinueProductParams,
+				) (productuc.DiscontinueProductView, error) {
+					require.NotNil(t, authn)
+					assert.Equal(t, "subject-1", authn.Subject())
+					assert.Equal(t, targetID, id)
+					assert.True(t, decimaltestkit.MustParse(t, "0.10").Equal(p.CouponDiscountRate))
+					assert.Equal(t, 30*24*time.Hour, p.CouponValidity)
+
+					return view, nil
+				})
+
+			resp, err := s.PostProductsDiscontinue(authnContext(t), newRequest("0.10", 30))
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.PostProductsDiscontinue200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, gen.ProductDiscontinueResponse{
+				DiscontinuedAt:    discontinuedAt,
+				AffectedCartCount: 12,
+				AffectedUserCount: 9,
+				IssuedCouponCount: 9,
+			}, gen.ProductDiscontinueResponse(actual))
+		})
+
+		t.Run("受給者が居ない場合_件数0をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+
+			mockApp.EXPECT().
+				DiscontinueProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.DiscontinueProductView{DiscontinuedAt: discontinuedAt}, nil)
+
+			resp, err := s.PostProductsDiscontinue(authnContext(t), newRequest("1", 1))
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.PostProductsDiscontinue200JSONResponse)
+			require.True(t, ok)
+			assert.Zero(t, actual.IssuedCouponCount)
+			assert.Zero(t, actual.AffectedCartCount)
+			assert.Zero(t, actual.AffectedUserCount)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnが無い場合_認証エラーを返しユースケースを呼ばない", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.PostProductsDiscontinue(context.Background(), newRequest("0.10", 30))
+			assert.Nil(t, resp)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("値引き率がdecimalとして解釈できない場合_不正引数を返しユースケースを呼ばない", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.PostProductsDiscontinue(authnContext(t), newRequest("ten-percent", 30))
+			assert.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("Usecaseが進行中購入の衝突を返す場合_そのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().
+				DiscontinueProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.DiscontinueProductView{}, apperror.ErrConflict)
+
+			resp, err := s.PostProductsDiscontinue(authnContext(t), newRequest("0.10", 30))
+			assert.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+	})
+}
+
+func Test_server_GetProductsDiscontinueImpact(t *testing.T) {
+	t.Parallel()
+
+	targetID := uuidtestkit.NewTestFromSalt(t, "discontinue_impact_target")
+	newRequest := func() gen.GetProductsDiscontinueImpactRequestObject {
+		return gen.GetProductsDiscontinueImpactRequestObject{ProductId: targetID.ToPrimitive()}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("見積もりの3件数をそのままレスポンスへ写す", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+
+			mockApp.EXPECT().
+				GetDiscontinueImpact(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(
+					_ context.Context, authn *auth.Authn, id uuid.UUID,
+				) (productuc.DiscontinueImpactView, error) {
+					require.NotNil(t, authn)
+					assert.Equal(t, "subject-1", authn.Subject())
+					assert.Equal(t, targetID, id)
+
+					return productuc.DiscontinueImpactView{
+						AffectedCartCount:       12,
+						AffectedUserCount:       9,
+						InProgressPurchaseCount: 2,
+					}, nil
+				})
+
+			resp, err := s.GetProductsDiscontinueImpact(authnContext(t), newRequest())
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.GetProductsDiscontinueImpact200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, gen.ProductDiscontinueImpactResponse{
+				AffectedCartCount:       12,
+				AffectedUserCount:       9,
+				InProgressPurchaseCount: 2,
+			}, gen.ProductDiscontinueImpactResponse(actual))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnが無い場合_認証エラーを返しユースケースを呼ばない", func(t *testing.T) {
+			t.Parallel()
+			s, _ := newServer(t)
+
+			resp, err := s.GetProductsDiscontinueImpact(context.Background(), newRequest())
+			assert.Nil(t, resp)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("Usecaseが商品の不在を返す場合_そのまま伝播する", func(t *testing.T) {
+			t.Parallel()
+			s, mockApp := newServer(t)
+			mockApp.EXPECT().
+				GetDiscontinueImpact(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(productuc.DiscontinueImpactView{}, apperror.ErrNotFound)
+
+			resp, err := s.GetProductsDiscontinueImpact(authnContext(t), newRequest())
+			assert.Nil(t, resp)
+			require.ErrorIs(t, err, apperror.ErrNotFound)
 		})
 	})
 }

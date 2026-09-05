@@ -27,6 +27,13 @@ WITH page AS (
             WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT[])
         )
     )
+    AND (
+        sqlc.narg('product_id')::UUID IS NULL
+        OR EXISTS (
+            SELECT 1 FROM purchase_details AS d
+            WHERE d.purchase_id = p.id AND d.product_id = sqlc.narg('product_id')
+        )
+    )
     ORDER BY p.ordered_at DESC, p.id DESC
     LIMIT sqlc.arg('limit_param')
 )
@@ -86,6 +93,13 @@ WITH page AS (
         OR p.status_id IN (
             SELECT s.id FROM purchase_statuses AS s
             WHERE s.code = ANY(sqlc.narg('status_codes')::SMALLINT[])
+        )
+    )
+    AND (
+        sqlc.narg('product_id')::UUID IS NULL
+        OR EXISTS (
+            SELECT 1 FROM purchase_details AS d
+            WHERE d.purchase_id = p.id AND d.product_id = sqlc.narg('product_id')
         )
     )
     ORDER BY p.ordered_at DESC, p.id DESC

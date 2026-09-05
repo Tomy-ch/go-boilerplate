@@ -1,0 +1,37 @@
+type: object
+description: |
+  商品廃番の実行結果。何が起きたかを件数で返します。
+  affectedCartCount と affectedUserCount は一致しません。カートは所有者が確定していなくても持てるため、
+  ゲストのカートは影響を受けますがクーポンの受給者にはなりません。退会済みユーザーも対象外です。
+required:
+  - discontinuedAt
+  - affectedCartCount
+  - affectedUserCount
+  - issuedCouponCount
+properties:
+  discontinuedAt:
+    type: string
+    format: date-time
+    description: 廃番が確定した日時。サーバーの時刻で決まるため、要求では指定できません。
+    example: "2026-09-05T00:00:00Z"
+  affectedCartCount:
+    type: integer
+    format: int64
+    description: >-
+      この実行で影響を受けたカートの件数。所有者が確定していないゲストのカートも含みます。
+      明細は取り除かれず、以降の取得で discontinued の issue が立ちます。
+    example: 12
+  affectedUserCount:
+    type: integer
+    format: int64
+    description: >-
+      この実行でクーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは
+      含みません。そのため affectedCartCount 以下になります。
+    example: 9
+  issuedCouponCount:
+    type: integer
+    format: int64
+    description: >-
+      この実行で発行したクーポンの枚数。受給者 1 人につき 1 枚です。
+      既に廃番の商品への再実行では新たな発行を行わないため 0 になります（過去の発行実績ではありません）。
+    example: 9

@@ -6,12 +6,19 @@ package detail
 
 import (
 	"context"
+	"net/http"
+	"time"
+
+	"go-boilerplate/internal/apperror"
 
 	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/products/detail/gen"
+	idempotencymw "go-boilerplate/internal/controller/httpstack/idempotency"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/idempotency"
 	productuc "go-boilerplate/internal/usecase/product"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/patch"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
@@ -24,14 +31,16 @@ import (
 type server struct {
 	tracer observability.LayerTracer
 	uc     productuc.Usecase
+	idem   idempotency.Deps
 }
 
 // BindHandler は、商品詳細のハンドラを Echo に登録します。
-func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc productuc.Usecase) {
+func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc productuc.Usecase, idem idempotency.Deps) {
 	gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
 		tracer: tf.Controller(),
 		uc:     uc,
-	}, nil))
+		idem:   idem,
+	}, []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
 }
 
 // GetProductsDetail は、指定された UUID に該当する商品の詳細情報を取得します。認証は任意です。
@@ -229,4 +238,67 @@ func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
 		Images:         images,
 		Version:        version,
 	}, nil
+}
+
+// PostProductsDiscontinue は、指定された UUID に該当する商品を廃番にします。admin のみ実行できます。
+// 進行中の購入が残っている場合はユースケースが Conflict を返し、409 になります。
+func (s *server) PostProductsDiscontinue(
+	ctx context.Context,
+	request gen.PostProductsDiscontinueRequestObject,
+) (gen.PostProductsDiscontinueResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rate, err := decimal.Parse(request.Body.CouponDiscountRate)
+	if err != nil {
+		return nil, xerrors.Join(apperror.ErrInvalidArgument, err)
+	}
+
+	view, _, err := idempotency.Run(ctx, s.idem, http.StatusOK, func(ctx context.Context) (productuc.DiscontinueProductView, error) {
+		return s.uc.DiscontinueProduct(ctx, &authn, conv.UUID(request.ProductId), productuc.DiscontinueProductParams{
+			CouponDiscountRate: rate,
+			CouponValidity:     time.Duration(request.Body.CouponValidityDays) * 24 * time.Hour,
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.PostProductsDiscontinue200JSONResponse(gen.ProductDiscontinueResponse{
+		DiscontinuedAt:    view.DiscontinuedAt,
+		AffectedCartCount: view.AffectedCartCount,
+		AffectedUserCount: view.AffectedUserCount,
+		IssuedCouponCount: view.IssuedCouponCount,
+	}), nil
+}
+
+// GetProductsDiscontinueImpact は、廃番にした場合の影響の見積もりを返します。admin のみ実行できます。
+// 返す値の鮮度は openapi/paths/v1/products/productId/discontinue-impact.yaml の description を参照。
+func (s *server) GetProductsDiscontinueImpact(
+	ctx context.Context,
+	request gen.GetProductsDiscontinueImpactRequestObject,
+) (gen.GetProductsDiscontinueImpactResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	view, err := s.uc.GetDiscontinueImpact(ctx, &authn, conv.UUID(request.ProductId))
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.GetProductsDiscontinueImpact200JSONResponse(gen.ProductDiscontinueImpactResponse{
+		AffectedCartCount:       view.AffectedCartCount,
+		AffectedUserCount:       view.AffectedUserCount,
+		InProgressPurchaseCount: view.InProgressPurchaseCount,
+	}), nil
 }

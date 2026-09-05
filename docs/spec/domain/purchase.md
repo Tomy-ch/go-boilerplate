@@ -264,6 +264,13 @@ fields:
     種類数で頭打ちになる。購入を 1 件も持たない場合は空を返し、順序は保証しない。ステータスコードは
     購入ステータスマスタとの JOIN で解決する（FindDetailByID と同じ子参照マスタ例外により単一集約の
     Repository read）。
+- name: FindStatusesByProductID
+  signature: FindStatusesByProductID(ctx context.Context, productID uuid.UUID) ([]Status, error)
+  behavior: |
+    指定商品を明細に持つ購入が取っているステータスを重複なく返す（廃番の可否判定の取得元）。
+    FindStatusesByUserID と対称で、絞り込む軸が購入者から商品へ変わるだけである。進行中かどうかでは
+    絞り込まず、その判定（Status.IsTerminal の否定）は呼び出し側が行う。該当する購入が 1 件も無い場合は
+    空を返し、順序は保証しない。
 - name: FindShippable
   signature: FindShippable(ctx context.Context, limit int32) (Purchases, error)
   behavior: |

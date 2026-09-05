@@ -112,6 +112,11 @@ fields:
   違反したフィールドとして `publishedAt` を報告するのは、廃番が取り消せず解消できるのが公開日時の側
   だけだからである。「廃番」の定義は `IsDiscontinued` が持つ（`IsPublished` と同じく値に対する形でも公開する）。
 
+- 廃番は取り消せない。`discontinuedAt` が非 nil の商品を nil へ戻す更新は `ErrDiscontinuationIrreversible`
+  → 422（`details` に `discontinuedAt`）。属性の一括置換は現在値を見ないため、この 1 つだけは
+  レシーバの現在値と引数を突き合わせる形で `Update` が課す（`EnsureVersion` と同じ形）。
+  未廃番から廃番への向きは拒まない。その向きの検証は `Discontinue` が持つ。
+
 - `len(images) <= maxImages`（`maxImages = 20`。超過は `ErrTooManyImages` → 422）。
   `New` / `Reconstruct` / `Update` が共有する検証ゲートで課す。保存済みデータのための緩和経路はない
   （`internal/domain/README.md` の Aggregate Design / Why validate here）。

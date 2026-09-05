@@ -1,0 +1,31 @@
+type: object
+description: |
+  商品を廃番にしたときの影響の見積もり。押す前に規模を見せるための読み取りです。
+  **行をロックしないため、返した瞬間から古くなります。** 実行時の件数がこれと一致する保証はなく、
+  実際に何が起きたかは実行の応答が返します。
+  affectedCartCount と affectedUserCount が一致しないのは実行時と同じ理由で、ゲストのカートは
+  影響を受けますがクーポンの受給者にはならないためです。
+required:
+  - affectedCartCount
+  - affectedUserCount
+  - inProgressPurchaseCount
+properties:
+  affectedCartCount:
+    type: integer
+    format: int64
+    description: この商品の明細を持つカートの件数。所有者が確定していないゲストのカートも含みます。
+    example: 12
+  affectedUserCount:
+    type: integer
+    format: int64
+    description: >-
+      クーポンの受給対象になる確定済みユーザーの数。ゲストのカートと退会済みユーザーは含みません。
+      そのため affectedCartCount 以下になります。
+    example: 9
+  inProgressPurchaseCount:
+    type: integer
+    format: int64
+    description: >-
+      この商品を含む進行中の購入の件数。1 件でもあれば廃番は 409 で拒まれます。
+      どの購入かは GET /v1/purchases に productId を指定して辿れます。
+    example: 2

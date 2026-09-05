@@ -1,11 +1,7 @@
 -- name: ListPublishedProductsDescFirst :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
--- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
--- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
--- usecase の validateMasterFilter が拒否します。
--- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- 条件と注意点は ListPublishedProductsDescFirst を参照。
+-- 本ファイルの他 3 本も、ソート軸とページ方向以外はこの条件と注意点を共有します。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -36,6 +32,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
+    AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -45,12 +45,7 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsDescAfter :many
 -- 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
--- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
--- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
--- usecase の validateMasterFilter が拒否します。
--- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- 条件と注意点は ListPublishedProductsDescFirst を参照。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -80,6 +75,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
+    AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -94,12 +93,7 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscFirst :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
--- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
--- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
--- usecase の validateMasterFilter が拒否します。
--- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- 条件と注意点は ListPublishedProductsDescFirst を参照。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -130,6 +124,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
+    AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -139,12 +137,7 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPublishedProductsAscAfter :many
 -- 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
--- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
--- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
--- usecase の validateMasterFilter が拒否します。
--- 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+-- 条件と注意点は ListPublishedProductsDescFirst を参照。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -174,6 +167,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
+    AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'

@@ -56,8 +56,7 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 	}
 }
 
-// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// after=nil の場合は先頭ページ、それ以外は after が表す境界より後ろ（より過去）の行を返します。
+// FindFeed は、(created_at DESC, id DESC) の keyset で取得します。
 func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -208,7 +207,6 @@ func fetchListUsersRowsByDeleted(
 	return rowsToUsers(rows, func(r *gen.ListDeletedUsersRow) gen.Users { return r.Users })
 }
 
-// Create は、ユーザーを作成します。
 func (r *repository) Create(ctx context.Context, u *user.User) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -330,10 +328,9 @@ func (r *repository) FindDeletedBefore(ctx context.Context, cutoff time.Time, af
 	return ids, nil
 }
 
-// PurgeByIDs は、user_identities → user_roles → users の順に削除し、users の削除件数を返します。
-// 子行を先に消すことで FK 違反を避けます。3 クエリは渡された ctx のトランザクションで実行されます
-// （トランザクションの開始は usecase の責務）。
-// 3 クエリとも deleted_at IS NOT NULL を条件に持つため、論理削除されていないユーザーの ID を渡しても
+// PurgeByIDs は、coupons → user_identities → user_roles → users の順に削除し、users の削除件数を返します。
+// 子行を先に消すことで FK 違反を避けます。
+// 4 クエリとも deleted_at IS NOT NULL を条件に持つため、論理削除されていないユーザーの ID を渡しても
 // そのユーザーは子行を含めて一切削除されず、返る件数が ids の件数を下回ります。
 func (r *repository) PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
@@ -344,6 +341,9 @@ func (r *repository) PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, er
 	}
 
 	db := gen.New(driver.New(ctx, r.db))
+	if err := db.DeleteCouponsByUserIDs(ctx, ids); err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
 	if err := db.DeleteUserIdentitiesByUserIDs(ctx, ids); err != nil {
 		return 0, pgerror.NormalizeError(err)
 	}
@@ -357,8 +357,6 @@ func (r *repository) PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, er
 	return purged, nil
 }
 
-// CountByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返します。
-// active / keywords の意味は SearchByKeyword と同じです。
 func (r *repository) CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()

@@ -1,0 +1,60 @@
+post:
+  operationId: PostProductsDiscontinue
+  tags:
+    - v1/products/detail
+  summary: 商品の廃番
+  description: |
+    指定された UUID に該当する商品を廃番にします。認証必須で、管理者（admin）のみ実行できます（非 admin は 403）。
+    商品を非公開にし、その商品の明細を持っていた確定済みユーザーへ代替クーポンを一括発行します。
+    非公開化とクーポンの発行は同一トランザクションで原子的に行います。**クーポンだけが配られて商品がまだ
+    買える状態は observable になりません。**
+    **進行中の購入（完了 / キャンセル / 配達済みのいずれでもない購入）がある商品は廃番にできません**（409）。
+    409 はこの一義で、要求が版の食い違いで拒まれることはありません（本操作はバージョンを受け取らないため）。
+    どの購入が残っているかは GET /v1/purchases に productId を指定して辿れます。
+    **カートの明細は取り除きません。** 以降の取得で discontinued の issue が立ち、なぜ買えないのかが
+    利用者に伝わります。黙って明細が減るより、理由が残るほうが正しいためです。
+    クーポンの受給対象は**実行時点でその明細を保持していた確定済みユーザー**です。ゲストのカートは
+    影響を受けますが受給者にはならず、退会済みユーザーも対象外です。実行後に明細を入れた利用者も対象外です。
+    廃番は取り消せません。廃番の商品に公開日時を設定する部分更新は 422 で拒まれます。
+    **Idempotency-Key を受け付けます**。同一キーの再送は初回の結果をそのまま返し、クーポンが二重に
+    発行されることはありません。
+    既に廃番の商品への再実行は、新たな発行を行わずに 200 を返します。3 つの件数はいずれも
+    「その実行が起こしたこと」を表すため、何も起こさない再実行では 0 になります。
+    本 op は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../../components/parameters/product/ProductIdParam.yaml'
+    - $ref: '../../../../components/parameters/idempotency/IdempotencyKeyParam.yaml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/requests/products/ProductDiscontinuePostRequest.yaml'
+  responses:
+    '200':
+      description: 商品の廃番に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/responses/products/ProductDiscontinueResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../../components/schemas/errors/Forbidden403.yaml'
+    '404':
+      $ref: '../../../../components/schemas/errors/NotFound404.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '409':
+      $ref: '../../../../components/schemas/errors/Conflict409.yaml'
+    '422':
+      $ref: '../../../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'

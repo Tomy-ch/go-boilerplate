@@ -37,9 +37,13 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 `
 
@@ -52,6 +56,7 @@ type CountAllProductsByFilterParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 }
 
@@ -81,9 +86,13 @@ type CountAllProductsByFilterParams struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 func (q *Queries) CountAllProductsByFilter(ctx context.Context, arg *CountAllProductsByFilterParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countAllProductsByFilter,
@@ -95,6 +104,7 @@ func (q *Queries) CountAllProductsByFilter(ctx context.Context, arg *CountAllPro
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 	)
 	var count int64
@@ -154,9 +164,13 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 `
 
@@ -169,6 +183,7 @@ type CountPublishedProductsByFilterParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 }
 
@@ -198,9 +213,13 @@ type CountPublishedProductsByFilterParams struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 func (q *Queries) CountPublishedProductsByFilter(ctx context.Context, arg *CountPublishedProductsByFilterParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countPublishedProductsByFilter,
@@ -212,6 +231,7 @@ func (q *Queries) CountPublishedProductsByFilter(ctx context.Context, arg *Count
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 	)
 	var count int64
@@ -612,16 +632,20 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
     )
     AND (
-        p.created_at > $10
-        OR (p.created_at = $10 AND p.id > $11)
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
+    )
+    AND (
+        p.created_at > $11
+        OR (p.created_at = $11 AND p.id > $12)
     )
 ORDER BY p.created_at ASC, p.id ASC
-LIMIT $12
+LIMIT $13
 `
 
 type ListAllProductsAscAfterParams struct {
@@ -633,6 +657,7 @@ type ListAllProductsAscAfterParams struct {
 	MaxPrice       *decimal.Decimal
 	MinQuantity    *int32
 	MaxQuantity    *int32
+	Discontinued   *bool
 	Keyword        *string
 	AfterCreatedAt time.Time
 	AfterID        uuid.UUID
@@ -646,13 +671,7 @@ type ListAllProductsAscAfterRow struct {
 }
 
 // 公開状態を問わない商品を (created_at ASC, id ASC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
-// usecase の validateMasterFilter が拒否します。
-// 並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
-// 絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+// 条件と注意点は ListAllProductsDescFirst を参照。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
@@ -683,16 +702,20 @@ type ListAllProductsAscAfterRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
 //	    )
 //	    AND (
-//	        p.created_at > $10
-//	        OR (p.created_at = $10 AND p.id > $11)
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
+//	    )
+//	    AND (
+//	        p.created_at > $11
+//	        OR (p.created_at = $11 AND p.id > $12)
 //	    )
 //	ORDER BY p.created_at ASC, p.id ASC
-//	LIMIT $12
+//	LIMIT $13
 func (q *Queries) ListAllProductsAscAfter(ctx context.Context, arg *ListAllProductsAscAfterParams) ([]*ListAllProductsAscAfterRow, error) {
 	rows, err := q.db.Query(ctx, listAllProductsAscAfter,
 		arg.CategoryID,
@@ -703,6 +726,7 @@ func (q *Queries) ListAllProductsAscAfter(ctx context.Context, arg *ListAllProdu
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.AfterCreatedAt,
 		arg.AfterID,
@@ -771,12 +795,16 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 ORDER BY p.created_at ASC, p.id ASC
-LIMIT $10
+LIMIT $11
 `
 
 type ListAllProductsAscFirstParams struct {
@@ -788,6 +816,7 @@ type ListAllProductsAscFirstParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 	LimitParam    int32
 }
@@ -799,13 +828,7 @@ type ListAllProductsAscFirstRow struct {
 }
 
 // 公開状態を問わない商品を (created_at ASC, id ASC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
-// usecase の validateMasterFilter が拒否します。
-// 並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
-// 絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+// 条件と注意点は ListAllProductsDescFirst を参照。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
 //	SELECT
@@ -836,12 +859,16 @@ type ListAllProductsAscFirstRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 //	ORDER BY p.created_at ASC, p.id ASC
-//	LIMIT $10
+//	LIMIT $11
 func (q *Queries) ListAllProductsAscFirst(ctx context.Context, arg *ListAllProductsAscFirstParams) ([]*ListAllProductsAscFirstRow, error) {
 	rows, err := q.db.Query(ctx, listAllProductsAscFirst,
 		arg.CategoryID,
@@ -852,6 +879,7 @@ func (q *Queries) ListAllProductsAscFirst(ctx context.Context, arg *ListAllProdu
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.LimitParam,
 	)
@@ -918,16 +946,20 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
     )
     AND (
-        p.created_at < $10
-        OR (p.created_at = $10 AND p.id < $11)
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
+    )
+    AND (
+        p.created_at < $11
+        OR (p.created_at = $11 AND p.id < $12)
     )
 ORDER BY p.created_at DESC, p.id DESC
-LIMIT $12
+LIMIT $13
 `
 
 type ListAllProductsDescAfterParams struct {
@@ -939,6 +971,7 @@ type ListAllProductsDescAfterParams struct {
 	MaxPrice       *decimal.Decimal
 	MinQuantity    *int32
 	MaxQuantity    *int32
+	Discontinued   *bool
 	Keyword        *string
 	AfterCreatedAt time.Time
 	AfterID        uuid.UUID
@@ -952,13 +985,7 @@ type ListAllProductsDescAfterRow struct {
 }
 
 // 公開状態を問わない商品を (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
-// usecase の validateMasterFilter が拒否します。
-// 並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
-// 絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+// 条件と注意点は ListAllProductsDescFirst を参照。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
@@ -989,16 +1016,20 @@ type ListAllProductsDescAfterRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
 //	    )
 //	    AND (
-//	        p.created_at < $10
-//	        OR (p.created_at = $10 AND p.id < $11)
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
+//	    )
+//	    AND (
+//	        p.created_at < $11
+//	        OR (p.created_at = $11 AND p.id < $12)
 //	    )
 //	ORDER BY p.created_at DESC, p.id DESC
-//	LIMIT $12
+//	LIMIT $13
 func (q *Queries) ListAllProductsDescAfter(ctx context.Context, arg *ListAllProductsDescAfterParams) ([]*ListAllProductsDescAfterRow, error) {
 	rows, err := q.db.Query(ctx, listAllProductsDescAfter,
 		arg.CategoryID,
@@ -1009,6 +1040,7 @@ func (q *Queries) ListAllProductsDescAfter(ctx context.Context, arg *ListAllProd
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.AfterCreatedAt,
 		arg.AfterID,
@@ -1077,12 +1109,16 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 ORDER BY p.created_at DESC, p.id DESC
-LIMIT $10
+LIMIT $11
 `
 
 type ListAllProductsDescFirstParams struct {
@@ -1094,6 +1130,7 @@ type ListAllProductsDescFirstParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 	LimitParam    int32
 }
@@ -1106,13 +1143,8 @@ type ListAllProductsDescFirstRow struct {
 
 // === source: database/dml/repository/product/select_all_products.sql ===
 // 公開状態を問わない商品を (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
-// usecase の validateMasterFilter が拒否します。
-// 並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
-// 絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+// 条件と注意点は ListAllProductsDescFirst を参照。
+// 本ファイルの他 3 本も、ソート軸とページ方向以外はこの条件と注意点を共有します。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
 //	SELECT
@@ -1143,12 +1175,16 @@ type ListAllProductsDescFirstRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 //	ORDER BY p.created_at DESC, p.id DESC
-//	LIMIT $10
+//	LIMIT $11
 func (q *Queries) ListAllProductsDescFirst(ctx context.Context, arg *ListAllProductsDescFirstParams) ([]*ListAllProductsDescFirstRow, error) {
 	rows, err := q.db.Query(ctx, listAllProductsDescFirst,
 		arg.CategoryID,
@@ -1159,6 +1195,7 @@ func (q *Queries) ListAllProductsDescFirst(ctx context.Context, arg *ListAllProd
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.LimitParam,
 	)
@@ -1495,16 +1532,20 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
     )
     AND (
-        p.published_at > $10
-        OR (p.published_at = $10 AND p.id > $11)
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
+    )
+    AND (
+        p.published_at > $11
+        OR (p.published_at = $11 AND p.id > $12)
     )
 ORDER BY p.published_at ASC, p.id ASC
-LIMIT $12
+LIMIT $13
 `
 
 type ListPublishedProductsAscAfterParams struct {
@@ -1516,6 +1557,7 @@ type ListPublishedProductsAscAfterParams struct {
 	MaxPrice         *decimal.Decimal
 	MinQuantity      *int32
 	MaxQuantity      *int32
+	Discontinued     *bool
 	Keyword          *string
 	AfterPublishedAt *time.Time
 	AfterID          uuid.UUID
@@ -1529,12 +1571,7 @@ type ListPublishedProductsAscAfterRow struct {
 }
 
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
-// usecase の validateMasterFilter が拒否します。
-// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// 条件と注意点は ListPublishedProductsDescFirst を参照。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
@@ -1566,16 +1603,20 @@ type ListPublishedProductsAscAfterRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
 //	    )
 //	    AND (
-//	        p.published_at > $10
-//	        OR (p.published_at = $10 AND p.id > $11)
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
+//	    )
+//	    AND (
+//	        p.published_at > $11
+//	        OR (p.published_at = $11 AND p.id > $12)
 //	    )
 //	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $12
+//	LIMIT $13
 func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPublishedProductsAscAfterParams) ([]*ListPublishedProductsAscAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsAscAfter,
 		arg.CategoryID,
@@ -1586,6 +1627,7 @@ func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPu
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.AfterPublishedAt,
 		arg.AfterID,
@@ -1655,12 +1697,16 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 ORDER BY p.published_at ASC, p.id ASC
-LIMIT $10
+LIMIT $11
 `
 
 type ListPublishedProductsAscFirstParams struct {
@@ -1672,6 +1718,7 @@ type ListPublishedProductsAscFirstParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 	LimitParam    int32
 }
@@ -1683,12 +1730,7 @@ type ListPublishedProductsAscFirstRow struct {
 }
 
 // 公開済み商品を (published_at ASC, id ASC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
-// usecase の validateMasterFilter が拒否します。
-// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// 条件と注意点は ListPublishedProductsDescFirst を参照。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
 //	SELECT
@@ -1720,12 +1762,16 @@ type ListPublishedProductsAscFirstRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 //	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $10
+//	LIMIT $11
 func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPublishedProductsAscFirstParams) ([]*ListPublishedProductsAscFirstRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsAscFirst,
 		arg.CategoryID,
@@ -1736,6 +1782,7 @@ func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPu
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.LimitParam,
 	)
@@ -1803,16 +1850,20 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
     )
     AND (
-        p.published_at < $10
-        OR (p.published_at = $10 AND p.id < $11)
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
+    )
+    AND (
+        p.published_at < $11
+        OR (p.published_at = $11 AND p.id < $12)
     )
 ORDER BY p.published_at DESC, p.id DESC
-LIMIT $12
+LIMIT $13
 `
 
 type ListPublishedProductsDescAfterParams struct {
@@ -1824,6 +1875,7 @@ type ListPublishedProductsDescAfterParams struct {
 	MaxPrice         *decimal.Decimal
 	MinQuantity      *int32
 	MaxQuantity      *int32
+	Discontinued     *bool
 	Keyword          *string
 	AfterPublishedAt *time.Time
 	AfterID          uuid.UUID
@@ -1837,12 +1889,7 @@ type ListPublishedProductsDescAfterRow struct {
 }
 
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
-// usecase の validateMasterFilter が拒否します。
-// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// 条件と注意点は ListPublishedProductsDescFirst を参照。
 // カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 //
 //	SELECT
@@ -1874,16 +1921,20 @@ type ListPublishedProductsDescAfterRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
 //	    )
 //	    AND (
-//	        p.published_at < $10
-//	        OR (p.published_at = $10 AND p.id < $11)
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
+//	    )
+//	    AND (
+//	        p.published_at < $11
+//	        OR (p.published_at = $11 AND p.id < $12)
 //	    )
 //	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $12
+//	LIMIT $13
 func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListPublishedProductsDescAfterParams) ([]*ListPublishedProductsDescAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsDescAfter,
 		arg.CategoryID,
@@ -1894,6 +1945,7 @@ func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListP
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.AfterPublishedAt,
 		arg.AfterID,
@@ -1963,12 +2015,16 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 ORDER BY p.published_at DESC, p.id DESC
-LIMIT $10
+LIMIT $11
 `
 
 type ListPublishedProductsDescFirstParams struct {
@@ -1980,6 +2036,7 @@ type ListPublishedProductsDescFirstParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 	LimitParam    int32
 }
@@ -1992,12 +2049,8 @@ type ListPublishedProductsDescFirstRow struct {
 
 // === source: database/dml/repository/product/select_products.sql ===
 // 公開済み商品を (published_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
-// internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
-// 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
-// usecase の validateMasterFilter が拒否します。
-// 「公開中」を定義するのは Product.IsPublished で、published_at の条件はその実行形です。片方だけ変更しないこと。
+// 条件と注意点は ListPublishedProductsDescFirst を参照。
+// 本ファイルの他 3 本も、ソート軸とページ方向以外はこの条件と注意点を共有します。
 // 先頭ページを返します。カーソル以降は対の After クエリが担います。
 //
 //	SELECT
@@ -2029,12 +2082,16 @@ type ListPublishedProductsDescFirstRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 //	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $10
+//	LIMIT $11
 func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListPublishedProductsDescFirstParams) ([]*ListPublishedProductsDescFirstRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsDescFirst,
 		arg.CategoryID,
@@ -2045,6 +2102,7 @@ func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListP
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.LimitParam,
 	)

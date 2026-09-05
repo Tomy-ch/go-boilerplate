@@ -101,6 +101,21 @@ func (mr *MockRepositoryMockRecorder) FindShippable(ctx, limit any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindShippable", reflect.TypeOf((*MockRepository)(nil).FindShippable), ctx, limit)
 }
 
+// FindStatusesByProductID mocks base method.
+func (m *MockRepository) FindStatusesByProductID(ctx context.Context, productID uuid.UUID) ([]purchase.Status, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindStatusesByProductID", ctx, productID)
+	ret0, _ := ret[0].([]purchase.Status)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindStatusesByProductID indicates an expected call of FindStatusesByProductID.
+func (mr *MockRepositoryMockRecorder) FindStatusesByProductID(ctx, productID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindStatusesByProductID", reflect.TypeOf((*MockRepository)(nil).FindStatusesByProductID), ctx, productID)
+}
+
 // FindStatusesByUserID mocks base method.
 func (m *MockRepository) FindStatusesByUserID(ctx context.Context, userID uuid.UUID) ([]purchase.Status, error) {
 	m.ctrl.T.Helper()

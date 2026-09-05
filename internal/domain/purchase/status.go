@@ -59,6 +59,23 @@ func allStatuses() []Status {
 	}
 }
 
+// TerminalStatusCodes は、終端状態のステータスが取る業務キーを返します。
+//
+// 「進行中」を SQL の絞り込みで表す経路が、終端の集合をドメインから受け取るために用います。
+// 判定そのものは [Status.IsTerminal] が持ち、ここはその集合を列挙するだけです。SQL 側に終端の
+// 一覧を書き写すと規則が 2 箇所になり、片方だけが動いたときに黙って食い違います。
+func TerminalStatusCodes() []int {
+	all := allStatuses()
+	codes := make([]int, 0, len(all))
+	for _, s := range all {
+		if s.IsTerminal() {
+			codes = append(codes, s.code)
+		}
+	}
+
+	return codes
+}
+
 // NewStatus は、永続化されている code からステータスを解決します。
 // 既知でない code は ErrInvalidStatusID を返します（永続化状態の破損を再構築時に弾くため）。
 func NewStatus(code int) (Status, error) {

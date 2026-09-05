@@ -22,6 +22,12 @@ type ServerInterface interface {
 	// PatchProductsDetail 単一商品の部分更新
 	// (PATCH /v1/products/{productId})
 	PatchProductsDetail(ctx *echo.Context, productId ProductIdParam) error
+	// PostProductsDiscontinue 商品の廃番
+	// (POST /v1/products/{productId}/discontinue)
+	PostProductsDiscontinue(ctx *echo.Context, productId ProductIdParam, params PostProductsDiscontinueParams) error
+	// GetProductsDiscontinueImpact 商品を廃番にしたときの影響の見積もり
+	// (GET /v1/products/{productId}/discontinue-impact)
+	GetProductsDiscontinueImpact(ctx *echo.Context, productId ProductIdParam) error
 	// PatchProductsStock 商品在庫の補充
 	// (PATCH /v1/products/{productId}/stock)
 	PatchProductsStock(ctx *echo.Context, productId ProductIdParam) error
@@ -70,6 +76,58 @@ func (w *ServerInterfaceWrapper) PatchProductsDetail(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PatchProductsDetail(ctx, productId)
+	return err
+}
+
+// PostProductsDiscontinue converts echo context to params.
+func (w *ServerInterfaceWrapper) PostProductsDiscontinue(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostProductsDiscontinueParams
+
+	headers := ctx.Request().Header
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyParam
+		n := len(valueList)
+		if n != 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for Idempotency-Key, got %d", n))
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter Idempotency-Key: %s", err))
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostProductsDiscontinue(ctx, productId, params)
+	return err
+}
+
+// GetProductsDiscontinueImpact converts echo context to params.
+func (w *ServerInterfaceWrapper) GetProductsDiscontinueImpact(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "productId" -------------
+	var productId ProductIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "productId", ctx.Param("productId"), &productId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetProductsDiscontinueImpact(ctx, productId)
 	return err
 }
 
@@ -138,6 +196,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 	router.GET(options.BaseURL+"/v1/products/:productId", wrapper.GetProductsDetail, options.OperationMiddlewares["GetProductsDetail"]...)
 	router.PATCH(options.BaseURL+"/v1/products/:productId", wrapper.PatchProductsDetail, options.OperationMiddlewares["PatchProductsDetail"]...)
+	router.POST(options.BaseURL+"/v1/products/:productId/discontinue", wrapper.PostProductsDiscontinue, options.OperationMiddlewares["PostProductsDiscontinue"]...)
+	router.GET(options.BaseURL+"/v1/products/:productId/discontinue-impact", wrapper.GetProductsDiscontinueImpact, options.OperationMiddlewares["GetProductsDiscontinueImpact"]...)
 	router.PATCH(options.BaseURL+"/v1/products/:productId/stock", wrapper.PatchProductsStock, options.OperationMiddlewares["PatchProductsStock"]...)
 
 }
@@ -444,6 +504,290 @@ func (response PatchProductsDetail503JSONResponse) VisitPatchProductsDetailRespo
 	return err
 }
 
+type PostProductsDiscontinueRequestObject struct {
+	ProductId ProductIdParam `json:"productId"`
+	Params    PostProductsDiscontinueParams
+	Body      *PostProductsDiscontinueJSONRequestBody
+}
+
+type PostProductsDiscontinueResponseObject interface {
+	VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error
+}
+
+type PostProductsDiscontinue200JSONResponse ProductDiscontinueResponse
+
+func (response PostProductsDiscontinue200JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response PostProductsDiscontinue400JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response PostProductsDiscontinue401JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response PostProductsDiscontinue403JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue404JSONResponse struct{ NotFound404JSONResponse }
+
+func (response PostProductsDiscontinue404JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response PostProductsDiscontinue405JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue409JSONResponse struct{ Conflict409JSONResponse }
+
+func (response PostProductsDiscontinue409JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue422JSONResponse struct {
+	UnprocessableEntity422JSONResponse
+}
+
+func (response PostProductsDiscontinue422JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response PostProductsDiscontinue500JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PostProductsDiscontinue503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response PostProductsDiscontinue503JSONResponse) VisitPostProductsDiscontinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDiscontinueImpactRequestObject struct {
+	ProductId ProductIdParam `json:"productId"`
+}
+
+type GetProductsDiscontinueImpactResponseObject interface {
+	VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error
+}
+
+type GetProductsDiscontinueImpact200JSONResponse ProductDiscontinueImpactResponse
+
+func (response GetProductsDiscontinueImpact200JSONResponse) VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDiscontinueImpact400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetProductsDiscontinueImpact400JSONResponse) VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDiscontinueImpact401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response GetProductsDiscontinueImpact401JSONResponse) VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDiscontinueImpact403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response GetProductsDiscontinueImpact403JSONResponse) VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDiscontinueImpact404JSONResponse struct{ NotFound404JSONResponse }
+
+func (response GetProductsDiscontinueImpact404JSONResponse) VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDiscontinueImpact405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response GetProductsDiscontinueImpact405JSONResponse) VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDiscontinueImpact500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response GetProductsDiscontinueImpact500JSONResponse) VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDiscontinueImpact503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response GetProductsDiscontinueImpact503JSONResponse) VisitGetProductsDiscontinueImpactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type PatchProductsStockRequestObject struct {
 	ProductId ProductIdParam `json:"productId"`
 	Body      *PatchProductsStockJSONRequestBody
@@ -609,6 +953,12 @@ type StrictServerInterface interface {
 	// PatchProductsDetail 単一商品の部分更新
 	// (PATCH /v1/products/{productId})
 	PatchProductsDetail(ctx context.Context, request PatchProductsDetailRequestObject) (PatchProductsDetailResponseObject, error)
+	// PostProductsDiscontinue 商品の廃番
+	// (POST /v1/products/{productId}/discontinue)
+	PostProductsDiscontinue(ctx context.Context, request PostProductsDiscontinueRequestObject) (PostProductsDiscontinueResponseObject, error)
+	// GetProductsDiscontinueImpact 商品を廃番にしたときの影響の見積もり
+	// (GET /v1/products/{productId}/discontinue-impact)
+	GetProductsDiscontinueImpact(ctx context.Context, request GetProductsDiscontinueImpactRequestObject) (GetProductsDiscontinueImpactResponseObject, error)
 	// PatchProductsStock 商品在庫の補充
 	// (PATCH /v1/products/{productId}/stock)
 	PatchProductsStock(ctx context.Context, request PatchProductsStockRequestObject) (PatchProductsStockResponseObject, error)
@@ -687,6 +1037,73 @@ func (sh *strictHandler) PatchProductsDetail(ctx *echo.Context, productId Produc
 		return err
 	} else if validResponse, ok := response.(PatchProductsDetailResponseObject); ok {
 		return validResponse.VisitPatchProductsDetailResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// PostProductsDiscontinue operation middleware
+func (sh *strictHandler) PostProductsDiscontinue(ctx *echo.Context, productId ProductIdParam, params PostProductsDiscontinueParams) error {
+	var request PostProductsDiscontinueRequestObject
+
+	request.ProductId = productId
+	request.Params = params
+
+	var body PostProductsDiscontinueJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostProductsDiscontinue(ctx.Request().Context(), request.(PostProductsDiscontinueRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostProductsDiscontinue")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostProductsDiscontinueResponseObject); ok {
+		return validResponse.VisitPostProductsDiscontinueResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetProductsDiscontinueImpact operation middleware
+func (sh *strictHandler) GetProductsDiscontinueImpact(ctx *echo.Context, productId ProductIdParam) error {
+	var request GetProductsDiscontinueImpactRequestObject
+
+	request.ProductId = productId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProductsDiscontinueImpact(ctx.Request().Context(), request.(GetProductsDiscontinueImpactRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProductsDiscontinueImpact")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetProductsDiscontinueImpactResponseObject); ok {
+		return validResponse.VisitGetProductsDiscontinueImpactResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

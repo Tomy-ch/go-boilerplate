@@ -13,6 +13,7 @@ import (
 	domainproduct "go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/idempotency"
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
@@ -83,7 +84,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 				},
 			)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: 50}
@@ -116,7 +117,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 				},
 			)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: -10}
@@ -145,7 +146,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: 10}
 			actual := StartServer(t, e).DoJSON(http.MethodPatch, productStockExistingPath, body, nil)
@@ -159,7 +160,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			UseAppErrorHandler(t, e)
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
 			mockUC.EXPECT().UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-			productsdetail.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC)
+			productsdetail.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC, idempotency.Deps{})
 			headers := availableAdmin(t, e)
 			useOpenAPIValidation(t, e)
 
@@ -181,7 +182,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			mockUC.EXPECT().UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(productuc.ProductView{}, apperror.ErrPermissionDenied)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "integration_stock_member"))
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: 10}
@@ -201,7 +202,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			mockUC.EXPECT().UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(productuc.ProductView{}, apperror.ErrNotFound)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: 10}
@@ -221,7 +222,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			mockUC.EXPECT().UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(productuc.ProductView{}, apperror.ErrValidation)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: -1000}
@@ -241,7 +242,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			mockUC.EXPECT().UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(productuc.ProductView{}, domainproduct.ErrVersionConflict)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: 10}
@@ -261,7 +262,7 @@ func TestV1ProductsStock_Integration(t *testing.T) {
 			mockUC.EXPECT().UpdateProductStock(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(productuc.ProductView{}, apperror.ErrUnavailable)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsStockJSONRequestBody{Delta: 10}

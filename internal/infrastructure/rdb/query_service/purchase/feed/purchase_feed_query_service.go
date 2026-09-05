@@ -43,10 +43,8 @@ func New(
 	}
 }
 
-// FindFeedByUserID は、指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で
-// keyset ページネーション取得します。ステータスは購入ステータスマスタ、明細の要約は商品との結合で
-// 解決します。params.AfterOrderedAt / AfterID が nil の場合は先頭ページを、それ以外は境界より過去の行を返します。
-// params.Window が境界を持つ場合は、その半開区間に注文された購入だけを返します。
+// FindFeedByUserID は、(ordered_at DESC, id DESC) の keyset で取得し、ステータスと明細の要約を
+// 結合で解決します。
 func (s *service) FindFeedByUserID(
 	ctx context.Context, userID uuid.UUID, params query.ListFeedParams,
 ) ([]query.PurchaseFeedReadModel, error) {
@@ -60,6 +58,7 @@ func (s *service) FindFeedByUserID(
 			OrderedAfter:  params.Window.After(),
 			OrderedBefore: params.Window.Before(),
 			StatusCodes:   params.StatusCodes,
+			ProductID:     params.ProductID,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -81,6 +80,7 @@ func (s *service) FindFeedByUserID(
 		OrderedAfter:   params.Window.After(),
 		OrderedBefore:  params.Window.Before(),
 		StatusCodes:    params.StatusCodes,
+		ProductID:      params.ProductID,
 		LimitParam:     params.Limit,
 	})
 	if err != nil {
@@ -95,8 +95,8 @@ func (s *service) FindFeedByUserID(
 	}), nil
 }
 
-// FindFeedAll は、購入者を問わず購入履歴を FindFeedByUserID と同じ順序・同じ絞り込みで取得します。
-// 所有権で閉じないため、可視範囲の認可は呼び出し側の責務です（docs/spec/usecase/purchase.md 参照）。
+// FindFeedAll は、所有者の条件を持たない点だけが FindFeedByUserID と異なります。
+// 可視範囲の認可は呼び出し側の責務です（docs/spec/usecase/purchase.md 参照）。
 func (s *service) FindFeedAll(
 	ctx context.Context, params query.ListFeedParams,
 ) ([]query.PurchaseFeedReadModel, error) {
@@ -109,6 +109,7 @@ func (s *service) FindFeedAll(
 			OrderedAfter:  params.Window.After(),
 			OrderedBefore: params.Window.Before(),
 			StatusCodes:   params.StatusCodes,
+			ProductID:     params.ProductID,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -129,6 +130,7 @@ func (s *service) FindFeedAll(
 		OrderedAfter:   params.Window.After(),
 		OrderedBefore:  params.Window.Before(),
 		StatusCodes:    params.StatusCodes,
+		ProductID:      params.ProductID,
 		LimitParam:     params.Limit,
 	})
 	if err != nil {
@@ -143,7 +145,6 @@ func (s *service) FindFeedAll(
 	}), nil
 }
 
-// toFeedReadModels は、呼び出し側が渡す変換関数で各行を feedRow へ揃えてから読み取りモデルの列へ写像します。
 func toFeedReadModels[T any](rows []T, toRow func(T) feedRow) []query.PurchaseFeedReadModel {
 	items := make([]query.PurchaseFeedReadModel, len(rows))
 	for i, row := range rows {
@@ -152,8 +153,8 @@ func toFeedReadModels[T any](rows []T, toRow func(T) feedRow) []query.PurchaseFe
 	return items
 }
 
-// toFeedReadModel は、購入履歴フィードの行を読み取りモデルへ変換します。
-// 合計金額と明細の行数は決済スケール / BIGINT を int へ、ステータスと明細の要約は結合先の値です。
+// toFeedReadModel は、合計金額と明細の行数を決済スケール / BIGINT から int へ狭め、
+// ステータスと明細の要約には結合先の値を詰めます。
 func toFeedReadModel(row feedRow) query.PurchaseFeedReadModel {
 	return query.PurchaseFeedReadModel{
 		Code:          row.Code,

@@ -7,6 +7,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTerminalStatusCodes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("終端状態のコードだけを返す", func(t *testing.T) {
+			t.Parallel()
+
+			actual := TerminalStatusCodes()
+
+			assert.ElementsMatch(t, []int{statusCodeCompleted, statusCodeCanceled, statusCodeDelivered}, actual)
+		})
+
+		t.Run("終端でないステータスのコードを含まない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := TerminalStatusCodes()
+
+			assert.NotContains(t, actual, statusCodeUnprocessed)
+			assert.NotContains(t, actual, statusCodePaid)
+			assert.NotContains(t, actual, statusCodeShipped)
+		})
+	})
+}
+
 func TestNewStatus(t *testing.T) {
 	t.Parallel()
 

@@ -129,11 +129,14 @@ func validateAttributes(attrs Attributes) error {
 }
 
 // Update は、商品の属性を更新します。生成時と同一の不変条件を課し、違反する場合はエンティティを
-// 変更せずに検証エラーを返します。attrs は部分更新を解決した後の確定値であり、据え置く属性には現在値が渡されます。
-// Images は集合ごとの置き換えで、maxImages を超える場合は ErrTooManyImages を返します。
-// バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き更新が行います）。
+// 変更せずに検証エラーを返します。attrs は部分更新を解決した後の確定値であり、据え置く属性には
+// 現在値が渡されます。Images は集合ごとの置き換えです。バージョンはここでは進めません
+// （詳細は docs/spec/domain/product.md の Behavior Methods を参照）。
 func (p *Product) Update(attrs Attributes) error {
 	if err := validateAttributes(attrs); err != nil {
+		return err
+	}
+	if err := p.ensureDiscontinuationKept(attrs.DiscontinuedAt); err != nil {
 		return err
 	}
 
@@ -265,6 +268,25 @@ func (p *Product) IsPublished() bool { return IsPublished(p.publishedAt) }
 // 同じ定義を当てられるよう、エンティティのメソッドとは別に値に対する形でも公開します。
 func IsPublished(publishedAt *time.Time) bool { return publishedAt != nil }
 
+// Discontinue は、商品を廃番にします。同時に公開を取り下げます。既に廃番の商品は状態が変わらず、
+// エラーも返しません（理由は docs/spec/domain/product.md の Cross-field Invariants を参照）。
+//
+// 日時は引数で受け取ります。ドメインは時刻へ直接依存せず、時刻境界から供給された now を使うためです。
+// now がゼロ値の場合は ErrInvalidDiscontinuedAt を返します。
+func (p *Product) Discontinue(now time.Time) error {
+	if now.IsZero() {
+		return xerrors.Wrap(ErrInvalidDiscontinuedAt, "now is required")
+	}
+	if p.IsDiscontinued() {
+		return nil
+	}
+
+	p.discontinuedAt = &now
+	p.publishedAt = nil
+
+	return nil
+}
+
 // IsDiscontinued は、商品が廃番かどうかを返します。廃番とは廃番日時が設定されていることを指します。
 func (p *Product) IsDiscontinued() bool { return IsDiscontinued(p.discontinuedAt) }
 
@@ -295,4 +317,19 @@ func (p *Product) IsLowStock() bool {
 		return false
 	}
 	return p.quantity <= *p.stockWarningThreshold
+}
+
+// ensureDiscontinuationKept は、廃番の取り消しを拒みます。属性の一括置換は現在値を見ないため、
+// この検証だけがレシーバの現在値と引数を突き合わせます（[Product.EnsureVersion] と同じ形）。
+// 拒む理由は docs/spec/domain/product.md の Cross-field Invariants を参照してください。
+//
+// 未廃番から廃番への向きは拒みません。その向きの検証は [Product.Discontinue] が持ちます。
+func (p *Product) ensureDiscontinuationKept(next *time.Time) error {
+	if p.IsDiscontinued() && !IsDiscontinued(next) {
+		return apperror.WithDetails(
+			xerrors.Wrap(ErrDiscontinuationIrreversible, "discontinuedAt must not be cleared"),
+			FieldDiscontinuedAt,
+		)
+	}
+	return nil
 }

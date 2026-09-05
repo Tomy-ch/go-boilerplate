@@ -12,12 +12,15 @@ import (
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/domain/product/category"
 	"go-boilerplate/internal/domain/product/status"
+	"go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
 	"go-boilerplate/internal/usecase/boundary/tx"
+	"go-boilerplate/internal/usecase/product/command"
+	"go-boilerplate/internal/usecase/product/query"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
@@ -120,6 +123,8 @@ type SearchFilter struct {
 	// MinQuantity / MaxQuantity は、在庫数の包含下限／包含上限です。nil の側は制限しません。
 	MinQuantity *int32
 	MaxQuantity *int32
+	// Discontinued は、廃番かどうかによる絞り込みです。nil の場合は絞り込みません。
+	Discontinued *bool
 }
 
 // ProductCountView は、公開商品検索の一致件数です。
@@ -158,6 +163,13 @@ type Usecase interface {
 	// UpdateProduct は、admin が商品の属性を部分更新し、更新後の商品を返します。未認証は 401、非 admin は 403、
 	// 未存在は 404、読み込み後に他者が更新していた場合は 409、業務不変条件違反は 422 を返します。
 	UpdateProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams) (ProductView, error)
+	// DiscontinueProduct は、admin が商品を廃番にし、影響の件数を返します。未認証は 401、非 admin は 403、
+	// 未存在は 404、進行中の購入が残っている場合は 409、値引き率が範囲外の場合は 422 を返します。
+	// 商品の非公開化と代替クーポンの一括発行は同一トランザクションで行います。
+	DiscontinueProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params DiscontinueProductParams) (DiscontinueProductView, error)
+	// GetDiscontinueImpact は、admin が廃番の影響を実行前に件数で取得します。未認証は 401、非 admin は 403、
+	// 未存在は 404 を返します。行をロックしないため実行時の件数と一致する保証はありません。
+	GetDiscontinueImpact(ctx context.Context, authn *auth.Authn, id uuid.UUID) (DiscontinueImpactView, error)
 	// UpdateProductStock は、admin が商品の在庫を増減し、更新後の商品を返します。未認証は 401、非 admin は 403、
 	// 未存在は 404、取得後に他者が更新していた場合は 409、増減後の在庫が保持できる範囲を外れる場合は 422 を返します。
 	UpdateProductStock(
@@ -180,6 +192,11 @@ type usecase struct {
 	authorizer     authz.Authorizer
 	clock          clock.Clock
 	maxUploadBytes int64
+
+	// 廃番のジャーニーが跨ぐ依存。購入は進行中の判定に、クーポンは再実行時の実績に用います。
+	purchaseRepo           purchase.Repository
+	discontinueCmd         command.CommandService
+	discontinueImpactQuery query.DiscontinueImpactQueryService
 }
 
 // New は、商品に関するユースケース実装を生成します。
@@ -192,18 +209,24 @@ func New(
 	authorizer authz.Authorizer,
 	clk clock.Clock,
 	maxUploadBytes int64,
+	purchaseRepo purchase.Repository,
+	discontinueCmd command.CommandService,
+	discontinueImpactQuery query.DiscontinueImpactQueryService,
 	tf observability.TracerFactory,
 ) Usecase {
 	return &usecase{
-		tracer:         tf.Usecase(),
-		txm:            txm,
-		repo:           repo,
-		categoryRepo:   categoryRepo,
-		statusRepo:     statusRepo,
-		storage:        storage,
-		authorizer:     authorizer,
-		clock:          clk,
-		maxUploadBytes: maxUploadBytes,
+		tracer:                 tf.Usecase(),
+		txm:                    txm,
+		repo:                   repo,
+		categoryRepo:           categoryRepo,
+		statusRepo:             statusRepo,
+		storage:                storage,
+		authorizer:             authorizer,
+		clock:                  clk,
+		maxUploadBytes:         maxUploadBytes,
+		purchaseRepo:           purchaseRepo,
+		discontinueCmd:         discontinueCmd,
+		discontinueImpactQuery: discontinueImpactQuery,
 	}
 }
 
@@ -371,6 +394,7 @@ func toDomainSearchFilter(filter SearchFilter, r productListRange) product.Searc
 		MaxPrice:      r.maxPrice,
 		MinQuantity:   r.minQuantity,
 		MaxQuantity:   r.maxQuantity,
+		Discontinued:  filter.Discontinued,
 	}
 }
 
