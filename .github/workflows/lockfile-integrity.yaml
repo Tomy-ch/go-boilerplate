@@ -54,7 +54,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      pull-requests: read
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
     steps:
@@ -73,10 +72,23 @@ jobs:
             *.actions.githubusercontent.com:443
             *.blob.core.windows.net:443
 
+      # fetch-depth: 0 so the PR's base and head commits are present locally. The filter
+      # below compares them with `git diff`; the default shallow checkout fetches only the
+      # merge commit, so neither parent resolves.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Filter the changed paths
         id: filter
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         with:
+          # An empty token selects `git diff` over the compare API. The API refuses a
+          # large diff outright (`this diff is taking too long to generate`), and a filter
+          # that reaches no verdict runs every gated job instead of skipping it.
+          token: ''
           filters: |
             relevant:
               - '.github/workflows/lockfile-integrity.yaml'
