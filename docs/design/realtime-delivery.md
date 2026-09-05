@@ -331,7 +331,8 @@ stateDiagram-v2
 | **cursor** | A sequence a client has seen; `Last-Event-ID` on browser reconnect, `after` on explicit resume. |
 | **replay** | Reading the EventLog after a cursor when a connection opens. |
 | **catch-up** | Reading the EventLog after the current cursor because of a wakeup or on the periodic (30 s, jittered) schedule. |
-| **replay floor** | The oldest sequence still replayable. Derived, not stored: `cursor + 1` absent while a later item exists, or present but older than retention, or the item at the cursor itself absent (cursor not initial) → `410`. |
+| **replay floor** | The oldest sequence still replayable. Derived, not stored: `cursor + 1` absent while a later item exists, or present but older than retention, or the item at the cursor itself absent **at or below the append watermark** (cursor not initial) → `410`. A cursor *above* the watermark is not expired: the relay has simply not written that far yet, and refusing it would be unrecoverable, because re-reading the canonical state returns the same cursor. |
+| **append watermark** | The highest sequence the relay has written to a stream's EventLog. Kept per stream and never rolled back, so it outlives the events themselves — which is what separates "gone with the retention" from "not written yet" once an item is missing. |
 | **wakeup** | The SNS → SQS notification "re-read stream S after your cursor". Stateless; duplicates coalesce; loss is covered by catch-up. |
 | **blocked stream** | A stream whose head row is dead; halted until replayed; counted by `realtime_blocked_streams`. |
 | **ticket** | The opaque 256-bit credential presented on connect, stored hashed, bound to subject / destination / scope / expiry, reusable for its 5-minute TTL. |
