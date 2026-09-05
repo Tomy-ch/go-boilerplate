@@ -691,7 +691,7 @@ func Test_server_PostProductsDiscontinue(t *testing.T) {
 					require.NotNil(t, authn)
 					assert.Equal(t, "subject-1", authn.Subject())
 					assert.Equal(t, targetID, id)
-					assert.Equal(t, "0.10", p.CouponDiscountRate.String())
+					assert.True(t, decimaltestkit.MustParse(t, "0.10").Equal(p.CouponDiscountRate))
 					assert.Equal(t, 30*24*time.Hour, p.CouponValidity)
 
 					return view, nil

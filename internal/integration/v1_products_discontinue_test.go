@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
@@ -84,7 +85,7 @@ func TestV1ProductsDiscontinue_Integration(t *testing.T) {
 			assert.Equal(t, int64(12), body.AffectedCartCount)
 			assert.Equal(t, int64(9), body.AffectedUserCount)
 			assert.Equal(t, int64(9), body.IssuedCouponCount)
-			assert.Equal(t, "0.10", captured.CouponDiscountRate.String())
+			assert.True(t, decimaltestkit.MustParse(t, "0.10").Equal(captured.CouponDiscountRate))
 			assert.Equal(t, 30*24*time.Hour, captured.CouponValidity)
 		})
 

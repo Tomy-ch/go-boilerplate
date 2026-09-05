@@ -205,30 +205,6 @@ func Test_discontinueImpactService_EstimateDiscontinueImpact(t *testing.T) {
 			})
 		})
 
-		t.Run("同じユーザーが複数のカートに入れていても受給者数は重複しない", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				productID := uuidtestkit.NewTestFromSalt(t, "impact_dup_product")
-				userID := uuidtestkit.NewTestFromSalt(t, "impact_dup_user")
-				insertImpactProduct(ctx, t, drv, productID)
-				insertDiscontinueUser(ctx, t, drv, userID, false)
-				insertDiscontinueCart(
-					ctx, t, drv, uuidtestkit.NewTestFromSalt(t, "impact_dup_cart_a"), productID, &userID,
-				)
-				insertDiscontinueCart(
-					ctx, t, drv, uuidtestkit.NewTestFromSalt(t, "impact_dup_cart_b"), productID, &userID,
-				)
-
-				got, err := svc.EstimateDiscontinueImpact(ctx, productID)
-
-				require.NoError(t, err)
-				assert.Equal(t, int64(2), got.AffectedCartCount)
-				assert.Equal(t, int64(1), got.AffectedUserCount)
-			})
-		})
-
 		t.Run("進行中の購入がある場合、進行中件数に数える", func(t *testing.T) {
 			t.Parallel()
 

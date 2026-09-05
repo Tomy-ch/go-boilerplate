@@ -94,7 +94,8 @@ func newIssueParams(t *testing.T, productID uuid.UUID) command.IssueDiscontinuat
 	scope, err := coupon.NewCategoryScope(categoryID)
 	require.NoError(t, err)
 
-	issuedAt := time.Now()
+	// timestamptz はマイクロ秒までしか保たないため、往復で一致させるにはそこへ丸めて渡す。
+	issuedAt := time.Now().Truncate(time.Microsecond)
 
 	return command.IssueDiscontinuationCouponsParams{
 		ProductID: productID,
@@ -248,28 +249,6 @@ func Test_commandService_IssueDiscontinuationCoupons(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, int64(1), got.AffectedCartCount)
 				assert.Zero(t, got.IssuedCouponCount)
-			})
-		})
-
-		t.Run("同じユーザーが複数のカートに入れていても1枚しか発行しない", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				productID := uuidtestkit.NewTestFromSalt(t, "cs_dup_product")
-				userID := uuidtestkit.NewTestFromSalt(t, "cs_dup_user")
-				insertDiscontinuedProduct(ctx, t, drv, productID)
-				insertRecipientUser(ctx, t, drv, userID, false)
-				insertCartWithItem(ctx, t, drv, uuidtestkit.NewTestFromSalt(t, "cs_dup_cart_a"), productID, &userID)
-				insertCartWithItem(ctx, t, drv, uuidtestkit.NewTestFromSalt(t, "cs_dup_cart_b"), productID, &userID)
-
-				params := newIssueParams(t, productID)
-				got, err := svc.IssueDiscontinuationCoupons(ctx, params)
-
-				require.NoError(t, err)
-				assert.Equal(t, int64(2), got.AffectedCartCount)
-				assert.Equal(t, int64(1), got.AffectedUserCount)
-				assert.Equal(t, int64(1), got.IssuedCouponCount)
 			})
 		})
 

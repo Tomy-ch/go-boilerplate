@@ -187,6 +187,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/integration/v1_products_count_test.go",
       "internal/integration/v1_products_detail_test.go",
       "internal/integration/v1_products_stock_test.go",
+      "internal/integration/v1_products_discontinue_test.go",
       "internal/integration/v1_products_ranking_test.go",
       "internal/integration/v1_products_low_stock_test.go",
       "database/dml/repository/product",
