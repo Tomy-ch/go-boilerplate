@@ -235,3 +235,73 @@ func Test_allocator_Allocate_concurrentSerialization(t *testing.T) {
 	// 直列化されていれば競合側は 1 を再取得せず 2 を得る（gap も重複も無い）。
 	assert.Equal(t, realtimebndry.Sequence(2), <-contenderDone)
 }
+
+// Test_allocator_Current_excludesUncommittedAllocation は、History の cursor が完全な prefix である
+// ことを固定します。Current が未コミットの採番まで返すと、cursor 以下に未コミットの位置が混じり、
+// after=cursor で繋ぎ直した接続がその位置を取りこぼします
+// （親 issue の受入基準「History 取得と SSE 接続の間の event を取りこぼさない」の前半）。
+func Test_allocator_Current_excludesUncommittedAllocation(t *testing.T) {
+	testDB := testkit.NewTestDB(t)
+	a := &allocator{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+
+	dbCfg := config.NewDatabaseConfig(config.MockConfigForTest(t))
+	txm := driver.NewTransactionManager(testDB, dbCfg, logging.NewTestLogger(t), system.NewSleeper())
+
+	const streamID = realtimebndry.StreamID("stream-current-uncommitted")
+
+	t.Cleanup(func() {
+		_ = txm.Do(context.Background(), func(ctx context.Context) error {
+			_, err := driver.New(ctx, testDB).
+				Exec(ctx, "DELETE FROM realtime_stream_sequences WHERE stream_id = $1", streamID.String())
+			return err
+		})
+	})
+
+	require.NoError(t, txm.Do(context.Background(), func(ctx context.Context) error {
+		_, err := a.Allocate(ctx, streamID)
+		return err
+	}))
+
+	allocated := make(chan struct{})
+	release := make(chan struct{})
+	holderDone := make(chan error, 1)
+
+	var once sync.Once
+	rel := func() { once.Do(func() { close(release) }) }
+	t.Cleanup(rel)
+
+	go func() {
+		holderDone <- txm.Do(context.Background(), func(ctx context.Context) error {
+			seq, err := a.Allocate(ctx, streamID)
+			if err != nil {
+				return err
+			}
+			if seq != realtimebndry.Sequence(2) {
+				return xerrors.New(fmt.Sprintf("holder: expected sequence 2, got %d", seq))
+			}
+			close(allocated)
+			<-release
+			return nil
+		})
+	}()
+
+	select {
+	case <-allocated:
+	case err := <-holderDone:
+		require.NoError(t, err, "保持側 tx が採番前に失敗した")
+		return
+	}
+
+	held, ok, err := a.Current(context.Background(), streamID)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, realtimebndry.Sequence(1), held, "未コミットの採番が cursor に見えている")
+
+	rel()
+	require.NoError(t, <-holderDone)
+
+	after, ok, err := a.Current(context.Background(), streamID)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, realtimebndry.Sequence(2), after)
+}
