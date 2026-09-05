@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	domaincoupon "go-boilerplate/internal/domain/coupon"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/purchase/query"
 	mock_query "go-boilerplate/internal/usecase/purchase/query/mock"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
@@ -219,6 +221,60 @@ func Test_toPurchaseGetDetailView(t *testing.T) {
 			assert.Nil(t, view.PaidAt)
 			require.NotNil(t, view.CanceledAt)
 			assert.Equal(t, rm.CanceledAt, view.CanceledAt)
+		})
+	})
+}
+
+func Test_toAppliedCouponViewFromReadModel(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("業務キーを種別の名前へ解決する", func(t *testing.T) {
+			t.Parallel()
+
+			value, err := decimal.Parse("0.10")
+			require.NoError(t, err)
+			target := uuidtestkit.NewTestFromSalt(t, "rm_category")
+
+			got := toAppliedCouponViewFromReadModel(&query.AppliedCouponReadModel{
+				ID:            uuidtestkit.NewTestFromSalt(t, "rm_coupon"),
+				DiscountKind:  domaincoupon.DiscountKindRate.Code(),
+				DiscountValue: value,
+				ScopeKind:     domaincoupon.ScopeKindCategory.Code(),
+				ScopeTargetID: &target,
+			})
+
+			require.NotNil(t, got)
+			assert.Equal(t, "rate", got.DiscountKind)
+			assert.Equal(t, "category", got.ScopeKind)
+			require.NotNil(t, got.ScopeTargetID)
+			assert.Equal(t, target, *got.ScopeTargetID)
+		})
+
+		t.Run("未適用の場合はnilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, toAppliedCouponViewFromReadModel(nil))
+		})
+
+		t.Run("ドメインが知らないコードは名前を空のまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			value, err := decimal.Parse("1")
+			require.NoError(t, err)
+
+			got := toAppliedCouponViewFromReadModel(&query.AppliedCouponReadModel{
+				ID:            uuidtestkit.NewTestFromSalt(t, "rm_unknown"),
+				DiscountKind:  99,
+				DiscountValue: value,
+				ScopeKind:     99,
+			})
+
+			require.NotNil(t, got)
+			assert.Empty(t, got.DiscountKind)
+			assert.Empty(t, got.ScopeKind)
 		})
 	})
 }

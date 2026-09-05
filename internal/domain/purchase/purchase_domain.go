@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/ptr"
@@ -55,6 +56,8 @@ type Purchase struct {
 	statusID       uuid.UUID
 	status         Status
 	subtotalAmount int
+	couponID       *uuid.UUID
+	discountAmount int
 	taxAmount      int
 	shippingFee    int
 	totalAmount    int
@@ -83,6 +86,8 @@ type Attributes struct {
 	StatusID       uuid.UUID
 	StatusCode     int
 	SubtotalAmount int
+	CouponID       *uuid.UUID
+	DiscountAmount int
 	TaxAmount      int
 	ShippingFee    int
 	TotalAmount    int
@@ -245,9 +250,7 @@ func New(
 		)
 	}
 	subtotal := int(subtotalCents)
-	tax := subtotal * taxRatePercent / percentDivisor
-	shipping := shippingFeeCents
-	total := subtotal + tax + shipping
+	tax, shipping, total := settle(subtotal, 0)
 
 	return &Purchase{
 		id:             id,
@@ -260,6 +263,20 @@ func New(
 		totalAmount:    total,
 		details:        details,
 	}, nil
+}
+
+// settle は、小計と値引き額から税・送料・合計を決めます。
+//
+// 課税の基礎は値引き後の額です。値引いた分にまで課税しないためで、この規則の所在はここ 1 箇所です
+// （docs/spec/domain/purchase.md の Cross-field Invariants）。
+// 生成時と値引きの適用時が同じ関数を通るので、両者で式がずれません。
+func settle(subtotal, discount int) (int, int, int) {
+	taxable := subtotal - discount
+	tax := taxable * taxRatePercent / percentDivisor
+	shipping := shippingFeeCents
+	total := taxable + tax + shipping
+
+	return tax, shipping, total
 }
 
 // Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。
@@ -293,6 +310,9 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 	if attrs.SubtotalAmount < 0 || attrs.TaxAmount < 0 || attrs.ShippingFee < 0 || attrs.TotalAmount < 0 {
 		return nil, xerrors.Wrap(ErrInvalidAmount, "amounts must not be negative")
 	}
+	if err := validateDiscount(attrs.CouponID, attrs.DiscountAmount, attrs.SubtotalAmount); err != nil {
+		return nil, err
+	}
 	if len(attrs.Details) == 0 {
 		return nil, ErrEmptyDetails
 	}
@@ -310,6 +330,8 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 		statusID:       attrs.StatusID,
 		status:         status,
 		subtotalAmount: attrs.SubtotalAmount,
+		couponID:       ptr.Copy(attrs.CouponID),
+		discountAmount: attrs.DiscountAmount,
 		taxAmount:      attrs.TaxAmount,
 		shippingFee:    attrs.ShippingFee,
 		totalAmount:    attrs.TotalAmount,
@@ -321,6 +343,68 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 		deliveredAt:    ptr.Copy(attrs.DeliveredAt),
 	}, nil
 }
+
+// validateDiscount は、クーポンの適用と値引き額の対応を検証します。
+//
+// クーポンを適用したことと値引きが立っていることは常に一致します。片方だけの状態を作ると、
+// 「クーポンは使ったが説明が付かない」控えと「値引きの理由が無い」控えのどちらかが生まれ、
+// 表現層が値引き行を出すかどうかを金額だけで決められなくなります
+// （docs/spec/domain/purchase.md の Cross-field Invariants）。
+//
+// 値引きは小計を超えません。超えると請求額が負になります。
+func validateDiscount(couponID *uuid.UUID, discount, subtotal int) error {
+	if discount < 0 {
+		return xerrors.Wrap(ErrInvalidAmount, "discountAmount must not be negative")
+	}
+	if (couponID != nil) != (discount > 0) {
+		return apperror.WithDetails(
+			xerrors.Wrap(ErrZeroDiscount, "couponID and a positive discountAmount must be set together"),
+			FieldCouponID,
+		)
+	}
+	if discount > subtotal {
+		return xerrors.Wrap(ErrInvalidAmount, "discountAmount must not exceed the subtotal")
+	}
+
+	return nil
+}
+
+// ApplyCoupon は、クーポンの値引きを購入へ適用し、税と合計を計算し直します。
+//
+// 値引きが 0 以下の場合は ErrZeroDiscount（details に couponID）を返します。クーポンを消費して
+// 何も引かれない確定を作らないためで、対象の明細が 1 件も無い場合と、定率の値引きが最小単位に
+// 満たない場合がこれに当たります。
+// 既に適用済みの購入への再適用は ErrCouponAlreadyApplied を返します。1 回の購入に適用できる
+// クーポンは高々 1 枚です。
+func (p *Purchase) ApplyCoupon(couponID uuid.UUID, discountAmount int) error {
+	if couponID.IsNil() {
+		return xerrors.Wrap(ErrInvalidCouponID, "couponID is required")
+	}
+	if p.couponID != nil {
+		return ErrCouponAlreadyApplied
+	}
+	if discountAmount <= 0 {
+		return apperror.WithDetails(
+			xerrors.Wrap(ErrZeroDiscount, "the coupon does not reduce this purchase"),
+			FieldCouponID,
+		)
+	}
+	if err := validateDiscount(&couponID, discountAmount, p.subtotalAmount); err != nil {
+		return err
+	}
+
+	p.couponID = &couponID
+	p.discountAmount = discountAmount
+	p.taxAmount, p.shippingFee, p.totalAmount = settle(p.subtotalAmount, discountAmount)
+
+	return nil
+}
+
+// CouponID は、適用したクーポンの ID を返します。未適用の場合は nil です。
+func (p *Purchase) CouponID() *uuid.UUID { return ptr.Copy(p.couponID) }
+
+// DiscountAmount は、値引き額を返します。未適用の場合は 0 です。
+func (p *Purchase) DiscountAmount() int { return p.discountAmount }
 
 // validateStatusTimestamps は、statusCode と各イベント日時の組み合わせの到達可能性を検証します
 // （個々の理由は各分岐のコメント、契約は Reconstruct を参照）。
@@ -378,6 +462,13 @@ func (d PurchaseDetail) Quantity() int { return d.quantity }
 
 // UnitPrice は、単価スナップショット（価格スケール・ドル decimal）を返します。
 func (d PurchaseDetail) UnitPrice() money.Price { return d.unitPrice }
+
+// LineTotal は、明細の小計（単価 × 数量）を価格スケールの十進量で返します。丸めません。
+// 決済スケールへの丸めは、購入の小計と値引き額がそれぞれ 1 箇所で行います
+// （ADR-0038 (two-scale-quantity-model)）。
+func (d PurchaseDetail) LineTotal() decimal.Decimal {
+	return d.unitPrice.Decimal().Mul(decimal.FromInt(int64(d.quantity)))
+}
 
 // ID は、購入 ID を返します。
 func (p *Purchase) ID() uuid.UUID { return p.id }

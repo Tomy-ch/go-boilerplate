@@ -23,6 +23,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 type server struct {
@@ -146,6 +147,7 @@ func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesReq
 			UserID:          userID,
 			Details:         details,
 			DisplayCurrency: displayCurrency,
+			CouponID:        conv.UUIDPtr(request.Body.CouponId),
 		})
 	})
 	if err != nil {
@@ -161,6 +163,31 @@ func (s *server) PostPurchases(ctx context.Context, request gen.PostPurchasesReq
 
 // toPurchaseResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
 // 数量が int32 に収まらない場合はエラーを返します。
+// toAppliedCouponResponse は、適用したクーポンを応答の語彙へ写します。未適用の場合は nil です。
+func toAppliedCouponResponse(v *purchaseuc.AppliedCouponView) *gen.AppliedCouponResponse {
+	if v == nil {
+		return nil
+	}
+
+	var targetID *openapi_types.UUID
+	if v.ScopeTargetID != nil {
+		p := v.ScopeTargetID.ToPrimitive()
+		targetID = &p
+	}
+
+	return &gen.AppliedCouponResponse{
+		Id: v.ID.ToPrimitive(),
+		Discount: gen.CouponDiscount{
+			Kind:  gen.CouponDiscountKind(v.DiscountKind),
+			Value: v.DiscountValue.String(),
+		},
+		Scope: gen.CouponScope{
+			Kind:     gen.CouponScopeKind(v.ScopeKind),
+			TargetId: targetID,
+		},
+	}
+}
+
 func toPurchaseResponse(v purchaseuc.PurchaseView, ref *checkoutuc.ReferenceAmountView) (gen.PurchaseResponse, error) {
 	details := make([]gen.PurchaseDetailResponse, len(v.Details))
 	for i, d := range v.Details {
@@ -180,6 +207,8 @@ func toPurchaseResponse(v purchaseuc.PurchaseView, ref *checkoutuc.ReferenceAmou
 		UserId:          v.UserID.ToPrimitive(),
 		StatusId:        v.StatusID.ToPrimitive(),
 		SubtotalAmount:  int64(v.SubtotalAmount),
+		DiscountAmount:  int64(v.DiscountAmount),
+		AppliedCoupon:   toAppliedCouponResponse(v.AppliedCoupon),
 		TaxAmount:       int64(v.TaxAmount),
 		ShippingFee:     int64(v.ShippingFee),
 		TotalAmount:     int64(v.TotalAmount),

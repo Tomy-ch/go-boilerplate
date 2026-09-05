@@ -270,3 +270,42 @@ func Test_toPurchaseDetailItems(t *testing.T) {
 		})
 	})
 }
+
+func Test_toAppliedCoupon(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("結合で解決したクーポンを読み取りモデルへ写す", func(t *testing.T) {
+			t.Parallel()
+
+			couponID := uuidtestkit.NewTestFromSalt(t, "qs_coupon")
+			target := uuidtestkit.NewTestFromSalt(t, "qs_category")
+			value := decimaltestkit.MustParse(t, "0.10")
+			kind, scopeKind := int16(2), int16(2)
+
+			got := toAppliedCoupon(&gen.GetPurchaseDetailForUserRow{
+				CouponID:            &couponID,
+				CouponDiscountKind:  &kind,
+				CouponDiscountValue: &value,
+				CouponScopeKind:     &scopeKind,
+				CouponScopeTargetID: &target,
+			})
+
+			require.NotNil(t, got)
+			assert.Equal(t, couponID, got.ID)
+			assert.Equal(t, 2, got.DiscountKind)
+			assert.True(t, value.Equal(got.DiscountValue))
+			assert.Equal(t, 2, got.ScopeKind)
+			require.NotNil(t, got.ScopeTargetID)
+			assert.Equal(t, target, *got.ScopeTargetID)
+		})
+
+		t.Run("クーポンを適用していない購入はnilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, toAppliedCoupon(&gen.GetPurchaseDetailForUserRow{}))
+		})
+	})
+}

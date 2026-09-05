@@ -171,6 +171,17 @@ than left implicit:
   a set operation is that round trips do not grow with the population, not that there is exactly one
   statement. Splitting is forced by [ADR-0037](0037-uuidv7-identifiers.md), which puts key generation
   in the domain. Specified in `docs/spec/usecase/product.md`.
+
+- **Coupon redemption — a decomposable write on the same aggregate.** Applying one coupon at
+  checkout writes both `purchases` and `coupons`, yet it stays an ordinary usecase composed of
+  Repository calls. The rows it writes are named by identity: the caller supplies the coupon id, so
+  the row can be locked, and the write decomposes into `coupon.Repository.LockByID` +
+  `coupon.Repository.UpdateUsed` alongside `purchase.Repository.Create`. Branch 1 with a guard, by
+  the decision procedure above.
+  **Read this against the discontinuation above:** both write the coupon aggregate, and they land on
+  opposite sides of the criterion. What separates them is not how many aggregates are touched, nor how
+  important the operation is, but whether the target rows can be named — which is why the pair sits in
+  one aggregate rather than in two unrelated features. Specified in `docs/spec/usecase/purchase.md`.
 <!-- sample-api:replace-with -->
 <!-- = No instance has been recorded for this project yet. -->
 <!-- sample-api:replace-end -->

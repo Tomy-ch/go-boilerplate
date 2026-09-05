@@ -2461,3 +2461,323 @@ func TestPurchase_IsShippable(t *testing.T) {
 		})
 	})
 }
+
+func TestPurchase_ApplyCoupon(t *testing.T) {
+	t.Parallel()
+
+	// 小計 1615.00 ドル = 161500 セント（800×2 + 15×1）。
+	const subtotalCents = 161500
+
+	newTarget := func(t *testing.T) *Purchase {
+		t.Helper()
+		p, err := New(validNewArgs(t))
+		require.NoError(t, err)
+
+		return p
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("値引きを適用し、値引き後の額を基礎に税と合計を計算し直す", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTarget(t)
+			couponID := uuidtestkit.NewTestFromSalt(t, "coupon_applied")
+
+			require.NoError(t, p.ApplyCoupon(couponID, 500))
+
+			require.NotNil(t, p.CouponID())
+			assert.Equal(t, couponID, *p.CouponID())
+			assert.Equal(t, 500, p.DiscountAmount())
+			assert.Equal(t, subtotalCents, p.SubtotalAmount())
+			assert.Equal(t, (subtotalCents-500)*10/100, p.TaxAmount())
+			assert.Equal(t, subtotalCents-500+p.TaxAmount()+p.ShippingFee(), p.TotalAmount())
+		})
+
+		t.Run("小計は値引き前のまま据え置く", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTarget(t)
+			before := p.SubtotalAmount()
+
+			require.NoError(t, p.ApplyCoupon(uuidtestkit.NewTestFromSalt(t, "coupon_subtotal"), 1000))
+
+			assert.Equal(t, before, p.SubtotalAmount())
+		})
+
+		t.Run("値引きが小計ちょうどでも適用でき、合計は税と送料だけになる", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTarget(t)
+
+			require.NoError(t, p.ApplyCoupon(uuidtestkit.NewTestFromSalt(t, "coupon_full"), subtotalCents))
+
+			assert.Zero(t, p.TaxAmount())
+			assert.Equal(t, p.ShippingFee(), p.TotalAmount())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("値引きが0の場合、ErrZeroDiscountを返しdetailsにcouponIdを載せる", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTarget(t)
+
+			err := p.ApplyCoupon(uuidtestkit.NewTestFromSalt(t, "coupon_zero"), 0)
+
+			require.ErrorIs(t, err, ErrZeroDiscount)
+			require.ErrorIs(t, err, apperror.ErrValidation)
+
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, []string{FieldCouponID}, meta.Details())
+			assert.Nil(t, p.CouponID())
+		})
+
+		t.Run("値引きが負の場合、ErrZeroDiscountを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTarget(t)
+
+			err := p.ApplyCoupon(uuidtestkit.NewTestFromSalt(t, "coupon_negative"), -1)
+
+			require.ErrorIs(t, err, ErrZeroDiscount)
+			assert.Nil(t, p.CouponID())
+		})
+
+		t.Run("値引きが小計を超える場合、ErrInvalidAmountを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTarget(t)
+
+			err := p.ApplyCoupon(uuidtestkit.NewTestFromSalt(t, "coupon_over"), subtotalCents+1)
+
+			require.ErrorIs(t, err, ErrInvalidAmount)
+			assert.Nil(t, p.CouponID())
+		})
+
+		t.Run("クーポンIDが未設定の場合、ErrInvalidCouponIDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTarget(t)
+
+			err := p.ApplyCoupon(uuid.UUID{}, 500)
+
+			require.ErrorIs(t, err, ErrInvalidCouponID)
+			assert.Nil(t, p.CouponID())
+		})
+
+		t.Run("既に適用済みの場合、ErrCouponAlreadyAppliedを返し値引きを上書きしない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTarget(t)
+			first := uuidtestkit.NewTestFromSalt(t, "coupon_first")
+			require.NoError(t, p.ApplyCoupon(first, 500))
+
+			err := p.ApplyCoupon(uuidtestkit.NewTestFromSalt(t, "coupon_second"), 1000)
+
+			require.ErrorIs(t, err, ErrCouponAlreadyApplied)
+			assert.Equal(t, first, *p.CouponID())
+			assert.Equal(t, 500, p.DiscountAmount())
+		})
+	})
+}
+
+func TestPurchase_CouponID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未適用の場合はnilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p, err := New(validNewArgs(t))
+			require.NoError(t, err)
+
+			assert.Nil(t, p.CouponID())
+		})
+
+		t.Run("返した値を書き換えてもエンティティは変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			p, err := New(validNewArgs(t))
+			require.NoError(t, err)
+			couponID := uuidtestkit.NewTestFromSalt(t, "coupon_defensive")
+			require.NoError(t, p.ApplyCoupon(couponID, 500))
+
+			got := p.CouponID()
+			require.NotNil(t, got)
+			*got = uuidtestkit.NewTestFromSalt(t, "coupon_mutated")
+
+			assert.Equal(t, couponID, *p.CouponID())
+		})
+	})
+}
+
+func TestPurchase_DiscountAmount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未適用の場合は0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			p, err := New(validNewArgs(t))
+			require.NoError(t, err)
+
+			assert.Zero(t, p.DiscountAmount())
+		})
+
+		t.Run("適用後は値引き額を返す", func(t *testing.T) {
+			t.Parallel()
+
+			p, err := New(validNewArgs(t))
+			require.NoError(t, err)
+			require.NoError(t, p.ApplyCoupon(uuidtestkit.NewTestFromSalt(t, "coupon_amount"), 750))
+
+			assert.Equal(t, 750, p.DiscountAmount())
+		})
+	})
+}
+
+func Test_settle(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("値引きが無い場合は小計をそのまま課税の基礎にする", func(t *testing.T) {
+			t.Parallel()
+
+			tax, shipping, total := settle(10000, 0)
+
+			assert.Equal(t, 1000, tax)
+			assert.Equal(t, shippingFeeCents, shipping)
+			assert.Equal(t, 10000+1000+shippingFeeCents, total)
+		})
+
+		t.Run("値引きがある場合は値引き後の額を課税の基礎にする", func(t *testing.T) {
+			t.Parallel()
+
+			tax, _, total := settle(10000, 2000)
+
+			assert.Equal(t, 800, tax)
+			assert.Equal(t, 8000+800+shippingFeeCents, total)
+		})
+
+		t.Run("値引きが小計と同額の場合、税は0で合計は送料だけになる", func(t *testing.T) {
+			t.Parallel()
+
+			tax, shipping, total := settle(10000, 10000)
+
+			assert.Zero(t, tax)
+			assert.Equal(t, shipping, total)
+		})
+	})
+}
+
+func TestPurchaseDetail_LineTotal(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("単価と数量の積を丸めずに返す", func(t *testing.T) {
+			t.Parallel()
+
+			d := NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "line_total"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "line_total_product"),
+				Quantity:  3,
+				UnitPrice: mustPrice(t, "19.99"),
+			})
+
+			assert.Equal(t, "59.97", d.LineTotal().String())
+		})
+
+		t.Run("数量が1なら単価と同じ値になる", func(t *testing.T) {
+			t.Parallel()
+
+			d := NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, "line_total_one"), PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, "line_total_one_product"),
+				Quantity:  1,
+				UnitPrice: mustPrice(t, "12.5"),
+			})
+
+			assert.Equal(t, "12.5", d.LineTotal().String())
+		})
+	})
+}
+
+func Test_validateDiscount(t *testing.T) {
+	t.Parallel()
+
+	couponID := func(t *testing.T) *uuid.UUID {
+		t.Helper()
+		id := uuidtestkit.NewTestFromSalt(t, "validate_discount_coupon")
+
+		return &id
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("クーポンと正の値引きが揃っている場合は通る", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validateDiscount(couponID(t), 500, 10000))
+		})
+
+		t.Run("どちらも無い場合は通る", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validateDiscount(nil, 0, 10000))
+		})
+
+		t.Run("値引きが小計ちょうどの場合は通る", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validateDiscount(couponID(t), 10000, 10000))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("クーポンがあるのに値引きが0の場合、ErrZeroDiscountを返す", func(t *testing.T) {
+			t.Parallel()
+
+			err := validateDiscount(couponID(t), 0, 10000)
+
+			require.ErrorIs(t, err, ErrZeroDiscount)
+		})
+
+		t.Run("クーポンが無いのに値引きが立っている場合、ErrZeroDiscountを返す", func(t *testing.T) {
+			t.Parallel()
+
+			err := validateDiscount(nil, 500, 10000)
+
+			require.ErrorIs(t, err, ErrZeroDiscount)
+		})
+
+		t.Run("値引きが負の場合、ErrInvalidAmountを返す", func(t *testing.T) {
+			t.Parallel()
+
+			err := validateDiscount(couponID(t), -1, 10000)
+
+			require.ErrorIs(t, err, ErrInvalidAmount)
+		})
+
+		t.Run("値引きが小計を超える場合、ErrInvalidAmountを返す", func(t *testing.T) {
+			t.Parallel()
+
+			err := validateDiscount(couponID(t), 10001, 10000)
+
+			require.ErrorIs(t, err, ErrInvalidAmount)
+		})
+	})
+}

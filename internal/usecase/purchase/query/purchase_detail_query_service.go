@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/domain/lexicon/money"
+	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 )
 
@@ -30,6 +31,8 @@ type PurchaseDetailReadModel struct {
 	StatusCode     int
 	StatusName     string
 	SubtotalAmount int64
+	DiscountAmount int64
+	AppliedCoupon  *AppliedCouponReadModel
 	TaxAmount      int64
 	ShippingFee    int64
 	TotalAmount    int64
@@ -37,6 +40,18 @@ type PurchaseDetailReadModel struct {
 	OrderedAt      time.Time
 	PaidAt         *time.Time
 	CanceledAt     *time.Time
+}
+
+// AppliedCouponReadModel は、購入に適用したクーポンの読み取りモデルです。
+//
+// 値引きと適用範囲は控えへ写さず結合で解決した現在値です。発行済みクーポンを書き換える口が無いため
+// 内容がぶれません（ProductName と同じ扱い。docs/spec/usecase/purchase.md の GET 詳細）。
+type AppliedCouponReadModel struct {
+	ID            uuid.UUID
+	DiscountKind  int
+	DiscountValue decimal.Decimal
+	ScopeKind     int
+	ScopeTargetID *uuid.UUID
 }
 
 // PurchaseDetailItem は、購入明細 1 件の読み取りモデルです。ProductName は購入時点ではなく現在の商品名、
