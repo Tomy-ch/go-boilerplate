@@ -208,7 +208,7 @@ func validateConfig(cfg Loader) error {
 		return err
 	}
 
-	if err := validateSecurityConfig(cfg.Security); err != nil {
+	if err := validateSecurityConfig(cfg.Security, cfg.App); err != nil {
 		return err
 	}
 
@@ -347,12 +347,23 @@ func validateDBConnectionConfig(dbConnCfg DBConnection) error {
 
 // validateSecurityConfig は、セキュリティ設定を検証します。
 // CIDR は parseCIDR に委ねる。
-func validateSecurityConfig(secCfg Security) error {
+//
+// ワイルドカードの許可オリジンを production モードで拒否するのは、url.Parse がこれを scheme 無しの
+// 相対参照として受理し、下の HTTP 判定にも掛からないためです（env/README.md「Notes」の
+// Wildcard origin guard）。
+func validateSecurityConfig(secCfg Security, appCfg Application) error {
 	if len(secCfg.AllowedOrigins) == 0 {
 		return ErrEmptyAllowedOrigins
 	}
 
 	for _, origin := range secCfg.AllowedOrigins {
+		if origin == WildcardOrigin {
+			if appCfg.Mode == ProductionMode {
+				return ErrWildcardOriginNotProduction
+			}
+			continue
+		}
+
 		parsedURL, err := url.Parse(origin)
 		if err != nil {
 			return ErrHTTPOnlyAllowedForLocalhost

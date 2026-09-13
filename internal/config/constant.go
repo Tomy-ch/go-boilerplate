@@ -27,6 +27,10 @@ const (
 	ProductionMode = "production"
 )
 
+// WildcardOrigin は、CORS 許可オリジンでオリジンを限定しないことを表す値です。
+// production モードでは validateSecurityConfig が拒否します。
+const WildcardOrigin = "*"
+
 // ログ出力レベルの列挙。APP_LOG_LEVEL が受理する値。
 const (
 	// LogLevelDebug はデバッグレベルを表します。

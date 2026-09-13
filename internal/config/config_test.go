@@ -727,7 +727,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 		t.Run("既定の許可オリジンの場合、エラーが返されないこと", func(t *testing.T) {
 			t.Parallel()
 			cfg := mockLoader(t)
-			err := validateSecurityConfig(cfg.Security)
+			err := validateSecurityConfig(cfg.Security, cfg.App)
 			require.NoError(t, err)
 		})
 
@@ -736,7 +736,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{"http://127.0.0.1"} // localhost 同等のループバック
 
-			err := validateSecurityConfig(cfg.Security)
+			err := validateSecurityConfig(cfg.Security, cfg.App)
 			require.NoError(t, err)
 		})
 
@@ -745,7 +745,17 @@ func Test_validateSecurityConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{"https://example.com"} // 非ループバックでも HTTPS なら許可
 
-			err := validateSecurityConfig(cfg.Security)
+			err := validateSecurityConfig(cfg.Security, cfg.App)
+			require.NoError(t, err)
+		})
+
+		t.Run("developmentモードならワイルドカードが許可されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.App.Mode = DevelopmentMode
+			cfg.Security.AllowedOrigins = []string{WildcardOrigin}
+
+			err := validateSecurityConfig(cfg.Security, cfg.App)
 			require.NoError(t, err)
 		})
 	})
@@ -757,7 +767,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{} // 空のAllowedOrigins
 
-			err := validateSecurityConfig(cfg.Security)
+			err := validateSecurityConfig(cfg.Security, cfg.App)
 			require.ErrorIs(t, err, ErrEmptyAllowedOrigins)
 		})
 
@@ -766,8 +776,28 @@ func Test_validateSecurityConfig(t *testing.T) {
 			cfg := mockLoader(t)
 			cfg.Security.AllowedOrigins = []string{"http://example.com"} // localhost以外のHTTP
 
-			err := validateSecurityConfig(cfg.Security)
+			err := validateSecurityConfig(cfg.Security, cfg.App)
 			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
+		})
+
+		t.Run("productionモードでワイルドカードが指定された場合", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+			cfg.Security.AllowedOrigins = []string{WildcardOrigin}
+
+			err := validateSecurityConfig(cfg.Security, cfg.App)
+			require.ErrorIs(t, err, ErrWildcardOriginNotProduction)
+		})
+
+		t.Run("productionモードで具体オリジンに混じったワイルドカードも拒否されること", func(t *testing.T) {
+			t.Parallel()
+			cfg := mockLoader(t)
+			cfg.App.Mode = ProductionMode
+			cfg.Security.AllowedOrigins = []string{"https://example.com", WildcardOrigin}
+
+			err := validateSecurityConfig(cfg.Security, cfg.App)
+			require.ErrorIs(t, err, ErrWildcardOriginNotProduction)
 		})
 
 		t.Run("オリジンのURLパースに失敗した場合", func(t *testing.T) {
@@ -776,7 +806,7 @@ func Test_validateSecurityConfig(t *testing.T) {
 			// 制御文字を含む URL は url.Parse がエラーを返す。
 			cfg.Security.AllowedOrigins = []string{"http://example.com/\x7f"}
 
-			err := validateSecurityConfig(cfg.Security)
+			err := validateSecurityConfig(cfg.Security, cfg.App)
 			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
 		})
 	})

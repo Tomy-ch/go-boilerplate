@@ -35,6 +35,12 @@ var (
 		errInvalidConfig,
 		"http only localhost is allowed",
 	)
+	// ErrWildcardOriginNotProduction は、production モードで CORS 許可オリジンにワイルドカードが
+	// 指定されたことを示す検証エラーです。
+	ErrWildcardOriginNotProduction = xerrors.Wrap(
+		errInvalidConfig,
+		"wildcard allowed origin is not permitted in production mode",
+	)
 	// ErrFailedToLoadEnvFile は、埋め込み env ファイルの読み込みに失敗したことを示すエラーです。
 	ErrFailedToLoadEnvFile = xerrors.Wrap(
 		errInvalidConfig,
