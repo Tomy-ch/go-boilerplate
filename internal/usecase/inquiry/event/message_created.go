@@ -4,9 +4,9 @@ package event
 
 import (
 	"encoding/json"
-	"time"
 
 	"go-boilerplate/internal/domain/inquiry"
+	"go-boilerplate/internal/usecase/tools/datetime"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -43,7 +43,7 @@ func BuildMessageCreated(i *inquiry.Inquiry, m *inquiry.Message) ([]byte, error)
 		Author:    messageAuthor{Kind: m.Author().Kind().String()},
 		Body:      m.Body(),
 		Sequence:  m.Sequence(),
-		CreatedAt: m.CreatedAt().Format(time.RFC3339Nano),
+		CreatedAt: datetime.FormatUTC(m.CreatedAt()),
 	})
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to encode inquiry.message.created payload")

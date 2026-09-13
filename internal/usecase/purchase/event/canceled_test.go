@@ -48,7 +48,7 @@ func TestBuildCanceled(t *testing.T) {
 				DeliveredAt:    nil,
 			})
 			require.NoError(t, err)
-			now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+			now := time.Date(2026, time.July, 25, 21, 0, 0, 0, testJST)
 			_, err = entity.Cancel(now)
 			require.NoError(t, err)
 
@@ -67,7 +67,7 @@ func TestBuildCanceled(t *testing.T) {
 			assert.Equal(t, "bc-code", decoded.Code)
 			assert.Equal(t, entity.UserID().String(), decoded.UserID)
 			assert.Equal(t, domainpurchase.StatusCanceled.Code(), decoded.StatusCode)
-			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.CanceledAt)
+			assert.Equal(t, "2026-07-25T12:00:00Z", decoded.CanceledAt)
 		})
 	})
 

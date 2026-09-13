@@ -21,7 +21,7 @@ func TestBuildThreadUpdated(t *testing.T) {
 
 		t.Run("一覧の更新に要る値だけを載せ本文を持たない", func(t *testing.T) {
 			t.Parallel()
-			updatedAt := time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
+			updatedAt := time.Date(2026, time.September, 1, 19, 0, 0, 0, testJST)
 			i, err := inquiry.Reconstruct(uuidtestkit.NewTestFromSalt(t, "inquiry"), inquiry.Attributes{
 				UserID:    uuidtestkit.NewTestFromSalt(t, "user"),
 				CreatedAt: updatedAt.Add(-time.Hour),

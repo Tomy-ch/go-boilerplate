@@ -6,10 +6,10 @@ package event
 
 import (
 	"encoding/json"
-	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/usecase/tools/datetime"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -79,7 +79,7 @@ func BuildCreated(p *purchase.Purchase) ([]byte, error) {
 		ShippingFee:    p.ShippingFee(),
 		TotalAmount:    p.TotalAmount(),
 		CouponID:       couponID,
-		OrderedAt:      p.OrderedAt().Format(time.RFC3339Nano),
+		OrderedAt:      datetime.FormatUTC(p.OrderedAt()),
 		Details:        details,
 	})
 	if err != nil {

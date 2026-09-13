@@ -2,9 +2,9 @@ package event
 
 import (
 	"encoding/json"
-	"time"
 
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/usecase/tools/datetime"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -24,7 +24,7 @@ type paid struct {
 func BuildPaid(p *purchase.Purchase) ([]byte, error) {
 	var paidAt string
 	if at := p.PaidAt(); at != nil {
-		paidAt = at.Format(time.RFC3339Nano)
+		paidAt = datetime.FormatUTC(*at)
 	}
 
 	payload, err := json.Marshal(paid{

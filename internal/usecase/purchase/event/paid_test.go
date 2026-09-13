@@ -53,7 +53,7 @@ func TestBuildPaid(t *testing.T) {
 			t.Parallel()
 
 			entity := unprocessed(t, "bp")
-			now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+			now := time.Date(2026, time.July, 25, 21, 0, 0, 0, testJST)
 			_, err := entity.Pay(now)
 			require.NoError(t, err)
 
@@ -72,7 +72,7 @@ func TestBuildPaid(t *testing.T) {
 			assert.Equal(t, "bp-code", decoded.Code)
 			assert.Equal(t, entity.UserID().String(), decoded.UserID)
 			assert.Equal(t, domainpurchase.StatusPaid.Code(), decoded.StatusCode)
-			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.PaidAt)
+			assert.Equal(t, "2026-07-25T12:00:00Z", decoded.PaidAt)
 		})
 
 		t.Run("paidAtがnilの購入はpaidAtが空文字列になる", func(t *testing.T) {

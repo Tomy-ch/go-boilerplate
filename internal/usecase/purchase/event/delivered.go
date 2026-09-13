@@ -2,9 +2,9 @@ package event
 
 import (
 	"encoding/json"
-	"time"
 
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/usecase/tools/datetime"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -24,7 +24,7 @@ type delivered struct {
 func BuildDelivered(p *purchase.Purchase) ([]byte, error) {
 	var deliveredAt string
 	if at := p.DeliveredAt(); at != nil {
-		deliveredAt = at.Format(time.RFC3339Nano)
+		deliveredAt = datetime.FormatUTC(*at)
 	}
 
 	payload, err := json.Marshal(delivered{

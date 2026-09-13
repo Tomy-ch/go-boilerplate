@@ -16,8 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testJST は、payload の時刻が UTC へ正規化されることを検出するための非 UTC ロケーションです。
+var testJST = time.FixedZone("JST", 9*60*60)
+
 // testOrderedAt は、書き込み後に読み直した集約が持つ注文日時です（DB が採番する値の代役）。
-var testOrderedAt = time.Date(2026, time.July, 23, 9, 30, 0, 0, time.UTC)
+var testOrderedAt = time.Date(2026, time.July, 23, 18, 30, 0, 0, testJST)
 
 // asReread は、New で組み立てた集約を「書き込み後に読み直した」形へ写します。
 // 注文日時は DB 採番なので New 直後の集約には載っておらず、BuildCreated は読み直した集約を受け取ります。
@@ -100,7 +103,7 @@ func TestBuildCreated(t *testing.T) {
 			assert.Equal(t, 16000, decoded.TaxAmount)
 			assert.Equal(t, 500, decoded.ShippingFee)
 			assert.Equal(t, 176500, decoded.TotalAmount)
-			assert.Equal(t, testOrderedAt.Format(time.RFC3339Nano), decoded.OrderedAt)
+			assert.Equal(t, "2026-07-23T09:30:00Z", decoded.OrderedAt)
 			require.Len(t, decoded.Details, 1)
 			assert.Equal(t, productA.String(), decoded.Details[0].ProductID)
 			assert.Equal(t, 2, decoded.Details[0].Quantity)
