@@ -13,6 +13,9 @@ import (
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 )
 
+// testJST は、payload の時刻が UTC へ正規化されることを検出するための非 UTC ロケーションです。
+var testJST = time.FixedZone("JST", 9*60*60)
+
 // newTestInquiry は、payload の組み立て元となる問い合わせを作ります。
 func newTestInquiry(t *testing.T) *inquiry.Inquiry {
 	t.Helper()
@@ -34,7 +37,7 @@ func newTestMessage(t *testing.T, kind inquiry.AuthorKind) *inquiry.Message {
 			Author:    author,
 			Body:      "本文",
 			Sequence:  3,
-			CreatedAt: time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC),
+			CreatedAt: time.Date(2026, time.September, 1, 19, 0, 0, 0, testJST),
 		},
 	)
 	require.NoError(t, err)

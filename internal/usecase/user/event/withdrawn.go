@@ -3,10 +3,10 @@ package event
 
 import (
 	"encoding/json"
-	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/user"
+	"go-boilerplate/internal/usecase/tools/datetime"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -28,7 +28,7 @@ type Withdrawn struct {
 func BuildWithdrawn(u *user.User) ([]byte, error) {
 	var deletedAt string
 	if at := u.DeletedAt(); at != nil {
-		deletedAt = at.Format(time.RFC3339Nano)
+		deletedAt = datetime.FormatUTC(*at)
 	}
 
 	payload, err := json.Marshal(Withdrawn{

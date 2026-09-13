@@ -55,7 +55,7 @@ func TestBuildDelivered(t *testing.T) {
 			t.Parallel()
 
 			entity := shipped(t, "bd")
-			now := time.Date(2026, time.July, 28, 9, 0, 0, 0, time.UTC)
+			now := time.Date(2026, time.July, 28, 18, 0, 0, 0, testJST)
 			_, err := entity.Deliver(now)
 			require.NoError(t, err)
 
@@ -74,7 +74,7 @@ func TestBuildDelivered(t *testing.T) {
 			assert.Equal(t, "bd-code", decoded.Code)
 			assert.Equal(t, entity.UserID().String(), decoded.UserID)
 			assert.Equal(t, domainpurchase.StatusDelivered.Code(), decoded.StatusCode)
-			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.DeliveredAt)
+			assert.Equal(t, "2026-07-28T09:00:00Z", decoded.DeliveredAt)
 		})
 
 		t.Run("deliveredAtがnilの購入はdeliveredAtが空文字列になる", func(t *testing.T) {

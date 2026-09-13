@@ -368,11 +368,24 @@ payloads:
       <集約のフィールド名>: <payload の JSON 名>   # 運ぶ
       <集約のフィールド名>:
         omit: <理由>                              # 運ばない。理由は必須
-```宣言がこの層に属するのは
-ワイヤ表現がこの層に属するからで、事象の**名前**はドメインの語彙だが表現はそうではない
-（`internal/domain/README.md` の Domain events）。`TestOutboxPayloadParity` が宣言とコードを突き合わせる
-ので、集約にフィールドを足すと payload での扱いを書き下すまで落ちる。
+```
+
+宣言がこの層に属するのはワイヤ表現がこの層に属するからで、事象の**名前**はドメインの語彙だが表現は
+そうではない（`internal/domain/README.md` の Domain events）。`TestOutboxPayloadParity` が宣言とコードを
+突き合わせるので、集約にフィールドを足すと payload での扱いを書き下すまで落ちる。
 詳細は [ADR-0113](../../docs/adr/0113-outbox-payload-kinds-and-parity-declaration.ja.md)。
+
+ワイヤ表現を所有するということは、payload が時刻をどう綴るかも所有するということである。**`<集約>/event/`
+の payload に載る時刻項目はすべて [`tools/datetime`](tools/datetime/README.ja.md) を通す** — 瞬間を UTC で
+綴るのはこのパッケージであり、配送される 1 つのフレームの中で封筒の `occurredAt` と payload 自身の項目が
+同じ読み方になる。builder の側で整形するとオフセットがデプロイ先の `TZ` の関数になり、購読側の schema が
+API の動く場所によって通ったり落ちたりする。公開された契約が持ってよい性質ではない。
+
+`TestOutboxPayloadTimeUTC` は、時刻を自分で整形した event パッケージを落とす。これがヘルパーを唯一の
+通り道にしている。`Format` 呼び出しを探すテキスト走査なので、`time.Time` をそのまま `json.Marshal` へ
+渡す payload はこの検査の視野の外にある — 封筒はまさにその形で、自身の `MarshalJSON` の側で正規化して
+いる。この規則が及ぶのはこの層が外へ出す event payload だけで、それより広くはない: ページングカーソルは
+発行したデプロイが自分で読み戻す opaque トークンであり、構造化ログのフィールドは別の契約に属する。
 
 ### doc コメント：インターフェイス側と実装側
 

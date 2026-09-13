@@ -2,9 +2,9 @@ package event
 
 import (
 	"encoding/json"
-	"time"
 
 	"go-boilerplate/internal/domain/inquiry"
+	"go-boilerplate/internal/usecase/tools/datetime"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -30,7 +30,7 @@ func BuildThreadUpdated(i *inquiry.Inquiry, sequence int64) ([]byte, error) {
 		InquiryID: i.ID().String(),
 		UserID:    i.UserID().String(),
 		Sequence:  sequence,
-		UpdatedAt: i.UpdatedAt().Format(time.RFC3339Nano),
+		UpdatedAt: datetime.FormatUTC(i.UpdatedAt()),
 	})
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to encode inquiry.thread.updated payload")

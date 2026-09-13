@@ -14,6 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testJST は、payload の時刻が UTC へ正規化されることを検出するための非 UTC ロケーションです。
+var testJST = time.FixedZone("JST", 9*60*60)
+
 func TestParseWithdrawn(t *testing.T) {
 	t.Parallel()
 
@@ -36,7 +39,7 @@ func TestParseWithdrawn(t *testing.T) {
 				UpdatedAt:    createdAt,
 			})
 			require.NoError(t, err)
-			deletedAt := time.Date(2026, time.July, 29, 12, 0, 0, 0, time.UTC)
+			deletedAt := time.Date(2026, time.July, 29, 21, 0, 0, 0, testJST)
 			require.NoError(t, entity.MarkAsDeleted(deletedAt))
 			payload, err := event.BuildWithdrawn(entity)
 			require.NoError(t, err)
@@ -45,7 +48,7 @@ func TestParseWithdrawn(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, entity.ID().String(), got.UserID)
-			assert.Equal(t, deletedAt.Format(time.RFC3339Nano), got.DeletedAt)
+			assert.Equal(t, "2026-07-29T12:00:00Z", got.DeletedAt)
 		})
 
 		t.Run("未知のフィールドは無視する", func(t *testing.T) {
@@ -111,7 +114,7 @@ func TestBuildWithdrawn(t *testing.T) {
 			t.Parallel()
 
 			entity := active(t, "bw")
-			deletedAt := time.Date(2026, time.July, 29, 12, 0, 0, 0, time.UTC)
+			deletedAt := time.Date(2026, time.July, 29, 21, 0, 0, 0, testJST)
 			require.NoError(t, entity.MarkAsDeleted(deletedAt))
 
 			payload, err := event.BuildWithdrawn(entity)
@@ -123,7 +126,7 @@ func TestBuildWithdrawn(t *testing.T) {
 			}
 			require.NoError(t, json.Unmarshal(payload, &decoded))
 			assert.Equal(t, entity.ID().String(), decoded.UserID)
-			assert.Equal(t, deletedAt.Format(time.RFC3339Nano), decoded.DeletedAt)
+			assert.Equal(t, "2026-07-29T12:00:00Z", decoded.DeletedAt)
 		})
 
 		t.Run("deletedAtがnilのユーザーはdeletedAtが空文字列になる", func(t *testing.T) {

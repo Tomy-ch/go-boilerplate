@@ -2,10 +2,10 @@ package event
 
 import (
 	"encoding/json"
-	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/purchase"
+	"go-boilerplate/internal/usecase/tools/datetime"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -34,7 +34,7 @@ func BuildCanceled(p *purchase.Purchase) ([]byte, error) {
 
 	var canceledAt string
 	if at := p.CanceledAt(); at != nil {
-		canceledAt = at.Format(time.RFC3339Nano)
+		canceledAt = datetime.FormatUTC(*at)
 	}
 
 	payload, err := json.Marshal(canceled{
