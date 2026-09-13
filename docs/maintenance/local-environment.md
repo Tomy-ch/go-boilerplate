@@ -125,10 +125,12 @@ for real. **Do not go past `2048`: `2049` is NFS.**
 
 Adding a service: `2003`–`2009` for a fixed port, `2030+` for one that needs a per-slot range.
 
-`8000` is also the second origin in the default `SECURITY_ALLOWED_ORIGINS` (`http://localhost:8000`) —
-the port a frontend dev server tends to take once Grafana holds `3000`. DynamoDB Local keeps `8000`
-because it is the upstream default that every external snippet assumes; run a frontend dev server on
-another port (Vite's `5173`, for instance) and add that origin to `SECURITY_ALLOWED_ORIGINS` instead.
+DynamoDB Local keeps `8000` because it is the upstream default that every external snippet assumes,
+and Grafana keeps `3000` for the same reason — which between them are the two ports a frontend dev
+server tends to default to. So the `local` class names no frontend origin at all:
+`SECURITY_ALLOWED_ORIGINS=*` lets a dev server sit wherever it lands, on this repository or on a
+project instantiated from it. `AllowCredentials` is off (`internal/controller/httpstack/cors`), so
+`*` grants no credentialed access. `dast` and every deploy environment name their origin explicitly.
 
 ### Collation version mismatch after a `database` base-OS change
 
