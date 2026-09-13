@@ -120,10 +120,12 @@ elasticmq・DynamoDB Local・GoAWS の上流既定なので、読者が期待す
 
 サービスを追加するときは、固定ポートなら `2003`–`2009`、スロット毎の帯が要るなら `2030` 以降。
 
-`8000` は既定の `SECURITY_ALLOWED_ORIGINS` の 2 つ目の origin（`http://localhost:8000`）でもある — Grafana が
-`3000` を握っているときにフロントエンドの dev server が取りがちなポートである。DynamoDB Local を `8000` に置くのは、
-外部のあらゆるスニペットが前提にする上流既定だから。フロントエンドの dev server は別のポート（例えば Vite の
-`5173`）で動かし、その origin を `SECURITY_ALLOWED_ORIGINS` に足すこと。
+DynamoDB Local を `8000` に置くのは、外部のあらゆるスニペットが前提にする上流既定だから。Grafana の `3000` も
+同じ理由でそこに居る — そしてこの 2 つは、フロントエンドの dev server が既定で取りがちなポートそのものである。
+そのため `local` クラスはフロントエンドの origin を名指ししない: `SECURITY_ALLOWED_ORIGINS=*` にしておけば、
+このリポジトリでも、ここから instantiate したプロジェクトでも、dev server が立った場所で通る。
+`AllowCredentials` は false なので（`internal/controller/httpstack/cors`）、`*` でも資格情報付きのアクセスは
+許可されない。`dast` と各デプロイ環境は origin を明示する。
 
 ### `database` のベース OS 変更後に出る collation version mismatch
 

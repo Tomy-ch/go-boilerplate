@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/config"
 
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -97,6 +98,22 @@ func Test_buildCORSConfig(t *testing.T) {
 			assert.Equal(t, []string{}, cfg.AllowOrigins)
 			assert.False(t, cfg.AllowCredentials)
 			assert.Equal(t, corsMaxAgeSeconds, cfg.MaxAge)
+		})
+
+		t.Run("ワイルドカードを渡すと任意のOriginへAccess-Control-Allow-Originがワイルドカードで返る", func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			e.Use(middleware.CORSWithConfig(buildCORSConfig([]string{"*"})))
+			e.GET("/", func(c *echo.Context) error { return c.NoContent(http.StatusOK) })
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodOptions, "/", nil)
+			req.Header.Set(echo.HeaderOrigin, "https://any.example.com")
+			req.Header.Set(echo.HeaderAccessControlRequestMethod, http.MethodGet)
+			rec := httptest.NewRecorder()
+
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 		})
 	})
 }
