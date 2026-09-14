@@ -19,7 +19,7 @@
 
 リポジトリ固有の答えを持たない一般的なプログラミングやライブラリの問い、`repo-ops` に
 文書化された既知の運用障害、`research` が必要な未決の選択、差分レビュー（`impl-review`、
-`test-review`、`comment-sweep`）、発見事項の起票（`new-issue`）には使いません。
+`test-review`、`settle-comments`）、発見事項の起票（`new-issue`）には使いません。
 
 ## 契約
 

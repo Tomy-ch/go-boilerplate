@@ -11,7 +11,7 @@
 - なぜその設計なのかを問われたとき。
 - 手順・規則・用語がそもそも存在するのかを問われたとき。
 
-以下には使わない: リポジトリ固有の答えを持たない一般的なプログラミングの問い、手順が文書化された既知の運用症状（`repo-ops`）、選択肢の比較が要る未決の設計問題（`research`）、差分のレビュー（`impl-review` / `test-review` / `comment-sweep`）、見つけたものの起票（`new-issue`）。
+以下には使わない: リポジトリ固有の答えを持たない一般的なプログラミングの問い、手順が文書化された既知の運用症状（`repo-ops`）、選択肢の比較が要る未決の設計問題（`research`）、差分のレビュー（`impl-review` / `test-review` / `settle-comments`）、見つけたものの起票（`new-issue`）。
 
 ## 契約
 
@@ -275,7 +275,7 @@ High | Medium | Low — <そう判断した理由>
 未決の設計問題なら `research`、見つけたものの起票なら `new-issue`、drift なら `back-prop`、既知症状なら
 `repo-ops` —— 回すかどうかはユーザーが決める。
 
-3 つのレビュースキルが `AGENTS.md` の Review Phase Protocol の下で peer である理由と同じである。次を代わりに
+レビュースキルが `AGENTS.md` の Review Phase Protocol の下で peer である理由と同じである。次を代わりに
 回すスキルはその決定をユーザーから取り上げ、そしてこのスキルの判断が drift したとき、そこを通った全フローが
 黙って振り替えられることになる。
 

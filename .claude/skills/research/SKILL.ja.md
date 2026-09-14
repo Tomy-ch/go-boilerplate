@@ -11,7 +11,7 @@
 - 決定が見直されており、トレードオフをもう一度並べる必要があるとき。
 
 以下には使わない: リポジトリの現状の確認（先に `repo-truth`）、既に決まった issue の実行（`impl-issue`）、
-結果の起票（`new-issue`）、差分のレビュー（`impl-review` / `test-review` / `comment-sweep`）。
+結果の起票（`new-issue`）、差分のレビュー（`impl-review` / `test-review` / `settle-comments`）。
 
 ## 契約
 

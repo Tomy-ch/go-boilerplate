@@ -73,29 +73,40 @@ Before implementing any change:
 
 For API changes: OpenAPI is defined first. For DB changes: the migration + SQL exist first.
 
+**The implementation itself writes no comments, and a separate pass decides which ones the change
+earned.** A comment produced while generating code is a by-product of generating it, never a judgment
+that the declaration needed one — and a model that writes prose for free produces that by-product at
+every declaration it touches. So write the code bare; then run `/settle-comments` over the
+declarations you touched. That pass is **unconditional and confirms before it writes**, and until it
+has run the change is unfinished rather than unreviewed. What earns a comment is `docs/rules.md`,
+*Comment Rules*; this file only fixes when the question gets asked.
+
 <!-- boilerplate-only:begin -->
 ## Review Phase Protocol
 
 A request to review work that has already been implemented — 「レビューして」 or any equivalent —
-names **three** subjects this repository ships a skill for, not one:
+names **two** subjects this repository ships a skill for, not one:
 
 | Skill | Subject |
 | --- | --- |
 | `/impl-review` | the change itself — architecture / DDD modeling / security / correctness / runtime gap |
 | `/test-review` | the tests that pin the change down |
-| `/comment-sweep` | the comment stock carried by the files the change touched |
 
-Do not silently pick one, and do not ask 「三つとも回しますか」 — that hands the cost back unpriced.
+**The comment stock is not on this list.** `/settle-comments` runs unconditionally as the last step of
+the implementation, not as a review whose return gets estimated — see *Task Execution Protocol*.
+
+Do not silently pick one, and do not ask 「二つとも回しますか」 — that hands the cost back unpriced.
 **Estimate each skill's return from the context you already hold** — which layers the change touched,
-whether tests or comments moved at all, what an earlier skill in this session already covered — then
+whether the tests moved at all, what an earlier skill in this session already covered — then
 **ask per skill whether to run it, saying which pass you expect to pay off, which you expect to return
 nothing, and why**, and run what they approve.
 
-The three are **peers, and none of them invokes another.** One subject to one skill, and that skill is
-the only place its subject is audited: `/impl-review` owns no test lens and no comment lens, and the
-other two are invoked in their own right whether or not it runs. The coupling belongs in the *asking*,
-not in the skills. **This holds inside a pipeline too** — a skill that drives an issue to a merged PR
-asks these three questions at its review phase rather than choosing for the user.
+The two are **peers, and neither invokes the other.** One subject to one skill, and that skill is the
+only place its subject is audited: `/impl-review` owns no test lens and no comment lens, and
+`/test-review` is invoked in its own right whether or not it runs. The coupling belongs in the
+*asking*, not in the skills. **This holds inside a pipeline too** — a skill that drives an issue to a
+merged PR asks these two questions at its review phase rather than choosing for the user, and has
+already run the comment pass as part of implementing.
 <!-- boilerplate-only:end -->
 
 ## Layer Rules

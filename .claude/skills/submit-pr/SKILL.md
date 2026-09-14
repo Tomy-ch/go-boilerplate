@@ -52,9 +52,11 @@ The four valid working states going into Step 2:
 
 Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask which pre-push reviews to run. Review before the change leaves the machine is the point: it inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss.
 
-**Name all three explicitly.** The Review Phase Protocol in `AGENTS.md` gives one subject to each skill — `/impl-review` the change, `/test-review` the tests, `/comment-sweep` the comment stock — and none of them offers to run the others. So this question is the only place all three are visible at once, and listing just one would silently drop the other two from every flow that goes through here. Do NOT auto-run any of them.
+**Name both explicitly.** The Review Phase Protocol in `AGENTS.md` gives one subject to each skill — `/impl-review` the change, `/test-review` the tests — and neither offers to run the other. So this question is the only place both are visible at once, and listing just one would silently drop the other from every flow that goes through here. Do NOT auto-run either of them.
 
-Per the same protocol, **estimate each one's return before asking** — which layers the change touched, whether tests or comments moved at all, what an earlier skill in this session already covered — and say which you expect to pay off and which you expect to return nothing. Handing over three unpriced checkboxes is the failure this protocol names.
+**`/settle-comments` is deliberately not on this list.** It is not a review whose return gets estimated; it runs unconditionally as the last step of implementing. Offering it here would read as though there is a path that skips it. If it has not run, the change is unfinished rather than unreviewed — say so and send the user back to it instead of adding a checkbox.
+
+Per the same protocol, **estimate each one's return before asking** — which layers the change touched, whether the tests moved at all, what an earlier skill in this session already covered — and say which you expect to pay off and which you expect to return nothing. Handing over unpriced checkboxes is the failure this protocol names.
 
 `AskUserQuestion`:
 
@@ -62,7 +64,6 @@ Per the same protocol, **estimate each one's return before asking** — which la
 - Options (multi-select; each carries this run's estimate and its reason):
   - 「`/impl-review`（変更そのもの — 実装者とは別モデルの独立・敵対レビュー）」
   - 「`/test-review`（テスト — 分岐 × 意味の網羅とシンボル網羅）」
-  - 「`/comment-sweep`（コメント在庫 — 触れたファイルをファイル単位で掃引）」
   - 「実行済み / 不要（このまま進める）」 — continue to Step 2.
   - 「キャンセル」 — abort.
 
@@ -260,7 +261,7 @@ After the PR URL is reported, **always ask the user whether to run a PR-based re
 - Options (offer the ones that apply):
   - 「`/code-review <PR#>` を実行」 — PR-based review (can post inline comments with `--comment`)
   - 「ultrareview を案内」 — cloud multi-agent review; **user-triggered and billed**, so the skill cannot launch it — only surface the command for the user to run
-  - 「`/impl-review` / `/test-review` / `/comment-sweep` を実行」 — offer these only if the user skipped the pre-push gate at Step 1; list all three the way Step 1 does, each with its estimate, since they are peers and none of them will surface the others
+  - 「`/impl-review` / `/test-review` を実行」 — offer these only if the user skipped the pre-push gate at Step 1; list both the way Step 1 does, each with its estimate, since they are peers and neither will surface the other
   - 「レビューしない」
 
 Scale the default recommendation to what changed, using the **Depth by change type** guidance in Step 1 (behavior-affecting code → recommend by default; docs / tooling-dominant → note the lower ROI). The user's choice always wins.

@@ -25,7 +25,7 @@ Use this skill when someone asks:
 
 Do NOT use it for a general programming or library question with no repository-specific answer, a
 known operational failure documented by `repo-ops`, an undecided choice that requires `research`, a
-diff review (`impl-review`, `test-review`, or `comment-sweep`), or filing a finding (`new-issue`).
+diff review (`impl-review`, `test-review`, or `settle-comments`), or filing a finding (`new-issue`).
 
 ## Contract
 

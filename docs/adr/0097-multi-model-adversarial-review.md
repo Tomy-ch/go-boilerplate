@@ -48,8 +48,10 @@ The `impl-review` skill implements a multi-model adversarial review in the
 **finder → verifier** shape:
 
 **Finder stage (concurrent):** Four code lenses (`correctness`, `security`, `architecture`,
-`runtime-gap`) each run as an independent `adversarial-reviewer` subagent. A dedicated
-`comment-reviewer` subagent covers comment quality. All finders run concurrently. The
+`runtime-gap`) each run as an independent `adversarial-reviewer` subagent. Comment quality is
+**not** a lens here — it belongs to the `settle-comments` skill, which runs unconditionally at the
+end of implementing and fans out the dedicated `comment-reviewer` subagent itself. All finders run
+concurrently. The
 orchestrator enforces that reviewer agents run on a different model than the implementer —
 the reviewer agents default to `sonnet`, and the orchestrator overrides them when the
 session model would otherwise match.

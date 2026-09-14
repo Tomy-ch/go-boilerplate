@@ -1,7 +1,7 @@
 ---
 name: repo-truth
 description: >-
-  Answer "how does this repository actually work right now" from its own primary sources, separating what the code and the governing documents state from what you inferred, and naming the gap instead of filling it — including reporting a conflict or an absence as the answer rather than resolving it silently. Use whenever someone asks where something is implemented, what the rule or convention is here, why a design is the way it is, what a term means in this codebase, or whether a procedure exists at all — 「このリポジトリではどうなってる？」「どこで認可してる？」「この規約の正本はどれ？」「そもそも決まってる？」. Reach for it over a plain grep: a document here is named for the concern it owns, so the file that governs a question routinely contains none of its words. Read-only: it never edits, never runs a mutating command, and never repairs the drift it finds. Do NOT use it for a general programming or library question with no repository-specific answer, for a known operational symptom with a documented fix (`repo-ops`), for an undecided design question that needs options compared (`research`), for reviewing a diff (`impl-review` / `test-review` / `comment-sweep`), or for filing what it found (`new-issue`).
+  Answer "how does this repository actually work right now" from its own primary sources, separating what the code and the governing documents state from what you inferred, and naming the gap instead of filling it — including reporting a conflict or an absence as the answer rather than resolving it silently. Use whenever someone asks where something is implemented, what the rule or convention is here, why a design is the way it is, what a term means in this codebase, or whether a procedure exists at all — 「このリポジトリではどうなってる？」「どこで認可してる？」「この規約の正本はどれ？」「そもそも決まってる？」. Reach for it over a plain grep: a document here is named for the concern it owns, so the file that governs a question routinely contains none of its words. Read-only: it never edits, never runs a mutating command, and never repairs the drift it finds. Do NOT use it for a general programming or library question with no repository-specific answer, for a known operational symptom with a documented fix (`repo-ops`), for an undecided design question that needs options compared (`research`), for reviewing a diff (`impl-review` / `test-review` / `settle-comments`), or for filing what it found (`new-issue`).
 argument-hint: '[question] [--depth=quick|full] [--kind=fact|rule|rationale|procedure|vocabulary|history]'
 ---
 
@@ -23,7 +23,7 @@ not loaded as a skill).
 Do NOT use it for a general programming question with no repository-specific answer, for a known
 operational symptom with a documented fix (`repo-ops`), for an undecided design question that needs
 options compared (`research`), for reviewing a diff (`impl-review` / `test-review` /
-`comment-sweep`), or for filing what it found (`new-issue`).
+`settle-comments`), or for filing what it found (`new-issue`).
 
 ## Contract
 
@@ -302,7 +302,7 @@ This skill is invoked in its own right and chains into nothing. It reports what 
 be — `research` for an undecided design question, `new-issue` to file what it found, `back-prop` for
 drift, `repo-ops` for a known symptom — and the user decides whether to run it.
 
-That is the same reason the three review skills are peers under the Review Phase Protocol in
+That is the same reason the review skills are peers under the Review Phase Protocol in
 `AGENTS.md`: a skill that runs the next one for you removes that decision from the user, and a drift
 in this skill's judgment would then silently redirect every flow that passed through it.
 
