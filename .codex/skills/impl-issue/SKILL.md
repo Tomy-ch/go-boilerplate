@@ -1,7 +1,7 @@
 ---
 name: impl-issue
 description: >-
-  Drive a GitHub issue from environment setup to a merged PR as a semi-automatic pipeline whose stopping points are enumerated rather than judged. Use whenever the user hands over an issue URL or number to be worked end-to-end (「この issue やって」「wt 上で解決しよう」「着手して PR まで」), or asks to resume such a run. It sets up an isolated worktree and DB slot, builds a written plan and holds it for the user's approval before coding, then runs to a merged PR, stopping only where its closed list says and recording every other call for the PR. It owns orchestration and no implementation judgment: the work is delegated to `commit` / `submit-pr` and to the peer review skills `impl-review` / `test-review` / `settle-comments`, and design decisions are surfaced, never taken. Do NOT use it for a change with no issue behind it (`commit` + `submit-pr`), for reviewing an existing diff (`impl-review` / `test-review` / `settle-comments`), or for authoring skills (`manage-skill`).
+  Drive a GitHub issue from environment setup to a merged PR as a semi-automatic pipeline whose stopping points are enumerated rather than judged. Use whenever the user hands over an issue URL or number to be worked end-to-end (「この issue やって」「wt 上で解決しよう」「着手して PR まで」), or asks to resume such a run. It sets up an isolated worktree and DB slot, builds a written plan and holds it for the user's approval before coding, then runs to a merged PR, stopping only where its closed list says and recording every other call for the PR. It owns orchestration and no implementation judgment: the work is delegated to `commit` / `submit-pr`, to the unconditional `settle-comments` pass that ends implementation, and to the peer review skills `impl-review` / `test-review`; design decisions are surfaced, never taken. Do NOT use it for a change with no issue behind it (`commit` + `submit-pr`), for reviewing an existing diff (`impl-review` / `test-review` / `settle-comments`), or for authoring skills (`manage-skill`).
 argument-hint: '<issue-url-or-number> [--review-mode=all|harmful|issues] [--issue-mode=search|file] [--flow=record-on-tripwire|halt-on-tripwire] [--plan=full|draft-review|single]'
 ---
 
@@ -94,7 +94,7 @@ right, or whether a finding deserves an issue. It routes those to the user and r
 | Push + PR create/update | `submit-pr` |
 | Review of the change itself | `impl-review` |
 | Review of the tests | `test-review` |
-| Review of the comment stock | `settle-comments` |
+| The comment stock of the touched declarations | `settle-comments`, unconditionally at the end of Step 4 |
 | The implementation itself | you, following the approved plan |
 
 The two review skills are peers: neither invokes the other, and each is asked for separately (Step 7).
@@ -456,6 +456,12 @@ cd internal/controller/httpstack/oapi/validator \
 Changing an OpenAPI description alone still moves three artifacts: the bundle, `docs/openapi/index.html`,
 and that embedded spec. Miss one and CI's generate checks fail.
 
+The implementation is not finished until the comment pass has run. Write the code bare, then invoke
+`settle-comments` over the declarations this change touched. This is the end of Step 4 because the
+judgment only works once generation has stopped, and it is **unconditional**: do not estimate its
+return or ask whether to run it. Pass both the touched-declaration scope and the apply mode already
+settled by this run, so `settle-comments` does not repeat either question.
+
 ## Step 5 — Reconcile the plan against reality
 
 Run this before the gates. Compare:
@@ -483,7 +489,7 @@ pick one. The comment stock is **not** a third subject here: `settle-comments` r
 the end of Step 4, so there is nothing left to estimate.
 
 Follow the Review Phase Protocol in `AGENTS.md`: **estimate each skill's return from the context this
-run already holds** — which layers the change touched, whether tests or comments moved at all, what an
+run already holds** — which layers the change touched, whether tests moved at all, what an
 earlier pass already covered — then ask the user per skill, stating that estimate and its reason, and
 run what they approve. "Shall I run all three?" is not a question; it hands the cost back unpriced.
 
@@ -491,7 +497,7 @@ This step is where the estimate is cheapest to make: the plan, the diff, and the
 are already in hand.
 
 Handle findings per the review mode from Step 0. Auto-application is confined to what is
-machine-checkable — formatting, lint fixes, comment-quality findings, regenerated artifacts. **A fix
+machine-checkable — formatting, lint fixes, regenerated artifacts. **A fix
 that changes the design is always a decision point**, even under review mode `all`: `all` authorizes a
 large rewrite, not an unreviewed one.
 
@@ -609,7 +615,7 @@ answers as a payload so the sub-skill skips its own gate.
 | `submit-pr` | That a review already ran; the push decision | Its Phase 0 review prompt and push confirmation |
 | `impl-review` | Scope, reviewer model | Its Step 0 |
 | `test-review` | Scope, reviewer model | Its scope question |
-| `settle-comments` | Scope **and apply mode** | Its scope and apply-mode questions |
+| `settle-comments` (Step 4) | Scope **and apply mode** | Its scope and apply-mode questions |
 
 **Every row is required, because a missing one reinstates a gate this skill already settled.** A
 sub-skill whose default is to confirm per item — `settle-comments` is the one to watch — will do exactly

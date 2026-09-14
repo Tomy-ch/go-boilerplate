@@ -15,6 +15,7 @@
 - formatting / style — `make go-fix` / `make go-lint`
 - 網羅的なレイヤ適合監査 — `arch-check`（本スキルの `architecture` lens は高シグナルな違反のみ）
 - spec 検証 — `verify-spec`
+- ソースコメント — 実装の無条件な最終工程として `settle-comments` が所管する。
 - 修正の適用 — 本スキルはソースに対し read-only。指摘するだけで直すのはユーザー。
 
 ## 責務契約
@@ -30,7 +31,7 @@
 
 バイアス低減が設計上の制約であって、おまけではない。よって reviewer は **コードを書いた者とは別モデルの subagent** として動く:
 
-- reviewer エージェント（`adversarial-reviewer` / `comment-reviewer` / `review-verifier`）は frontmatter で既定 **`sonnet`**。通常の Opus 実装者と異なる。
+- reviewer エージェント（`adversarial-reviewer` / `ddd-modeling-reviewer` / `type-design-reviewer` / `review-verifier`）は frontmatter で既定 **`sonnet`**。通常の Opus 実装者と異なる。
 - **reviewer のモデルは Step 0 でユーザーが選ぶ。** 選択肢は `fable`（Fable 5）/ `sonnet` / `opus` / `haiku`、加えて実装者と異なるモデルへ解決される *自動* 既定。選んだモデルを `Agent` ツールの `model` 引数で各 reviewer subagent に渡す（この引数はエージェント定義の `sonnet` 既定より優先）— 深さなら `opus`、安価な発散なら `haiku`、独立した新しい視点なら `fable`。
 - **オーケストレーターは reviewer ≠ implementer を必ず保証する。** ユーザーが本セッションの実装者と同一モデルを選んだ場合は、別モデルによるバイアス低減が損なわれる旨を警告し、確認してから進める。reviewer と implementer を無言で同一モデルにしない。
 - reviewer は **read-only**（エージェント定義に Edit/Write 権限なし）。本スキルが修正を当てることはない。
@@ -38,7 +39,7 @@
 ## 評価順 — 指摘は集めるだけでなく順位を付ける
 
 レビュアーは食い違い、重なり、同じ事実を別の語彙で報告する。順位が無ければレポートは平坦な一覧に
-なり、finder が「high」と呼んだだけのコメント指摘が、誤った集約境界より上に出る。Step 2 の表の
+なり、finder が「high」と呼んだだけのテストギャップが、誤った集約境界より上に出る。Step 2 の表の
 階層がその順位である。
 
 | 階層 | lens | 何を決めるか |
@@ -47,24 +48,17 @@
 | 2 | `security` / `correctness` | それが**動くか** |
 | 3 | `runtime-gap` / 型設計 | 実システムと型の上で**保つか** |
 | 4 | `test-gap` | **固定されているか** |
-| 5 | コメント品質 | **どう読めるか** |
 
 **上位の変更は下位へ伝播するが、下位が上位に働きかけることは原則としてない。** 集約境界を書き直せば、
-それに対して書いたテストも、それを説明するコメントも前提ごと消える。逆にコメントの指摘が境界の変更を
-正当化することはない。帰結は 5 つあり、いずれも提案ではなく規則である。
+それに対して書いたテストも前提ごと消える。帰結は 4 つあり、いずれも提案ではなく規則である。
 
-1. **レポートは階層順に並べ、階層内で重大度順にする** — 重大度だけで並べない。コメント品質の `high` は
-   architecture の `medium` より下に置く。後者がそのコメントの乗るコードごと消すかもしれないため。
+1. **レポートは階層順に並べ、階層内で重大度順にする** — 重大度だけで並べない。
 2. **上位の未決な指摘に依存する下位の指摘は `保留` として出す。** 報告はするが、何を待っているかを書き、
    着手可能なものとして提示しない。上位の決着後に見直すと、多くは消えている。
-3. **階層 1〜2 の指摘が書き換えそうなファイルについては、Step 7 のコメント自動適用を抑止する。**
-   これから変わるコードの文章を磨くのは二度手間であり、しかもコメント修正の diff が本題の指摘を埋める。
-   抑止したファイルとその理由をレポートに書く。
-4. **同じ事実を 2 階層が報告したら、上位の枠組みを残し、下位はその裏付けとして畳む** — 指摘は 1 件。
+3. **同じ事実を 2 階層が報告したら、上位の枠組みを残し、下位はその裏付けとして畳む** — 指摘は 1 件。
    1 つの事実に 2 エントリは 2 つの問題に見え、変更のリスクを二重に数える。
-5. **同一階層どうしの合致は確度を上げてよいが、下位からの合致は上位の重大度を引き上げない。** 階層 2 の
-   2 つの lens が独立に同じ欠陥へ到達したなら、それは強い証拠なので明記する。階層 5 が階層 1 に同意しても
-   重大度は動かない（裏付けとして引用するのは構わない）。
+4. **同一階層どうしの合致は確度を上げてよいが、下位からの合致は上位の重大度を引き上げない。** 階層 2 の
+   2 つの lens が独立に同じ欠陥へ到達したなら、それは強い証拠なので明記する。
 
 **例外はクリティカルさであり、気づくのは担当だが裁定は担当ではない。** 下位の指摘のほうが緊急なことは
 ある — `test-gap` が露呈させた悪用可能な穴は、アーキテクチャの議論を待たない。下位の指摘が上の階層を
@@ -136,8 +130,7 @@ Step 5 では `/test-review` へ `reviewer_model` payload として渡す。
 
 ### フラグ
 
-- `--no-comment` — Step 8 を抑止（PR に投稿せず）ローカルレポートのみ。**既定はオプトアウト**: ブランチに open な PR があれば、このフラグが無い限り Step 8 が残った指摘をインラインコメントとして投稿する。
-- `--no-apply` — Step 7 を抑止（コメント指摘を自動修正しない）。代わりに報告し、他のレンズと同様に Step 8（PR 投稿）へ流す。**既定は適用する**: コメント品質の指摘は 1 回の確認のうえで作業ツリーへ自動修正される。
+- `--no-comment` — PR 投稿を抑止し、ローカルレポートのみにする。**既定はオプトアウト**: ブランチに open な PR があれば、このフラグが無い限り残った指摘をインラインコメントとして投稿する。
 
 ## Step 1 — コンテキスト収集
 
@@ -163,10 +156,9 @@ Step 5 では `/test-review` へ `reviewer_model` payload として渡す。
 
 ## Step 2 — Finder の fan-out（別モデル、並列）
 
-全 finder を並列起動する（`Agent` 呼び出しを1メッセージにまとめる）。中核アイデアのモデル規則を適用し、Step 0 で選んだ reviewer モデルを各 `Agent` 呼び出しの `model` 引数で渡す（*自動* がエージェント定義の既定に解決するときのみ省略可）。エージェント種別は 2 つ。
+全 finder を並列起動する（`Agent` 呼び出しを1メッセージにまとめる）。中核アイデアのモデル規則を適用し、Step 0 で選んだ reviewer モデルを各 `Agent` 呼び出しの `model` 引数で渡す（*自動* がエージェント定義の既定に解決するときのみ省略可）。
 
 - 4 つの **コード lens** は `adversarial-reviewer` を使う。lens ごとに1体、`agentType: "adversarial-reviewer"`、`label` は `find:security` のように。
-- **コメント次元**は専用の `comment-reviewer` を使う（`agentType: "comment-reviewer"`, `label: "find:comment"`）。1 段落の lens より豊かな分類を持つコメント特化の強いエージェントであり、その指摘が Step 7 の自動修正へ流れる。
 - **DDD モデリング次元**は専用の `ddd-modeling-reviewer` を使う（`agentType: "ddd-modeling-reviewer"`, `label: "find:ddd"`）。diff が `internal/domain/**` または `internal/usecase/**` に触れた時。この変更がドメインをうまくモデル化できているかを、このリポジトリ自身が書き残した解釈で問う。**階層 1** の lens であり、その指摘は「コードが何であるべきか」を決めるため、下位の階層が動く前に決着させる。Evans の原典を直接の基準にしないこと — それは `ddd-origin-auditor` の担当で、対象も文書でありコードではない。
 - **型設計次元**は専用の `type-design-reviewer` を使う（`agentType: "type-design-reviewer"`, `label: "find:type-design"`）。diff が domain 型（`internal/domain/**/*.go`）に触れた時のみ。4 軸ルーブリック（Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement）で各型を採点し、指摘は suggestion 級（自動修正しない）。
 
@@ -178,7 +170,6 @@ Step 5 では `/test-review` へ `reviewer_model` payload として渡す。
 | `security` | 2 | adversarial-reviewer | 常時（handler / auth / DTO / `openapi/**` が触られた時は特に） |
 | `runtime-gap` | 3 | adversarial-reviewer | controller / DI / `openapi/**` / `database/**` が触られた時 |
 | `test-gap` | 4 | adversarial-reviewer | `internal/**` / `pkg/**` 配下の非生成本番 `.go` が触られ、**かつ** Step 0 のテスト観点委譲を辞退した時 — Step 5 実行中は停止 |
-| コメント品質 | 5 | **comment-reviewer** | diff がコメントを追加 / 変更した時（ほぼ常時） |
 | 型設計 | 3 | **type-design-reviewer** | diff が domain 型（`internal/domain/**/*.go`）に触れた時 |
 
 各 `adversarial-reviewer` プロンプトに必ず含める: lens 名 + その定義、ベース ref + 変更ファイル一覧 + diff、`AGENTS.md` / 該当 `README.md` / OpenAPI spec / migrations へのポインタ。
@@ -186,8 +177,6 @@ Step 5 では `/test-review` へ `reviewer_model` payload として渡す。
 **`test-gap` lens 定義**（本 lens は *コード起点* — test ファイルではなく変更された本番ソースを読む）: diff で追加/変更された各本番シンボルについて、その論理分岐 / error sentinel / 境界条件 / zero 値防御を列挙し、ペアの `*_test.go` が各々を到達し*固有に* assert しているか（`require.ErrorIs` で固有 sentinel、区別される値/state — `require.Error` / `NoError` 止まりでない）を確認する。2 形を報告: diff で変更された本番シンボルに **テストが全く無い**、および変更シンボルの到達可能分岐が **未テスト or 空虚 assert**。 これは **high-signal サブセット** — impl-review は *変更された* コードで test ファイル起点の読みが見落とす到達ギャップを挙げるだけで、パッケージ全体の網羅的なシンボル列挙はしない。 全 subject に対する完全な 2 軸マトリクス（Lens 4 分岐×意味 + Lens 5 シンボル網羅）は `/test-review` の担当であり、実際に引き渡すのが Step 5。 指摘は read-only の提案（自動修正しない）で、diff 内の subject 行にアンカーするため他のコード lens 同様インライン投稿される。
 
 **所管は1つ。** 本 lens と `/test-review` は重なる領域を監査するため、走るのは常にどちらか一方。Step 5 で委譲したときは `test-gap` を **起動しない**: `/test-review` の Lens 5 が「テストが1つも無いシンボル」を、Lens 4 が分岐×意味を所管しており、その上に本 lens を重ねると同じギャップを2つの severity 語彙で二重報告することになる。`test-gap` は委譲を辞退したときに残るもの — 変更コード上の最悪のギャップを低コストで拾うサブセットであって、冗長なセカンドオピニオンではない。
-
-`comment-reviewer` プロンプトに必ず含める: ベース ref + 変更ファイル一覧 + diff、**行ポリシー**（diff スコープでは変更行上のコメントだけを判定する）、および実行時に読む権威として `docs/rules.md`（"Comment Rules"）へのポインタ。全言語一律の基準（Go も非 Go も同じ — shell / `.mjs` / Dockerfile / Makefile / SQL / YAML。非 Go は免除ではなくむしろ高リスク）と、機能的ディレクティブ / export doc コメントのガードはエージェント側が既に内蔵しているため、ここで再指定も緩和もしない。エージェントに見せるファイル一覧はコメントを持つソースに絞る: 生成物（`**/*.gen.go`、`*_mock.go`、`**/openapi.gen.yaml`、`// Code generated ... DO NOT EDIT`）、`vendor/**`、deny リスト、Markdown / docs の散文（Comment Rules が統べるのはソースコメントであって独立した文書ではない）を除外する。
 
 ## Step 3 — 敵対的 verify
 
@@ -220,7 +209,7 @@ Step 1 のテスト観点判定式が真 **かつ** Step 0 でユーザーが委
 - `reviewer_model`: Step 0 でユーザーが選んだモデル。委譲先の finder / verifier も同じ reviewer ≠ implementer 保証を継ぐ。
 - `skip_verifier`: `false`。本スキルは全 finding を verify してから報告する。verify 段を落として速度を買うと、他半分が verify 済みのレポートに未検証の finding が混じることになり、監査しないより悪い。
 
-チェインは **逐次・インライン** — オーケストレーターが `test-review` を読み込み、その手順をこのセッションで実行する。本リポジトリの他のチェインと同じ形。`/test-review` は read-only なので Step 7 のような作業ツリー確認は不要で、委譲先が独自の `ask the user explicitly` を出すこともない（`scope` payload が First Step の質問を飛ばす）。Step 2 の fan-out と並走させず Step 3 / Step 4 の後に置くのは、2つの fan-out を融合すると `/test-review` 側のコンテキスト読解ステップを本スキルへ引き上げることになり、既に所管のある手順を二重に持つため。
+チェインは **逐次・インライン** — オーケストレーターが `test-review` を読み込み、その手順をこのセッションで実行する。本リポジトリの他のチェインと同じ形。`/test-review` は read-only で、委譲先が独自の `ask the user explicitly` を出すこともない（`scope` payload が First Step の質問を飛ばす）。Step 2 の fan-out と並走させず Step 3 / Step 4 の後に置くのは、2つの fan-out を融合すると `/test-review` 側のコンテキスト読解ステップを本スキルへ引き上げることになり、既に所管のある手順を二重に持つため。
 
 返ってきたレポートの構造と severity（修正必須 / 補完推奨 / 再考 / 追加検討 + criticality）はそのまま保つ。Step 6 が1節として埋め込む — CONFIRMED / PLAUSIBLE × 重大度 に写像し直さない。「規約に違反している」と「この分岐が未検証」を1軸に潰してしまう。
 
@@ -263,33 +252,7 @@ Step 1 のテスト観点判定式が真 **かつ** Step 0 でユーザーが委
 
 **階層順に並べ、階層内で重大度順**、CONFIRMED を PLAUSIBLE より先に（評価順の規則 1）。上位の決着を待っている指摘は `保留` と明記する（規則 2）。ランタイムで何を検査し何をスキップしたかは必ず明記（黙って省くと「全部見た」と誤読される）。委譲したテスト指摘も同様に、独自の severity 語彙のまま専用節に置く。Step 5 を実行しなかったときはその節ごと省く（`テスト観点:` 行が既にその事実を伝えている）。
 
-## Step 7 — コメント指摘の適用（既定。`--no-apply` でスキップ）
-
-本スキルがソースを書き換えるのはここだけ。verify を通った**コメント品質**の指摘（CONFIRMED、およびユーザーがオプトインした PLAUSIBLE）は自分で適用する — `comment-reviewer` サブエージェントは決して編集しない。コード 5 lens はここでは自動修正せず、Step 8 へ回す。
-
-編集前に 1 度だけ確認する:
-
-**先に評価順の規則 3 を適用する。** 生き残っている階層 1〜2 の指摘が書き換えそうなファイルを列挙し、この
-ステップの対象から外す。外したファイルと理由をレポートに書く。
-
-- `ask the user explicitly`: 「コメント指摘 <N> 件をライフサイクル内で修正適用しますか？」 — 選択肢: 「すべて適用」 / 「1件ずつ確認」 / 「適用しない（レポートのみ／PR コメント化）」。
-
-各指摘が持つアクションを適用する — 内容が悪いコメントは **削除**、正しく振る舞いを述べる What へ **書換**、薄い What / 非自明な契約の欠落 / 良い Why の欠落は **加筆**。`誤り/陳腐化` の指摘（What がコードと矛盾）は削除ではなく訂正する。次のガードを守る（ここでの誤削除は実害のあるリグレッションになる）:
-
-- **機能的・ディレクティブなコメントは絶対に削除しない**: `//go:generate`、`//nolint:...`、`//go:build` / `// +build`、`//go:embed`、`//export`、cgo preamble、`//revive:...`、`// Code generated ... DO NOT EDIT`、shebang、ツールディレクティブ。
-- **エクスポートされた Go 宣言**（大文字始まりの `func`/`type`/`const`/`var`/メソッド）: doc コメントは **書換または加筆のみ、削除しない** — `revive exported` が要求するため。先頭識別子形式（`// Foo は …`）を保つ。
-- **良いコメントは残す**: 正しく十分な What と非自明な Why（根拠 / 効いている制約）は指摘対象ではない — 剥がさない。書換・加筆は **What + 非自明な Why** を述べ、**How** や開発の経緯は書かない。編集はスコープ内ファイルに限り、生成ファイル・Markdown 散文・deny リストには触れない。`Edit` を使い、1 指摘（または 1 ファイル）ずつ進める。
-
-編集後に検証する:
-
-1. `make go-fix` — フォーマット / 自動修正を吸収する。
-2. `make go-lint` — `revive exported` が通ることを確認し（必須 doc コメントの誤削除を検出）、他に劣化が無いことを見る。
-3. 触れたファイルを `git diff` し、散文コメントだけが変わったことを確認する（機能ディレクティブを巻き込んでいないか）。非 Go は変更ハンクを読み直す。
-4. 失敗したら提示して停止する — 自動 revert はせず、ユーザーが判断する。コミットはしない — 変更はユーザー（または後の `/commit`）に委ねる。
-
-`--no-apply` の場合は本ステップを飛ばし、コメント指摘は他 lens と同様に Step 8 で PR へ投稿する。
-
-## Step 8 — 指摘を PR にインラインコメント投稿（既定。`--no-comment` でオプトアウト）
+## Step 7 — 指摘を PR にインラインコメント投稿（既定。`--no-comment` でオプトアウト）
 
 既定では Step 6 の後、残った **CONFIRMED + PLAUSIBLE** の指摘を、ブランチの PR に **インラインレビューコメント**として投稿する — 1指摘につき1コメント、その `path:行` にアンカーし、1つの長文コメントにまとめない。**REFUTED は投稿しない。** Step 6 のローカルレポートは常に出す（本ステップは追加動作）。
 
@@ -360,16 +323,14 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 - ✅ Step 0 でテスト観点の委譲を聞き（既定: 委譲する）、委譲したら `test-gap` を停止して Step 5 を実行。
 - ✅ どのレポートでもテスト観点の状態を `テスト観点:` 行に明記 — 何も監査しなかった実行を含めて。
 - ✅ 復旧手段が `make db-init` しかない破壊系 curl は事前にユーザー確認。
-- ✅ コメント品質の指摘は Step 7 で 1 回の確認のうえ適用（削除 / 振る舞いへの書き直し）し、その後 `make go-fix` + `make go-lint`。`--no-apply` で省略。
-- ✅ 既定で CONFIRMED + PLAUSIBLE をブランチの PR にインラインコメント投稿（Step 8）。`--no-comment` か PR 無しのとき抑止。
-- ✅ PR 投稿前に一度だけ確認（外向きアクション）。各コメントは `path:行` にアンカーし、diff 外の **コード lens** 指摘はレビュー要約にまとめる（diff 外の *テスト* 指摘は対象外 — Step 8 のとおりローカルに留める）。
+- ✅ 既定で CONFIRMED + PLAUSIBLE をブランチの PR にインラインコメント投稿（Step 7）。`--no-comment` か PR 無しのとき抑止。
+- ✅ PR 投稿前に一度だけ確認（外向きアクション）。各コメントは `path:行` にアンカーし、diff 外の **コード lens** 指摘はレビュー要約にまとめる（diff 外の *テスト* 指摘は対象外 — Step 7 のとおりローカルに留める）。
 - ❌ REFUTED を投稿する / `REQUEST_CHANGES`・`APPROVE` を使う — 投稿レビューは助言的 `COMMENT` のみ。
-- ❌ 5 つのコード lens を自動修正する — これらは指摘までで、直すのはユーザー。自動適用されるのはコメント品質だけ（Step 7）。
+- ❌ finding を自動修正する — 本スキルはソースに対し read-only。
 - ❌ Step 7 で機能的ディレクティブ（`//go:generate` など）や export 宣言の doc コメントを削除する（doc コメントは書き直す）、生成ファイル / Markdown / deny リスト対象に触れる、自動コミットする。
 - ❌ 同じレビューで `test-gap` と `/test-review` の両方を回す — ギャップの所管は1つ、報告も1つ。
 - ❌ 委譲した指摘の severity を CONFIRMED / PLAUSIBLE × 重大度 に写像し直す / diff 外のテスト指摘を PR に投稿する。
 - ❌ 重大度だけでレポートを並べる / 1 つの事実を 2 階層から 2 件として出す / 下位の合致で上位の重大度を上げる / 下位がクリティカルに見えるときに黙って階層を並べ替える。
-- ❌ 階層 1〜2 の指摘が書き換えそうなファイルへコメント修正を自動適用する。
 - ❌ reviewer を implementer と同一モデルで回す。
 - ❌ 思いつきの style nit を finding として出す / 網羅に見せるための水増し。
 
@@ -380,11 +341,9 @@ GitHub への投稿は外向きアクションなので、投稿前に **一度�
 - [ ] Step 0 でテスト観点の委譲を確認、Step 1 で判定式を解決、結果の状態を記録。
 - [ ] lens ごとに finder を fan-out（並列）。`test-gap` は委譲を辞退したときのみ含める。
 - [ ] 同じ事実を上位の階層へ畳んだ。レポートは階層順→重大度順。上位待ちの下位指摘は `保留` と明記。
-- [ ] 階層 1〜2 の指摘が書き換えそうなファイルはコメント自動適用から外した。
 - [ ] 全 finding を独立 verify、REFUTED は除外（件数は保持）。
 - [ ] 触られたエンドポイントの curl + o11y 実施（共有スキーマ → 全 consumer）、破壊系は確認済み。
 - [ ] 委譲したときは Step 5 を実行（`scope` / `base_ref` / `reviewer_model` / `skip_verifier: false` を渡し、`test-gap` は起動しない）。
 - [ ] 1つの日本語レポート: CONFIRMED → PLAUSIBLE、ランタイムのカバー範囲を明記、`テスト観点:` 行が3状態のいずれかで存在。
-- [ ] `--no-apply` 以外: コメント指摘を Step 7 で適用（機能的ディレクティブは不可侵、export doc コメントは削除でなく書き直し）、その後 `make go-fix` + `make go-lint`。自動コミットはしない。
 - [ ] `--no-comment` / PR 無し以外: 一度確認のうえ CONFIRMED + PLAUSIBLE をインライン PR コメント投稿（diff 外 → 要約 body）、REFUTED は除外、`event: COMMENT`。
 - [ ] 委譲したテスト指摘は diff ハンク内にアンカーできるものだけ投稿（severity 4種すべて）、diff 外はローカルに留め伏せた件数を明記。

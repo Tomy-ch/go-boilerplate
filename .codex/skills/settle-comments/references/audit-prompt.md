@@ -8,16 +8,31 @@ never ask the user, and return your final Japanese report as data for the orches
 Read these before examining the assigned files. Apply them as written; `docs/rules.md` wins over this
 instruction if there is a conflict.
 
-1. *Comment Rules* in `docs/rules.md`, including Jurisdiction.
+1. *Comment Rules* in `docs/rules.md`, including the guard question, canonical direction, and
+   Jurisdiction.
 2. *What belongs here* in `docs/adr/README.md`.
 3. `docs/design/README.md`.
 4. The assigned package's nearest ancestor `README.md`.
 
 Judge all resolved files, not only changed lines. Do not rely on remembered policy.
 
-## Two-pass audit
+## Three-pass audit
 
-Run both passes over the same complete file set. They answer different questions.
+Run all three passes over the same complete file set. They answer different questions.
+
+### Pass 0 — per-comment guard ownership
+
+Before jurisdiction, ask: **if this sentence turned false, would anything fail?** A compile error,
+test case, `depguard` / `forbidigo` rule, `internal/architest` scan, or regeneration check means a
+mechanism already keeps the fact true and the comment is an unchecked second copy: verdict `不要`.
+If nothing would fail, ask whether such a mechanism can be built instead.
+
+Two bounds are mandatory. First, name the guard as `file:line`; without one the sentence is
+unguarded, so `不要` is not available. Second, obey the canonical direction in `docs/rules.md`: the
+doc comment publishes caller-observable behavior, including what the declaration does, input/output/
+error meaning, and observable condition order. A test or `docs/spec/**` section repeating that
+contract does not make the comment the copy. Reasons not observable from the call site belong to
+`docs/spec/**` and may make the comment the copy.
 
 ### Pass 1 — per-comment jurisdiction
 
@@ -43,15 +58,20 @@ packages.
 
 ## Verdicts
 
-Give exactly one verdict per finding.
+Give exactly one of these six verdicts per finding.
 
 - **維持**: Content belongs at this declaration, including an ordinary call-site constraint or a
   library/API-specific behavior that can change with dependency upgrades. Count only; do not list it
   individually, except for a contradiction with code.
 - **短縮**: Content belongs here but exceeds the fact it delivers. Provide compressed wording; never
-  propose deletion under this verdict.
+  propose deletion under this verdict. A `短縮` must drop a fact, not merely reword prose that already
+  says only what it needs; judgment is idempotent and taste-driven rewriting is not.
 - **削除**: Content carries nothing: a restatement, tautology, resolved TODO, or narration already
   evident from code. Quote the code that makes it redundant.
+- **不要**: Content is true and useful, unlike `削除`, but Pass 0 found another mechanism that guards
+  it. Name that guard as `file:line`. A finding without a named guard is not `不要`; confirm the
+  canonical direction before returning it so a test or spec that repeats a published caller contract
+  does not cause that contract's doc comment to be removed.
 - **移設**: Content is meaningful but belongs in a governing document. Supply every landing-form item
   below.
 - **集約**: The Pass 2, set-valued verdict. One site keeps the content and the rest shrink to pointers.
@@ -63,8 +83,8 @@ comment outranks jurisdiction. Do not report one comment twice: when a comment q
 短縮 and 集約, 集約 absorbs the shortening.
 
 For an exported Go declaration, `revive exported` requires a leading-identifier doc comment such as
-`// Foo は …`. `削除` is unavailable: mark it explicitly and propose only `短縮` or `移設` whose residue
-retains that form.
+`// Foo は …`. Neither `削除` nor `不要` may remove the whole comment: mark it explicitly and land the
+change as a `短縮` or `移設` whose residue retains that form.
 
 ## Complete relocation landing form
 
@@ -127,12 +147,13 @@ the outer four-backtick fence intentionally permits the inner fenced diffs.
 ````text
 ## settle-comments 監査結果: <パッケージパス>
 
-対象 <n> ファイル / 判定内訳: 維持 <a> / 短縮 <b> / 削除 <c> / 移設 <d> / 集約 <e>（うちファイル横断 <f>）
+対象 <n> ファイル / 判定内訳: 維持 <a> / 短縮 <b> / 削除 <c> / 不要 <g> / 移設 <d> / 集約 <e>（うちファイル横断 <f>）
 
 ### [判定] <短いタイトル>
 - 場所: <path:line>
 - 対象コメント: `<コメント全文>`
-- 判定: 維持 / 短縮 / 削除 / 移設
+- 判定: 維持 / 短縮 / 削除 / 不要 / 移設
+- 正本: `不要` のときだけ、その事実を守る機構を `file:line` で名指す
 - 根拠: <コード根拠と、移設なら更新義務のある文書>
 - 移設先: <具体的なファイルと節>
   - 追記する文面: <実際の文面または追記なし>
@@ -145,7 +166,7 @@ the outer four-backtick fence intentionally permits the inner fenced diffs.
   // 変更後の残滓とリンク
   ```
 - 残滓テスト: <リンクなしでも成立する確認>
-- ※ export 宣言: 削除不可（該当時のみ）
+- ※ export 宣言: 削除・不要でコメント全体を除去不可（該当時のみ）
 - 確度: high / medium / low
 
 ### [集約] <短いタイトル>

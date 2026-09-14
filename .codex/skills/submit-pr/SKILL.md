@@ -52,6 +52,10 @@ The four valid working states going into Step 2:
 
 Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask whether to run a pre-push `/impl-review`. This is the single decision point for local review: a local review inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss, and it belongs before the change leaves the machine. Do NOT auto-run it.
 
+Do not offer `settle-comments` as a review option. It runs unconditionally as the last implementation
+step; if it has not run, the change is unfinished rather than unreviewed. Cancel this workflow and
+send the user back to `settle-comments` instead of adding a checkbox that implies it may be skipped.
+
 `ask the user explicitly`:
 
 - Question: 「push 前に `/impl-review`（実装者とは別モデルの独立・敵対レビュー）を実行しますか？」
