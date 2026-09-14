@@ -1,7 +1,7 @@
 ---
 name: impl-review
 description: >-
-  Local adversarial, low-bias review of THE CHANGE ITSELF, run on a model different from the implementer's, with lenses for correctness, security, architecture, runtime gap, DDD modeling and domain type design — plus a runtime (curl + o11y) stage that mocked tests cannot cover. Scope (changed files / branch-vs-base diff / specific paths) and reviewer model are confirmed in one question at the start; findings are reported in Japanese and posted to the branch's PR as inline comments by default (`--no-comment` to skip). Read-only on source — every lens reports and the user fixes. Use before commit / PR to get an independent second opinion the implementer's own model would not surface. Its subject is the implementation and nothing else: it carries no test lens and no comment lens and chains no other skill — `/test-review` and `/comment-sweep` are peers asked for separately under the Review Phase Protocol in `AGENTS.md`. Do NOT use it to review tests (`test-review`), comments (`comment-sweep`), or to run the mechanical layer-rule audit (`arch-check`).
+  Local adversarial, low-bias review of THE CHANGE ITSELF, run on a model different from the implementer's, with lenses for correctness, security, architecture, runtime gap, DDD modeling and domain type design — plus a runtime (curl + o11y) stage that mocked tests cannot cover. Scope (changed files / branch-vs-base diff / specific paths) and reviewer model are confirmed in one question at the start; findings are reported in Japanese and posted to the branch's PR as inline comments by default (`--no-comment` to skip). Read-only on source — every lens reports and the user fixes. Use before commit / PR to get an independent second opinion the implementer's own model would not surface. Its subject is the implementation and nothing else: it carries no test lens and no comment lens and chains no other skill — `/test-review` is the peer asked for separately under the Review Phase Protocol in `AGENTS.md`, and the comment stock is `/settle-comments`, which runs as the last step of implementing rather than as a review. Do NOT use it to review tests (`test-review`), comments (`settle-comments`), or to run the mechanical layer-rule audit (`arch-check`).
 ---
 
 # Impl Review
@@ -22,14 +22,14 @@ Do NOT use this skill for:
 - Exhaustive layer-compliance auditing — `arch-check` (this skill's `architecture` lens flags only high-signal violations).
 - Spec validation — `verify-spec`.
 - Applying fixes — this skill is read-only on source; it reports, the user fixes.
-- Auditing the tests (`/test-review`) or the comments (`/comment-sweep`) — peers, not sub-steps.
+- Auditing the tests (`/test-review`) — a peer, not a sub-step — or the comments (`/settle-comments`), which the implementation already settled before this review was asked for.
 
 ## Contract
 
 | | |
 | --- | --- |
 | **Owns** | 変更そのもの（architecture / ddd-modeling / security / correctness / runtime-gap / type-design） |
-| **Never** | テスト観点（`test-review`）/ コメント観点（`comment-sweep`）/ 他スキルの呼び出し |
+| **Never** | テスト観点（`test-review`）/ コメント観点（`settle-comments`）/ 他スキルの呼び出し |
 | **Starts when** | レビュー可能な差分とその意図が存在するとき |
 | **Stops when** | tier 1 の finding が人間の設計判断を要するとき |
 
@@ -43,7 +43,7 @@ Bias reduction is the design constraint, not a nicety. Reviewers therefore run a
 - Reviewer subagents are **read-only** (their agent files grant no Edit/Write) — they only return findings, and this skill never mutates source at all. What to change is the user's call, made from the report.
 
 **This skill audits the change and nothing else.** It has no test lens and no comment lens, and it
-invokes no other skill. Those are `/test-review`'s and `/comment-sweep`'s subjects, each asked for and
+invokes no other skill. Those are `/test-review`'s and `/settle-comments`'s subjects, each asked for and
 run in its own right beside this one, per the Review Phase Protocol in `AGENTS.md`. A review skill
 that offers to run the next one makes the subjects stop being independently answerable and lets a
 drift in one skill's question silently drop the other two from every flow that went through it.
@@ -133,7 +133,7 @@ model is passed to every `adversarial-reviewer` / `review-verifier` `Agent` call
 `model` parameter in Step 2 and Step 3.
 
 **Two questions, and no more.** There is no test question and no comment question here. Those
-subjects belong to `/test-review` and `/comment-sweep`, which the user asks for separately; folding
+subjects belong to `/test-review` and `/settle-comments`, which the user asks for separately; folding
 them in would put a decision about one subject inside a run started for another, and would make this
 skill the single point through which the other two are remembered.
 
@@ -176,7 +176,7 @@ Spawn all finders concurrently (issue every `Agent` call in a single message). A
 Each `adversarial-reviewer` prompt MUST include: the lens name + its definition, the base ref + changed-file list + the diff, and pointers to `CLAUDE.md` / the relevant `README.md` / OpenAPI spec / migrations.
 
 **No lens here audits the tests or the comments.** A finding that the change is untested belongs to
-`/test-review`, and one about a comment's content belongs to `/comment-sweep`. If a lens surfaces
+`/test-review`, and one about a comment's content belongs to `/settle-comments`. If a lens surfaces
 either in passing, say so in the 補足 section as an observation and name the skill that owns it —
 do not grow a lens to cover it, which is how this skill acquired the two it just shed.
 
@@ -212,7 +212,7 @@ Produce one Japanese report:
 
 スコープ: <base>...HEAD（<N> files） / lens: <実際に走らせた lens のみを列挙>
 ランタイム検証: 実施（curl/o11y）/ 対象外（エンドポイント変更なし）
-未監査の観点: テスト（/test-review）・コメント（/comment-sweep）は本スキルの対象外
+未監査の観点: テスト（/test-review）・コメント（/settle-comments）は本スキルの対象外
 
 ### CONFIRMED（要対応）
 - [重大度] タイトル — path:行
@@ -231,8 +231,9 @@ Produce one Japanese report:
 The `lens:` line lists only the lenses that actually ran.
 
 The **`未監査の観点:` line is mandatory**, and it is not boilerplate: this skill audits one of the
-three review subjects, and a report that says nothing about the other two reads as a full review to
-anyone who did not run them. State plainly that the tests and the comments were not looked at here,
+two review subjects and nothing of the comment stock, and a report that says nothing about either
+reads as a full review to anyone who did not run them. State plainly that the tests were not looked
+at here and that the comment pass belongs to the implementation that preceded this review,
 so the omission is visible rather than inferred from a `lens:` list that never mentioned them. Do not
 soften it into a recommendation — whether to run the other two is the user's call under the Review
 Phase Protocol, and this line only records what this run did not cover.
@@ -245,7 +246,7 @@ Mark every finding that is waiting on a higher-tier decision as `保留` and nam
 
 By default, post the surviving **CONFIRMED + PLAUSIBLE** findings to the branch's PR as **inline review comments** — one per finding, anchored to its `path:line`, instead of a single wall-of-text comment. **Never post REFUTED.** The Step 5 local report is still produced regardless; this step is additive.
 
-Only this skill's own findings are posted. `/test-review` and `/comment-sweep` produce their own output for the user to act on, and nothing here reaches into them — posting another skill's findings under this skill's review would make one subject's audit look like it happened inside another's.
+Only this skill's own findings are posted. `/test-review` and `/settle-comments` produce their own output for the user to act on, and nothing here reaches into them — posting another skill's findings under this skill's review would make one subject's audit look like it happened inside another's.
 
 Skip this step entirely when:
 
@@ -313,7 +314,7 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
 - ✅ Confirm once before posting to the PR (outward action); anchor each comment to its `path:line`, fold off-diff findings into the review summary.
 - ❌ Post REFUTED findings, or use `REQUEST_CHANGES` / `APPROVE` — the posted review is advisory `COMMENT` only.
 - ❌ Mutate source at all — every lens reports, the user fixes.
-- ❌ Grow a lens that audits the tests or the comments, or invoke `/test-review` or `/comment-sweep` from here. They are peers under the Review Phase Protocol; surface such an observation in 補足 and name the skill that owns it.
+- ❌ Grow a lens that audits the tests or the comments, or invoke `/test-review` or `/settle-comments` from here. `/test-review` is a peer under the Review Phase Protocol and `/settle-comments` belongs to the implementation that preceded this review; surface such an observation in 補足 and name the skill that owns it.
 - ❌ Order the report by severity alone, report one fact as two findings from two tiers, let a lower-tier lens raise a higher finding's severity, or silently reorder the tiers when a lower finding looks critical — present both and ask.
 - ❌ Let a reviewer run on the same model as the implementer.
 - ❌ Report speculative style nits as findings, or pad the list to look thorough.

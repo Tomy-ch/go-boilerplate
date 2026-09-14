@@ -28,7 +28,7 @@ Do NOT use this skill for:
 | | |
 | --- | --- |
 | **Owns** | The change itself (`architecture` / `ddd-modeling` / `security` / `correctness` / `runtime-gap` / `type-design`) |
-| **Does not** | Test viewpoint (`test-review`) / comment viewpoint (`comment-sweep`) / invoke other skills |
+| **Does not** | Test viewpoint (`test-review`) / comment viewpoint (`settle-comments`) / invoke other skills |
 | **Starts when** | A reviewable diff and its intent exist |
 | **Stops when** | A tier 1 finding requires a human design decision |
 

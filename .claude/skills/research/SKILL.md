@@ -21,7 +21,7 @@ not loaded as a skill).
 
 Do NOT use it to establish what the repository currently does (`repo-truth` first), to work an
 already-decided issue (`impl-issue`), to file the outcome (`new-issue`), or to review a diff
-(`impl-review` / `test-review` / `comment-sweep`).
+(`impl-review` / `test-review` / `settle-comments`).
 
 ## Contract
 

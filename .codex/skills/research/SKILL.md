@@ -23,7 +23,7 @@ Use this skill when:
 
 Do not use it to determine the repository's current state, execute an already-decided issue, file the
 result, or review a change. Route those subjects to the Codex-side `repo-truth`, `impl-issue`,
-`new-issue`, or the applicable `impl-review` / `test-review` / `comment-sweep` skill. Those
+`new-issue`, or the applicable `impl-review` / `test-review` / `settle-comments` skill. Those
 cross-skill references point to `.codex/skills/<name>/SKILL.md`; because the Codex copies may lag
 another environment after an incomplete synchronization, inspect their current contracts before
 relying on them.

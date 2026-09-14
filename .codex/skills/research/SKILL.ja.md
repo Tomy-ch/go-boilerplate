@@ -15,7 +15,7 @@
 
 リポジトリの現状確認、決定済み issue の実行、結果の起票、変更レビューには使わない。それぞれ
 Codex 側の `repo-truth`、`impl-issue`、`new-issue`、または該当する `impl-review` / `test-review` /
-`comment-sweep` へ委ねる。これらの他スキル参照は `.codex/skills/<name>/SKILL.md` を指す。同期が完了
+`settle-comments` へ委ねる。これらの他スキル参照は `.codex/skills/<name>/SKILL.md` を指す。同期が完了
 していない場合、Codex 側の複製が別環境より古い可能性があるため、依存する前に現在の契約を確認する。
 
 ## 契約

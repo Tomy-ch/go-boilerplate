@@ -1,7 +1,7 @@
 ---
 name: impl-issue
 description: >-
-  Drive a GitHub issue from environment setup to a merged PR as a semi-automatic pipeline whose stopping points are enumerated rather than judged. Use whenever the user hands over an issue URL or number to be worked end-to-end (「この issue やって」「wt 上で解決しよう」「着手して PR まで」), or asks to resume such a run. It sets up an isolated worktree and DB slot, builds a written plan and holds it for the user's approval before coding, then runs to a merged PR, stopping only where its closed list says and recording every other call for the PR. It owns orchestration and no implementation judgment: the work is delegated to `commit` / `submit-pr` and to the peer review skills `impl-review` / `test-review` / `comment-sweep`, and design decisions are surfaced, never taken. Do NOT use it for a change with no issue behind it (`commit` + `submit-pr`), for reviewing an existing diff (`impl-review` / `test-review` / `comment-sweep`), or for authoring skills (`manage-skill`).
+  Drive a GitHub issue from environment setup to a merged PR as a semi-automatic pipeline whose stopping points are enumerated rather than judged. Use whenever the user hands over an issue URL or number to be worked end-to-end (「この issue やって」「wt 上で解決しよう」「着手して PR まで」), or asks to resume such a run. It sets up an isolated worktree and DB slot, builds a written plan and holds it for the user's approval before coding, then runs to a merged PR, stopping only where its closed list says and recording every other call for the PR. It owns orchestration and no implementation judgment: the work is delegated to `commit` / `submit-pr`, to the unconditional `settle-comments` pass that ends implementation, and to the peer review skills `impl-review` / `test-review`, and design decisions are surfaced, never taken. Do NOT use it for a change with no issue behind it (`commit` + `submit-pr`), for reviewing an existing diff (`impl-review` / `test-review` / `settle-comments`), or for authoring skills (`manage-skill`).
 argument-hint: '<issue-url-or-number> [--review-mode=all|harmful|issues] [--issue-mode=search|file] [--flow=record-on-tripwire|halt-on-tripwire] [--plan=full|draft-review|single]'
 ---
 
@@ -24,7 +24,7 @@ not loaded as a skill).
 - The user asks to resume a run that stopped at a decision point.
 
 Do NOT use it for a change with no issue behind it (`commit` + `submit-pr` directly), for reviewing an
-existing diff (`impl-review` / `test-review` / `comment-sweep`), or for authoring skills
+existing diff (`impl-review` / `test-review` / `settle-comments`), or for authoring skills
 (`manage-skill`).
 
 ## Contract
@@ -45,7 +45,7 @@ Where this pipeline stops is a specification, not a judgment. It stops here and 
 | 1 | Step 0 | The four modes, in two back-to-back calls, before anything else |
 | 2 | Step 3 | Approval of the written plan |
 | 3 | Step 4 | A trip-wire whose row says halt |
-| 4 | Step 7 | Which of the three peer review skills to run, each with its estimated return |
+| 4 | Step 7 | Which of the two peer review skills to run, each with its estimated return |
 | 5 | Step 8 | Runtime verification failed; and the merge itself |
 
 **A stop is the end of a turn, not a question.** Read as "asking the user something", the list is
@@ -93,10 +93,11 @@ right, or whether a finding deserves an issue. It routes those to the user and r
 | Push + PR create/update | `submit-pr` |
 | Review of the change itself | `impl-review` |
 | Review of the tests | `test-review` |
-| Review of the comment stock | `comment-sweep` |
+| The comment stock of the touched declarations | `settle-comments`, unconditionally at the end of Step 4 |
 | The implementation itself | you, following the approved plan |
 
-The three review skills are peers: none invokes another, and each is asked for separately (Step 7).
+The two review skills are peers: neither invokes the other, and each is asked for separately (Step 7).
+`settle-comments` is not among them — it runs unconditionally at the end of Step 4.
 
 ## AI Modification Scope
 
@@ -352,7 +353,7 @@ destroys the state belonging to the very run it is resuming.
 are one default way of satisfying it, not the rule — read the rule off the session's own model rather
 than off a model name written here.
 
-No later gate re-opens the plan: `impl-review` / `test-review` / `comment-sweep` all take the finished
+No later gate re-opens the plan: `impl-review` / `test-review` both take the finished
 change as their subject, so whether the plan solves the issue at all is checked here or nowhere.
 Drafting it well and drafting it unbiased are different jobs, so they run as separate stages. **The
 three add no stopping point** — the approval at the end is the same single wait.
@@ -444,6 +445,13 @@ a decision was significant is exactly how drift goes unreported.
 | 4 | Rejecting a reviewer's finding, or applying a different fix than proposed | **Halt** | A finding can be correct while its proposed fix is harmful; that judgment is not yours alone |
 | 5 | Skipping a gate | Record | Step 6 already requires stating it in the PR |
 
+**The implementation is not finished until the comment pass has run.** Write the code bare, then invoke
+`settle-comments` over the declarations this change touched. `AGENTS.md` puts it here rather than in
+Step 7 because the judgment only works once generation has stopped, and it is **unconditional** — its
+return is not estimated and the user is not asked whether to run it. Its own questions still apply:
+pass the scope (the touched declarations) and the apply mode so it does not re-ask what this run has
+already settled.
+
 **Halt rows halt under either flow mode** — they are the human gate `AGENTS.md` places on architecture,
 domain and policy decisions. When one fires, present the situation with your recommendation.
 `halt-on-tripwire` extends that treatment to the Record rows; `record-on-tripwire` appends them to
@@ -499,12 +507,13 @@ in parallel with it instead of after it.
 
 ## Step 7 — Review
 
-A completed change has three review subjects, each owned by one skill: `impl-review` (the change),
-`test-review` (the tests), `comment-sweep` (the comment stock of the touched files). They are peers —
-none invokes another — so this step must not silently pick one.
+A completed change has two review subjects, each owned by one skill: `impl-review` (the change) and
+`test-review` (the tests). They are peers — neither invokes the other — so this step must not silently
+pick one. The comment stock is **not** a third subject here: `settle-comments` already ran at Step 4 as
+part of implementing, so there is nothing left to estimate.
 
 Follow the Review Phase Protocol in `AGENTS.md`: **estimate each skill's return from the context this
-run already holds** — which layers the change touched, whether tests or comments moved at all, what an
+run already holds** — which layers the change touched, whether the tests moved at all, what an
 earlier pass already covered — then ask the user per skill, stating that estimate and its reason, and
 run what they approve. "Shall I run all three?" is not a question; it hands the cost back unpriced.
 
@@ -627,10 +636,10 @@ answers as a payload so the sub-skill skips its own gate.
 | `submit-pr` | That a review already ran; the push decision | Its Phase 0 review prompt and push confirmation |
 | `impl-review` | Scope, reviewer model | Its Step 0 |
 | `test-review` | Scope, reviewer model | Its scope question |
-| `comment-sweep` | Scope **and apply mode** | Its scope and apply-mode questions |
+| `settle-comments` (Step 4) | Scope **and apply mode** | Its scope and apply-mode questions |
 
 **Every row is required, because a missing one reinstates a gate this skill already settled.** A
-sub-skill whose default is to confirm per item — `comment-sweep` is the one to watch — will do exactly
+sub-skill whose default is to confirm per item — `settle-comments` is the one to watch — will do exactly
 that when its apply mode does not arrive, and the omission is invisible until the questions start.
 
 Asking the user the same thing twice trains them to approve without reading, which defeats the
@@ -685,7 +694,8 @@ decision points this skill exists to create.
       progress report.
 - [ ] Plan reconciled against the actual diff.
 - [ ] Local gates run, or their delegation to CI stated in the PR.
-- [ ] The three review skills each estimated and put to the user; the approved ones run with their
+- [ ] The comment pass run unconditionally at the end of Step 4. The two review skills each estimated
+      and put to the user; the approved ones run with their
       answers passed through. Auto-application confined to machine-checkable fixes.
 - [ ] Decision points presented together.
 - [ ] PR opened, then runtime verification (curl + traces) completed — or its absence stated together

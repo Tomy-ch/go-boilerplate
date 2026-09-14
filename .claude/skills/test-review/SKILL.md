@@ -1,7 +1,7 @@
 ---
 name: test-review
 description: >-
-  Independent quality review of Go test files (`*_test.go`) in this repository — structural compliance, coverage of the viewpoints the layer README's Test Strategy declares, semantic quality (weak assertions, brittle internals coupling, over-mocking), branch x meaning completeness read from the subject source, and public symbols with no test at all. Defaults to the changed test files; branch-vs-base or specific paths are selectable at the start. Read-only — it reports and the user fixes. Use it after writing or changing tests, before a PR, or whenever someone asks 「テストをレビューして」「このテストで十分か」「テスト観点が足りているか」. The only owner of the test viewpoint: `/impl-review` and `/comment-sweep` are peers asked for separately under the Review Phase Protocol in `AGENTS.md`, and none of the three chains another. Do NOT use it to review implementation code (`impl-review` / `arch-check`), to judge comments (`comment-sweep`), or to write tests (`scaffold-test`).
+  Independent quality review of Go test files (`*_test.go`) in this repository — structural compliance, coverage of the viewpoints the layer README's Test Strategy declares, semantic quality (weak assertions, brittle internals coupling, over-mocking), branch x meaning completeness read from the subject source, and public symbols with no test at all. Defaults to the changed test files; branch-vs-base or specific paths are selectable at the start. Read-only — it reports and the user fixes. Use it after writing or changing tests, before a PR, or whenever someone asks 「テストをレビューして」「このテストで十分か」「テスト観点が足りているか」. The only owner of the test viewpoint: `/impl-review` is the peer asked for separately under the Review Phase Protocol in `AGENTS.md`, `/settle-comments` runs as the last step of implementing rather than as a review, and none of them chains another. Do NOT use it to review implementation code (`impl-review` / `arch-check`), to judge comments (`settle-comments`), or to write tests (`scaffold-test`).
 ---
 
 # Test Review
@@ -259,7 +259,7 @@ End the report with a single concrete suggestion:
 
 ## Standalone by design
 
-This skill is invoked in its own right, never from inside another review skill. `/impl-review` audits the change and `/comment-sweep` the comment stock; the three are peers under the Review Phase Protocol in `AGENTS.md`, each asked for separately, and none of them delegates to another. A review skill that offers to run the next one makes the three subjects stop being independently answerable and lets one skill's drift silently drop the others from every flow that went through it.
+This skill is invoked in its own right, never from inside another review skill. `/impl-review` audits the change; the two are peers under the Review Phase Protocol in `AGENTS.md`, each asked for separately, and neither delegates to the other. The comment stock is not a third peer — `/settle-comments` runs unconditionally as the last step of implementing, so by the time a review is asked for it has already happened. A review skill that offers to run the next one makes the subjects stop being independently answerable and lets one skill's drift silently drop the other from every flow that went through it.
 
 It does not chain *into* anything either: the user reads the report and decides whether to invoke `scaffold-test` (regenerate) or hand-edit.
 
