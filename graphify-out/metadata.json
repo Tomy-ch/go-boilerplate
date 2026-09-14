@@ -11,8 +11,8 @@
     "multigraph": false
   },
   "counts": {
-    "nodes": 20117,
-    "edges": 45204
+    "nodes": 20136,
+    "edges": 45242
   },
   "source_attributes": {
     "graph": {
@@ -1158,32 +1158,6 @@
           ],
           "relation": "form",
           "source_file": ".codex/skills/scaffold-endpoint/agents/openai.yaml"
-        },
-        {
-          "confidence": "INFERRED",
-          "confidence_score": 0.95,
-          "id": "codex_skill_interface_pairs",
-          "label": "Codex Skill and Agent Interface Pairs",
-          "nodes": [
-            "codex_skills_actions_pin_skill_github_actions_pin_update",
-            "_codex_skills_actions_pin_agents_openai_actions_pin_interface",
-            "codex_skills_arch_check_skill_architecture_compliance_check",
-            "_codex_skills_arch_check_agents_openai_arch_check_interface",
-            "codex_skills_back_prop_skill_documentation_drift_review",
-            "_codex_skills_back_prop_agents_openai_back_prop_interface",
-            "codex_skills_canonicalize_doc_skill_canonical_document_sync",
-            "_codex_skills_canonicalize_doc_agents_openai_canonicalize_doc_interface",
-            "codex_skills_comment_sweep_skill_comment_sweep",
-            "_codex_skills_comment_sweep_agents_openai_comment_sweep_interface",
-            "codex_skills_commit_skill_scoped_git_commit",
-            "_codex_skills_commit_agents_openai_commit_interface",
-            "codex_skills_context_map_audit_skill_context_map_audit",
-            "_codex_skills_context_map_audit_agents_openai_context_map_audit_interface",
-            "codex_skills_context_map_skill_context_map",
-            "_codex_skills_context_map_agents_openai_context_map_interface"
-          ],
-          "relation": "form",
-          "source_file": ".codex/skills/actions-pin/agents/openai.yaml"
         },
         {
           "confidence": "INFERRED",
@@ -2538,32 +2512,6 @@
         ],
         "relation": "form",
         "source_file": ".codex/skills/scaffold-endpoint/agents/openai.yaml"
-      },
-      {
-        "confidence": "INFERRED",
-        "confidence_score": 0.95,
-        "id": "codex_skill_interface_pairs",
-        "label": "Codex Skill and Agent Interface Pairs",
-        "nodes": [
-          "codex_skills_actions_pin_skill_github_actions_pin_update",
-          "_codex_skills_actions_pin_agents_openai_actions_pin_interface",
-          "codex_skills_arch_check_skill_architecture_compliance_check",
-          "_codex_skills_arch_check_agents_openai_arch_check_interface",
-          "codex_skills_back_prop_skill_documentation_drift_review",
-          "_codex_skills_back_prop_agents_openai_back_prop_interface",
-          "codex_skills_canonicalize_doc_skill_canonical_document_sync",
-          "_codex_skills_canonicalize_doc_agents_openai_canonicalize_doc_interface",
-          "codex_skills_comment_sweep_skill_comment_sweep",
-          "_codex_skills_comment_sweep_agents_openai_comment_sweep_interface",
-          "codex_skills_commit_skill_scoped_git_commit",
-          "_codex_skills_commit_agents_openai_commit_interface",
-          "codex_skills_context_map_audit_skill_context_map_audit",
-          "_codex_skills_context_map_audit_agents_openai_context_map_audit_interface",
-          "codex_skills_context_map_skill_context_map",
-          "_codex_skills_context_map_agents_openai_context_map_interface"
-        ],
-        "relation": "form",
-        "source_file": ".codex/skills/actions-pin/agents/openai.yaml"
       },
       {
         "confidence": "INFERRED",
