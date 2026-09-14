@@ -135,4 +135,4 @@ done | sort -t$'\t' -k2 \
 | --- | --- | --- | --- |
 | `impl-review` 経由の `comment-reviewer` | 差分 | 削除 / 書換 / 加筆 | 生成時の流入ゲート |
 | `doc-reviewer` | `README*` / `docs/**` | 内容 findings | ドキュメント散文の品質 |
-| `comment-sweep` | 在庫 | 維持 / 短縮 / 削除 / 移設 / 集約 | 内容の管轄と所有者 |
+| `settle-comments` | 在庫 | 維持 / 短縮 / 削除 / 移設 / 集約 | 内容の管轄と所有者 |

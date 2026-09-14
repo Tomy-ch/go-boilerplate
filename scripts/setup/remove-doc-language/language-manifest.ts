@@ -246,7 +246,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
     [", translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`)"],
     [" Codex-side `SKILL.ja.md` is optional, so it is\nchecked as a translation pair only when present."],
   ]),
-  ...forFile(".claude/skills/comment-sweep/SKILL.md", [
+  ...forFile(".claude/skills/settle-comments/SKILL.md", [
     ["   Whichever is chosen, the English canonical file and its `.ja.md` translation — plus the log table in\n   `docs/adr/README.md` and `docs/adr/README.ja.md` — are updated in the same change.", "   Whichever is chosen, the file and the log table in `docs/adr/README.md` are updated in the same\n   change."],
   ]),
   ...forFile("AGENTS.md", [
@@ -274,10 +274,10 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile(".claude/README.md", [
     ["- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter, the\n  `SKILL.ja.md` pair, references that resolve — assume a skill this repository writes.", "- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter and\n  references that resolve — assume a skill this repository writes."],
   ]),
-  ...forFile(".claude/skills/comment-sweep/SKILL.ja.md", [
+  ...forFile(".claude/skills/settle-comments/SKILL.ja.md", [
     [" と `docs/adr/README.ja.md`"],
   ]),
-  ...forFile(".codex/skills/comment-sweep/SKILL.ja.md", [
+  ...forFile(".codex/skills/settle-comments/SKILL.ja.md", [
     ["英語の正本・隣の `.ja.md`・英日両方の ADR ログ表を揃えて更新する", "正本と ADR ログ表を揃えて更新する"],
   ]),
   ...forFile(".claude/skills/context-map/SKILL.ja.md", [

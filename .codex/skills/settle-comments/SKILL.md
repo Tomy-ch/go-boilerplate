@@ -1,10 +1,10 @@
 ---
-name: comment-sweep
+name: settle-comments
 description: >-
   Sweep the existing stock of source-code comments to decide whether their content belongs at the declaration, in its governing document (移設), or consolidated at one owning declaration (集約). Use for bloated or essay-like comments, repeated or fragmented Why across files or packages, doc comments grown into design arguments, periodic hygiene of a package/layer/repository, and before a template cut; supports 確認して適用 (default), 自動適用 (`--apply`), and 報告のみ (`--report-only`). Japanese triggers include 「コメントが長すぎる」「コメントを整理して」「この Why はコードに置くべきか」「コメントを ADR に移したい」. Do not use for comments on a change just written, which `impl-review` / `comment-reviewer` own as diff scope; README or docs prose quality, which `doc-reviewer` owns; or README-to-code structural drift, which `back-prop` / `sync-readme` own.
 ---
 
-# Comment Sweep
+# Settle Comments
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
 (not loaded as a skill; for human reference only).
@@ -200,4 +200,4 @@ Report the result in Japanese; do not stage, commit, or push.
 | --- | --- | --- | --- |
 | `comment-reviewer` via `impl-review` | diff | 削除 / 書換 / 加筆 | Generation-time inflow gate |
 | `doc-reviewer` | `README*` / `docs/**` | Content findings | Docs prose quality |
-| `comment-sweep` | stock | 維持 / 短縮 / 削除 / 移設 / 集約 | Content jurisdiction and ownership |
+| `settle-comments` | stock | 維持 / 短縮 / 削除 / 移設 / 集約 | Content jurisdiction and ownership |

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Comment Sweep"
+  display_name: "Settle Comments"
   short_description: "蓄積したコメントの置き場所を監査して整理する"
-  default_prompt: "$comment-sweep を使い、対象パッケージの長いコメントの置き場所を監査して。"
+  default_prompt: "$settle-comments を使い、対象パッケージの長いコメントの置き場所を監査して。"

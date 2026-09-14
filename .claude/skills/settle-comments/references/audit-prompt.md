@@ -1,13 +1,15 @@
-# Comment Sweep — auditor instructions
+# Settle Comments — auditor instructions
 
 You audit the **existing comments** of one package on a single question: **is this content in the
 right place?** You are read-only. Never edit, write, or mutate anything — the orchestrating
-`comment-sweep` skill drives approval and performs every write.
+`settle-comments` skill drives approval and performs every write.
 
 ## Read these first (single source of truth)
 
-1. **Comment Rules in `docs/rules.md`** — what a comment may contain, and the jurisdiction clause.
-   Apply it verbatim. If anything below disagrees with it, `docs/rules.md` wins.
+1. **Comment Rules in `docs/rules.md`** — what a comment may contain, the two questions asked before
+   anything is written, the declared canonical direction (the doc comment publishes the caller-facing
+   contract; `docs/spec/**` owns its reasons), and the jurisdiction clause. Apply it verbatim. If
+   anything below disagrees with it, `docs/rules.md` wins.
 2. **The *What belongs here* table in `docs/adr/README.md`** — decision / exclusion / rule /
    inventory and their homes. This governs where relocated prose may land.
 3. **`docs/design/README.md`** — what a subsystem design reference is for.
@@ -24,6 +26,30 @@ those files, not only recently-changed ones — re-examining accumulated stock i
 
 Run **both passes** below over the same files. They find different things, and neither substitutes for
 the other.
+
+### Pass 0 — per comment: is a mechanism already guarding this?
+
+Before jurisdiction, ask the question `docs/rules.md` puts first:
+
+> If this sentence turned false, would anything fail?
+
+A compile error, a test case, a `depguard` / `forbidigo` rule, an `internal/architest` scan, a
+regeneration check, a `docs/spec/**` statement — any of these means the fact already has a guard and
+the comment is a second copy of it. Verdict **不要**.
+
+Two things bound this, and skipping either produces the worst finding this skill can emit — the
+deletion of a contract nothing else publishes:
+
+- **Name the guard.** A `不要` finding must carry the `file:line` that keeps the fact true. If you
+  cannot name it, the verdict is not `不要`: the sentence is unguarded, which is an argument for
+  keeping it.
+- **The canonical direction decides which copy goes, and it is declared, not yours to pick.** What a
+  caller can observe — what the declaration does, the meaning of its inputs / outputs / errors, the
+  order conditions are judged in when that order is observable — is **published** by the doc comment,
+  so a test or a spec restating it does not make the comment the copy. What is *not* observable from
+  the call site — why the business works that way — belongs to `docs/spec/**` and is `移設` or `不要`
+  in the comment. Treating a test's case names as canonical for a contract inverts this and is the
+  single mistake to avoid.
 
 ### Pass 1 — per comment: jurisdiction
 
@@ -67,16 +93,24 @@ no declaration in your package owns a concept that also lives in another one.
 
 ## Verdicts
 
-Return exactly one of five per finding.
+Return exactly one of six per finding.
 
 - **維持** — the content belongs here. This is the correct answer for the ordinary case, and for
   anything whose constraint exists only at this call site: a `runtime.Caller` skip depth, an upstream
   bug workaround, a "do not reorder these two calls", a library's or SDK's specific behavior. Report
   these as a **count only**, with no per-item detail, unless the comment is wrong (see below).
 - **短縮** — the content belongs here but is longer than the fact it delivers. Propose the compressed
-  wording; never propose deletion under this verdict.
+  wording; never propose deletion under this verdict. **A 短縮 must drop a fact, not re-word one.**
+  Re-phrasing prose that already says only what it needs to is not a finding: judging is idempotent
+  and rewriting is not, so a sweep that re-words to taste rebuilds the same comment on every run.
 - **削除** — the comment carries nothing: pure restatement of the code, tautology, a resolved TODO,
   or narration of a mechanism the reader already knows. Quote the code that makes it redundant.
+- **不要** — the Pass 0 verdict. The content is **true and useful**, which is what separates it from
+  削除, but another mechanism already guards it and the comment is the unchecked copy. **Name that
+  mechanism as `file:line`** — a `不要` without one is not a finding, because "it reads as
+  unnecessary" is the same reading that produced the duplicate. Check the canonical direction before
+  returning it: a sentence the doc comment publishes is not made a copy by a test or a spec repeating
+  it.
 - **移設** — the content is real and worth keeping, but its jurisdiction is a document, not this
   declaration. Name the destination concretely and show the landing form (below).
 - **集約** — the Pass 2 verdict, and the only one whose subject is a **set** of comments rather than a
@@ -194,14 +228,15 @@ plainly.
 Your final message **is** the data the orchestrator consumes. No preamble.
 
 ````text
-## comment-sweep 監査結果: <package path>
+## settle-comments 監査結果: <package path>
 
-対象 <n> ファイル / 判定内訳: 維持 <a> / 短縮 <b> / 削除 <c> / 移設 <d> / 集約 <e>（うちファイル横断 <f>）
+対象 <n> ファイル / 判定内訳: 維持 <a> / 短縮 <b> / 削除 <c> / 不要 <g> / 移設 <d> / 集約 <e>（うちファイル横断 <f>）
 
 ### [判定] 短いタイトル
 - 場所: path/to/file:行
 - 対象コメント: `実際のコメント文言`（複数行は要約せず全文）
-- 判定: 維持 / 短縮 / 削除 / 移設
+- 判定: 維持 / 短縮 / 削除 / 不要 / 移設
+- 正本: 不要 のときだけ。その事実を守っている機構を `file:line` で名指す
 - 根拠: なぜその判定か。移設なら「この判断を覆す人が更新を義務づけられる文書」を名指しする
 - 移設先: docs/adr/NNNN-....md の <節> / docs/design/<name>.md / docs/spec/domain/<pkgpath>.md / docs/spec/usecase/<pkgpath>.md / <pkg>/README.md
   - 追記する文面: （実際の文章）
@@ -214,7 +249,8 @@ Your final message **is** the data the orchestrator consumes. No preamble.
   // 変更後（残す残滓 + リンク）
   ```
 
-- ※ Go の export 宣言は「削除」不可（revive のため 短縮 or 移設）
+- ※ Go の export 宣言は「削除」「不要」でコメント全体を落とせない（revive が存在を要求する）。
+  写しであっても、`Name` 始まりの契約 1 文まで削る 短縮 として着地させる
 - 確度: high / medium / low
 
 ### [集約] 短いタイトル

@@ -1,4 +1,4 @@
-# Comment Sweep Auditor Instructions
+# Settle Comments Auditor Instructions
 
 Audit existing comments in the assigned package only. You are strictly read-only: never write,
 never ask the user, and return your final Japanese report as data for the orchestrator.
@@ -125,7 +125,7 @@ Report only code-backed evidence. If the package has no action, say so plainly. 
 the outer four-backtick fence intentionally permits the inner fenced diffs.
 
 ````text
-## comment-sweep 監査結果: <パッケージパス>
+## settle-comments 監査結果: <パッケージパス>
 
 対象 <n> ファイル / 判定内訳: 維持 <a> / 短縮 <b> / 削除 <c> / 移設 <d> / 集約 <e>（うちファイル横断 <f>）
 
