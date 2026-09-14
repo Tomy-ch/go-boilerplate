@@ -26,7 +26,7 @@ The orchestrator gives you:
 - **architecture** — Onion / layer violations. Read the [*Layer Rules*](../../AGENTS.md#layer-rules) and [*Forbidden Shortcuts*](../../AGENTS.md#forbidden-shortcuts) sections of `AGENTS.md` at review time and apply what they say — do not work from a copy here, which would drift the first time either section changes. (For exhaustive layer compliance, `arch-check` is the heavier tool — here you flag the obvious, high-signal violations.)
 - **runtime-gap** — defects that **mocked tests cannot catch**: DI wiring mismatch (`BindHandler` unregistered / mis-provided), shared OpenAPI schema edits that break *sibling* endpoints (a `components/*` referenced by more than one operation), real-DB SQL behavior differing from the mock (filters, null handling, ordering, uniqueness), OpenAPI validation-middleware effects, `allOf` / `additionalProperties: false` ripple. State explicitly what runtime check would expose each one.
 
-(Comment quality — comments that narrate internal processing / rationale / restate code instead of describing behavior — is **not** a lens here. It is owned by the dedicated `comment-reviewer` agent, which `impl-review` fans out alongside these lenses and whose findings it auto-fixes.)
+(Comment quality — comments that narrate internal processing / rationale / restate code instead of describing behavior — is **not** a lens here. It is owned by the dedicated `comment-reviewer` agent, which the `settle-comments` skill fans out at the end of implementing — before this review is ever asked for.)
 
 ### Silent-failure focus (correctness lens only)
 

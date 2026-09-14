@@ -223,7 +223,7 @@ per-package judgment (a package's own README is one of the candidate destination
 
 ## Step 2 — Fan out read-only auditors in parallel
 
-For each package group, spawn one auditor via the **Agent tool** (`subagent_type: general-purpose`),
+For each package group, spawn one auditor via the **Agent tool** (`subagent_type: comment-reviewer`),
 all in a **single message with multiple tool calls** so they run concurrently. Give each:
 
 - the package directory and its resolved file list
@@ -231,7 +231,10 @@ all in a **single message with multiple tool calls** so they run concurrently. G
 - the repo-root-relative paths of the authoritative sources above
 
 `references/audit-prompt.md` is the auditors' single source of instructions — do not paraphrase it
-into the spawn prompt, or the two will drift and the auditors will disagree with each other.
+into the spawn prompt, or the two will drift and the auditors will disagree with each other. It is also
+what reconciles the agent with this skill: `comment-reviewer` carries its own diff-scoped taxonomy, and
+under this skill the verdict vocabulary and output format come from `audit-prompt.md` instead. Say so
+in the spawn prompt.
 
 Each auditor runs **all passes** described in *Why this skill exists* — the per-comment jurisdiction
 question and the per-package stock question — over the same files it has already read. The second pass

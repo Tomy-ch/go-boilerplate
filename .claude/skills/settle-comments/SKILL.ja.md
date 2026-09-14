@@ -201,7 +201,7 @@ done | sort -rn | head -30
 
 ## Step 2 — read-only 監査エージェントを並列 fan-out
 
-パッケージのまとまりごとに **Agent tool**（`subagent_type: general-purpose`）で 1 体ずつ spawn する。
+パッケージのまとまりごとに **Agent tool**（`subagent_type: comment-reviewer`）で 1 体ずつ spawn する。
 **1 メッセージ内に複数ツールコール**を並べて同時実行させる。各エージェントへ渡すもの:
 
 - パッケージディレクトリと、解決済みファイル一覧
