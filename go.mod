@@ -13,7 +13,7 @@ require (
 	github.com/aws/smithy-go v1.28.2
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/cockroachdb/errors v1.14.0
-	github.com/exaring/otelpgx v0.12.0
+	github.com/exaring/otelpgx v0.12.1
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/golang-jwt/jwt/v5 v5.3.1
