@@ -1,7 +1,7 @@
 #checkov:skip=CKV_DOCKER_3:nginx は :80 を束縛するため master プロセスに root が要る（worker は公式イメージが nginx ユーザーへ落とす）
 # 上の #checkov:skip は checkov 自身の判定からしか外れない。code scanning へは checkov.yaml の
 # 「Drop suppressed results」が落としており、片方だけでは消えない。
-FROM nginx:1.31-alpine@sha256:a9ae6f6d078d477e21323310498e5196cb2b7c0aedd9e07b7306612077227d7c AS document_viewer
+FROM nginx:1.31-alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2 AS document_viewer
 
 COPY ./docker/document/config/default.conf /etc/nginx/conf.d/default.conf
 

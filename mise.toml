@@ -11,14 +11,14 @@ min_version = "2026.6.0"
 [tools]
 # 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0095）、
 # 昇格の判断は LTS を待つ方針が担う。
-go = "1.27.1"
+go = "1.27.2"
 node = "24.19.0"
 python = "3.14.7"
 
 # Go ベース（標準レジストリで解決可）
 oapi-codegen = "2.8.0"
 sqlc = "1.31.1"
-golangci-lint = "2.13.1"
+golangci-lint = "2.14.0"
 actionlint = "1.7.12"
 # actionlint が run スクリプトを検査するために PATH 上で参照する（同梱ではなく別バイナリ）
 shellcheck = "0.11.0"

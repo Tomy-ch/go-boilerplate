@@ -46,8 +46,20 @@ trustPolicyExclude: []
 # ----- 依存の差し替え -----
 # pnpm は親子の直接辺しか指せないため、親ではなく「解決結果がこの版域に落ちたら」で書く。
 overrides:
-  # IN_PLACE hook 除去後に切り離された部分木が実行可能なまま残る（GHSA-55q2-fjhq-7xh7）。mermaid が引く。
-  "dompurify@<3.4.13": ">=3.4.13 <4"
+  # IN_PLACE で node を除去する afterSanitize hook が切り離された部分木を実行可能なまま残す
+  # （GHSA-55q2-fjhq-7xh7 / GHSA-p98j-92pf-mc4p）。mermaid が引く。
+  "dompurify@<3.4.16": ">=3.4.16 <4"
+  # parseCommaParts の無制限再帰による DoS（GHSA-6j4f-fj2g-mc7p）。minimatch が引く。
+  "brace-expansion@5": ">=5.0.10 <6"
+  # TLS 証明書検証の迂回・WebSocket 経由の DoS・Set-Cookie のキャッシュによる別ユーザーへの漏洩ほか
+  # （GHSA-w293-vg96-wgc3 / rfgv-xxqx-mfg5 ほか計 10 件）。jsdom が引く。
+  "undici@<7.29.1": ">=7.29.1 <8"
+  # indexed source map の section offset によるイベントループの DoS（GHSA-68fv-2mgg-jv7q）。@tailwindcss/node が引く。
+  "source-map-js@<1.2.2": ">=1.2.2 <2"
+  # settings 経由のプロトタイプ汚染で trust 制限を迂回される（GHSA-238p-pmpm-9mq7）。mermaid が引く。
+  # mermaid の宣言は ^0.16 だが、0.18 系の破壊的変更は CSS クラスの接頭辞化と内部 API だけで、
+  # mermaid が呼ぶ renderToString には及ばない。
+  "katex@<0.18.2": ">=0.18.2 <0.19"
   # size が 0 のとき custom generator が無限ループする（GHSA-2v37-7h3g-55p8）。postcss が引く。
   "nanoid@3": ">=3.3.18 <4"
   # rolldown が引く @napi-rs/wasm-runtime の peer が `^1.7.1 || ^2.0.0-alpha.3` で、pnpm は高い方＝ alpha を採る。
