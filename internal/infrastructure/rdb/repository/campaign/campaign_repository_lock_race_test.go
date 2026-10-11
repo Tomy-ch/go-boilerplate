@@ -73,7 +73,7 @@ func Test_lockByCodeSerializesConcurrentClaimsAgainstTotalLimit(t *testing.T) {
 	ctx := context.Background()
 
 	// 残り 1 枚のキャンペーンを立てる。総枚数上限 1 枚に対して発行済み 0 枚。
-	target := newRaceCampaign(t, 1, 1)
+	target := newRaceCampaign(t, "RACE-TOTAL-LIMIT", 1, 1)
 	require.NoError(t, repo.Create(ctx, target))
 	couponID := insertTestCoupon(ctx, t, testDB)
 	t.Cleanup(func() {
@@ -159,7 +159,7 @@ func Test_lockByCodeSerializesConcurrentClaimsAgainstPerUserLimit(t *testing.T) 
 	userID := mustParse(t, seedAliceUserID)
 
 	// 総枚数には余裕があり、1 人あたり上限だけが 1 枚のキャンペーンを立てる。
-	target := newRaceCampaign(t, 10, 1)
+	target := newRaceCampaign(t, "RACE-PER-USER", 10, 1)
 	require.NoError(t, repo.Create(ctx, target))
 	couponID := insertTestCoupon(ctx, t, testDB)
 	t.Cleanup(func() {
@@ -253,11 +253,11 @@ func raceClaimParams(t *testing.T, userID, couponID uuid.UUID, claimedByUser int
 	}
 }
 
-// newRaceCampaign は、上限だけを指定した配布中のキャンペーンを組み立てます。
-func newRaceCampaign(t *testing.T, totalLimit, perUserLimit int) *domaincampaign.Campaign {
+// newRaceCampaign は、コードと上限を指定した配布中のキャンペーンを組み立てます。
+func newRaceCampaign(t *testing.T, code string, totalLimit, perUserLimit int) *domaincampaign.Campaign {
 	t.Helper()
 
-	base := newTestCampaign(t, nil)
+	base := newTestCampaign(t, code, nil)
 	c, err := domaincampaign.New(base.ID(), domaincampaign.Attributes{
 		Code:         base.Code(),
 		Template:     base.Template(),
