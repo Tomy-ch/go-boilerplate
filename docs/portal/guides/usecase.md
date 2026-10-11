@@ -354,11 +354,26 @@ payloads:
       <aggregate field>: <payload JSON name>   # carried
       <aggregate field>:
         omit: <reason>                          # not carried; the reason is required
-``` The declaration
-belongs to this layer because the wire format does: the event's *name* is domain vocabulary, its
-representation is not (`internal/domain/README.md` § Domain events). `TestOutboxPayloadParity`
+```
+
+The declaration belongs to this layer because the wire format does: the event's *name* is domain
+vocabulary, its representation is not (`internal/domain/README.md` § Domain events). `TestOutboxPayloadParity`
 reconciles the declaration with the code, so adding a field to an aggregate fails until the payload's
 treatment of it is written down — see [ADR-0113](../../docs/adr/0113-outbox-payload-kinds-and-parity-declaration.md).
+
+Owning the wire format includes how a payload spells a time: **every time field in an
+`<aggregate>/event/` payload goes through [`tools/datetime`](tools/datetime/README.md)**, which
+spells the instant in UTC, so that the envelope's `occurredAt` and the payload's own fields read the
+same way inside one delivered frame. Format it in the builder instead and the offset becomes a
+function of the deployment's `TZ` — a subscriber's schema then passes or fails depending on where the
+API runs, which is not a property a published contract can have.
+
+`TestOutboxPayloadTimeUTC` fails an event package that formats a time itself, which is what leaves
+the helper as the only way through. It is a text scan for a `Format` call, so a payload that hands a
+`time.Time` straight to `json.Marshal` is outside what it can see — the envelope does exactly that
+and normalizes at its own `MarshalJSON` instead. The rule reaches this layer's outbound event
+payloads and nothing wider: a paging cursor is an opaque token parsed back by the deployment that
+issued it, and a structured log field answers to its own contract.
 
 ### Doc comments: interface vs implementation
 

@@ -63,10 +63,10 @@
 <span id="L6" class="ln">     6  </span>
 <span id="L7" class="ln">     7  </span>import (
 <span id="L8" class="ln">     8  </span>	&#34;encoding/json&#34;
-<span id="L9" class="ln">     9  </span>	&#34;time&#34;
-<span id="L10" class="ln">    10  </span>
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/apperror&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/domain/purchase&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/domain/purchase&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/tools/datetime&#34;
 <span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/ptr&#34;
 <span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L15" class="ln">    15  </span>)
@@ -136,7 +136,7 @@
 <span id="L79" class="ln">    79  </span>		ShippingFee:    p.ShippingFee(),
 <span id="L80" class="ln">    80  </span>		TotalAmount:    p.TotalAmount(),
 <span id="L81" class="ln">    81  </span>		CouponID:       couponID,
-<span id="L82" class="ln">    82  </span>		OrderedAt:      p.OrderedAt().Format(time.RFC3339Nano),
+<span id="L82" class="ln">    82  </span>		OrderedAt:      datetime.FormatUTC(p.OrderedAt()),
 <span id="L83" class="ln">    83  </span>		Details:        details,
 <span id="L84" class="ln">    84  </span>	})
 <span id="L85" class="ln">    85  </span>	if err != nil {

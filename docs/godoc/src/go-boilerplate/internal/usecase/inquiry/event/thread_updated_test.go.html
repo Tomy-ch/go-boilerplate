@@ -78,7 +78,7 @@
 <span id="L21" class="ln">    21  </span>
 <span id="L22" class="ln">    22  </span>		t.Run(&#34;一覧の更新に要る値だけを載せ本文を持たない&#34;, func(t *testing.T) {
 <span id="L23" class="ln">    23  </span>			t.Parallel()
-<span id="L24" class="ln">    24  </span>			updatedAt := time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
+<span id="L24" class="ln">    24  </span>			updatedAt := time.Date(2026, time.September, 1, 19, 0, 0, 0, testJST)
 <span id="L25" class="ln">    25  </span>			i, err := inquiry.Reconstruct(uuidtestkit.NewTestFromSalt(t, &#34;inquiry&#34;), inquiry.Attributes{
 <span id="L26" class="ln">    26  </span>				UserID:    uuidtestkit.NewTestFromSalt(t, &#34;user&#34;),
 <span id="L27" class="ln">    27  </span>				CreatedAt: updatedAt.Add(-time.Hour),

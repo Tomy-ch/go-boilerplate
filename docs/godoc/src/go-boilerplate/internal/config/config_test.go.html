@@ -784,7 +784,7 @@
 <span id="L727" class="ln">   727  </span>		t.Run(&#34;既定の許可オリジンの場合、エラーが返されないこと&#34;, func(t *testing.T) {
 <span id="L728" class="ln">   728  </span>			t.Parallel()
 <span id="L729" class="ln">   729  </span>			cfg := mockLoader(t)
-<span id="L730" class="ln">   730  </span>			err := validateSecurityConfig(cfg.Security)
+<span id="L730" class="ln">   730  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
 <span id="L731" class="ln">   731  </span>			require.NoError(t, err)
 <span id="L732" class="ln">   732  </span>		})
 <span id="L733" class="ln">   733  </span>
@@ -793,7 +793,7 @@
 <span id="L736" class="ln">   736  </span>			cfg := mockLoader(t)
 <span id="L737" class="ln">   737  </span>			cfg.Security.AllowedOrigins = []string{&#34;http://127.0.0.1&#34;} <span class="comment">// localhost 同等のループバック</span>
 <span id="L738" class="ln">   738  </span>
-<span id="L739" class="ln">   739  </span>			err := validateSecurityConfig(cfg.Security)
+<span id="L739" class="ln">   739  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
 <span id="L740" class="ln">   740  </span>			require.NoError(t, err)
 <span id="L741" class="ln">   741  </span>		})
 <span id="L742" class="ln">   742  </span>
@@ -802,218 +802,248 @@
 <span id="L745" class="ln">   745  </span>			cfg := mockLoader(t)
 <span id="L746" class="ln">   746  </span>			cfg.Security.AllowedOrigins = []string{&#34;https://example.com&#34;} <span class="comment">// 非ループバックでも HTTPS なら許可</span>
 <span id="L747" class="ln">   747  </span>
-<span id="L748" class="ln">   748  </span>			err := validateSecurityConfig(cfg.Security)
+<span id="L748" class="ln">   748  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
 <span id="L749" class="ln">   749  </span>			require.NoError(t, err)
 <span id="L750" class="ln">   750  </span>		})
-<span id="L751" class="ln">   751  </span>	})
-<span id="L752" class="ln">   752  </span>
-<span id="L753" class="ln">   753  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L754" class="ln">   754  </span>		t.Parallel()
-<span id="L755" class="ln">   755  </span>		t.Run(&#34;AllowedOriginsが空の場合&#34;, func(t *testing.T) {
-<span id="L756" class="ln">   756  </span>			t.Parallel()
-<span id="L757" class="ln">   757  </span>			cfg := mockLoader(t)
-<span id="L758" class="ln">   758  </span>			cfg.Security.AllowedOrigins = []string{} <span class="comment">// 空のAllowedOrigins</span>
-<span id="L759" class="ln">   759  </span>
-<span id="L760" class="ln">   760  </span>			err := validateSecurityConfig(cfg.Security)
-<span id="L761" class="ln">   761  </span>			require.ErrorIs(t, err, ErrEmptyAllowedOrigins)
-<span id="L762" class="ln">   762  </span>		})
-<span id="L763" class="ln">   763  </span>
-<span id="L764" class="ln">   764  </span>		t.Run(&#34;localhost以外でHTTPが許可されている場合&#34;, func(t *testing.T) {
-<span id="L765" class="ln">   765  </span>			t.Parallel()
-<span id="L766" class="ln">   766  </span>			cfg := mockLoader(t)
-<span id="L767" class="ln">   767  </span>			cfg.Security.AllowedOrigins = []string{&#34;http://example.com&#34;} <span class="comment">// localhost以外のHTTP</span>
-<span id="L768" class="ln">   768  </span>
-<span id="L769" class="ln">   769  </span>			err := validateSecurityConfig(cfg.Security)
-<span id="L770" class="ln">   770  </span>			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
-<span id="L771" class="ln">   771  </span>		})
-<span id="L772" class="ln">   772  </span>
-<span id="L773" class="ln">   773  </span>		t.Run(&#34;オリジンのURLパースに失敗した場合&#34;, func(t *testing.T) {
-<span id="L774" class="ln">   774  </span>			t.Parallel()
-<span id="L775" class="ln">   775  </span>			cfg := mockLoader(t)
-<span id="L776" class="ln">   776  </span>			<span class="comment">// 制御文字を含む URL は url.Parse がエラーを返す。</span>
-<span id="L777" class="ln">   777  </span>			cfg.Security.AllowedOrigins = []string{&#34;http://example.com/\x7f&#34;}
+<span id="L751" class="ln">   751  </span>
+<span id="L752" class="ln">   752  </span>		t.Run(&#34;developmentモードならワイルドカードが許可されること&#34;, func(t *testing.T) {
+<span id="L753" class="ln">   753  </span>			t.Parallel()
+<span id="L754" class="ln">   754  </span>			cfg := mockLoader(t)
+<span id="L755" class="ln">   755  </span>			cfg.App.Mode = DevelopmentMode
+<span id="L756" class="ln">   756  </span>			cfg.Security.AllowedOrigins = []string{WildcardOrigin}
+<span id="L757" class="ln">   757  </span>
+<span id="L758" class="ln">   758  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
+<span id="L759" class="ln">   759  </span>			require.NoError(t, err)
+<span id="L760" class="ln">   760  </span>		})
+<span id="L761" class="ln">   761  </span>	})
+<span id="L762" class="ln">   762  </span>
+<span id="L763" class="ln">   763  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L764" class="ln">   764  </span>		t.Parallel()
+<span id="L765" class="ln">   765  </span>		t.Run(&#34;AllowedOriginsが空の場合&#34;, func(t *testing.T) {
+<span id="L766" class="ln">   766  </span>			t.Parallel()
+<span id="L767" class="ln">   767  </span>			cfg := mockLoader(t)
+<span id="L768" class="ln">   768  </span>			cfg.Security.AllowedOrigins = []string{} <span class="comment">// 空のAllowedOrigins</span>
+<span id="L769" class="ln">   769  </span>
+<span id="L770" class="ln">   770  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
+<span id="L771" class="ln">   771  </span>			require.ErrorIs(t, err, ErrEmptyAllowedOrigins)
+<span id="L772" class="ln">   772  </span>		})
+<span id="L773" class="ln">   773  </span>
+<span id="L774" class="ln">   774  </span>		t.Run(&#34;localhost以外でHTTPが許可されている場合&#34;, func(t *testing.T) {
+<span id="L775" class="ln">   775  </span>			t.Parallel()
+<span id="L776" class="ln">   776  </span>			cfg := mockLoader(t)
+<span id="L777" class="ln">   777  </span>			cfg.Security.AllowedOrigins = []string{&#34;http://example.com&#34;} <span class="comment">// localhost以外のHTTP</span>
 <span id="L778" class="ln">   778  </span>
-<span id="L779" class="ln">   779  </span>			err := validateSecurityConfig(cfg.Security)
+<span id="L779" class="ln">   779  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
 <span id="L780" class="ln">   780  </span>			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
 <span id="L781" class="ln">   781  </span>		})
-<span id="L782" class="ln">   782  </span>	})
-<span id="L783" class="ln">   783  </span>}
-<span id="L784" class="ln">   784  </span>
-<span id="L785" class="ln">   785  </span>func Test_buildStatusCodeSet(t *testing.T) {
-<span id="L786" class="ln">   786  </span>	t.Parallel()
-<span id="L787" class="ln">   787  </span>
-<span id="L788" class="ln">   788  </span>	codes := []int{200, 400, 500}
-<span id="L789" class="ln">   789  </span>	expected := map[int]bool{
-<span id="L790" class="ln">   790  </span>		200: true,
-<span id="L791" class="ln">   791  </span>		400: true,
-<span id="L792" class="ln">   792  </span>		500: true,
-<span id="L793" class="ln">   793  </span>	}
-<span id="L794" class="ln">   794  </span>
-<span id="L795" class="ln">   795  </span>	actual := buildStatusCodeSet(codes)
-<span id="L796" class="ln">   796  </span>	assert.Equal(t, expected, actual)
-<span id="L797" class="ln">   797  </span>}
+<span id="L782" class="ln">   782  </span>
+<span id="L783" class="ln">   783  </span>		t.Run(&#34;productionモードでワイルドカードが指定された場合&#34;, func(t *testing.T) {
+<span id="L784" class="ln">   784  </span>			t.Parallel()
+<span id="L785" class="ln">   785  </span>			cfg := mockLoader(t)
+<span id="L786" class="ln">   786  </span>			cfg.App.Mode = ProductionMode
+<span id="L787" class="ln">   787  </span>			cfg.Security.AllowedOrigins = []string{WildcardOrigin}
+<span id="L788" class="ln">   788  </span>
+<span id="L789" class="ln">   789  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
+<span id="L790" class="ln">   790  </span>			require.ErrorIs(t, err, ErrWildcardOriginNotProduction)
+<span id="L791" class="ln">   791  </span>		})
+<span id="L792" class="ln">   792  </span>
+<span id="L793" class="ln">   793  </span>		t.Run(&#34;productionモードで具体オリジンに混じったワイルドカードも拒否されること&#34;, func(t *testing.T) {
+<span id="L794" class="ln">   794  </span>			t.Parallel()
+<span id="L795" class="ln">   795  </span>			cfg := mockLoader(t)
+<span id="L796" class="ln">   796  </span>			cfg.App.Mode = ProductionMode
+<span id="L797" class="ln">   797  </span>			cfg.Security.AllowedOrigins = []string{&#34;https://example.com&#34;, WildcardOrigin}
 <span id="L798" class="ln">   798  </span>
-<span id="L799" class="ln">   799  </span>func Test_parseCIDR(t *testing.T) {
-<span id="L800" class="ln">   800  </span>	t.Parallel()
-<span id="L801" class="ln">   801  </span>
-<span id="L802" class="ln">   802  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L803" class="ln">   803  </span>		t.Parallel()
-<span id="L804" class="ln">   804  </span>
-<span id="L805" class="ln">   805  </span>		t.Run(&#34;有効な CIDR の場合、解析済みの *net.IPNet を返す&#34;, func(t *testing.T) {
-<span id="L806" class="ln">   806  </span>			t.Parallel()
-<span id="L807" class="ln">   807  </span>
-<span id="L808" class="ln">   808  </span>			actual, err := parseCIDR(&#34;192.168.0.0/16&#34;)
-<span id="L809" class="ln">   809  </span>			require.NoError(t, err)
-<span id="L810" class="ln">   810  </span>			require.NotNil(t, actual)
-<span id="L811" class="ln">   811  </span>			assert.Equal(t, &#34;192.168.0.0/16&#34;, actual.String())
-<span id="L812" class="ln">   812  </span>		})
-<span id="L813" class="ln">   813  </span>	})
+<span id="L799" class="ln">   799  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
+<span id="L800" class="ln">   800  </span>			require.ErrorIs(t, err, ErrWildcardOriginNotProduction)
+<span id="L801" class="ln">   801  </span>		})
+<span id="L802" class="ln">   802  </span>
+<span id="L803" class="ln">   803  </span>		t.Run(&#34;オリジンのURLパースに失敗した場合&#34;, func(t *testing.T) {
+<span id="L804" class="ln">   804  </span>			t.Parallel()
+<span id="L805" class="ln">   805  </span>			cfg := mockLoader(t)
+<span id="L806" class="ln">   806  </span>			<span class="comment">// 制御文字を含む URL は url.Parse がエラーを返す。</span>
+<span id="L807" class="ln">   807  </span>			cfg.Security.AllowedOrigins = []string{&#34;http://example.com/\x7f&#34;}
+<span id="L808" class="ln">   808  </span>
+<span id="L809" class="ln">   809  </span>			err := validateSecurityConfig(cfg.Security, cfg.App)
+<span id="L810" class="ln">   810  </span>			require.ErrorIs(t, err, ErrHTTPOnlyAllowedForLocalhost)
+<span id="L811" class="ln">   811  </span>		})
+<span id="L812" class="ln">   812  </span>	})
+<span id="L813" class="ln">   813  </span>}
 <span id="L814" class="ln">   814  </span>
-<span id="L815" class="ln">   815  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L816" class="ln">   816  </span>		t.Parallel()
+<span id="L815" class="ln">   815  </span>func Test_buildStatusCodeSet(t *testing.T) {
+<span id="L816" class="ln">   816  </span>	t.Parallel()
 <span id="L817" class="ln">   817  </span>
-<span id="L818" class="ln">   818  </span>		t.Run(&#34;不正な CIDR の場合、ErrFailedToParseCIDR を返す&#34;, func(t *testing.T) {
-<span id="L819" class="ln">   819  </span>			t.Parallel()
-<span id="L820" class="ln">   820  </span>
-<span id="L821" class="ln">   821  </span>			actual, err := parseCIDR(&#34;invalid_cidr&#34;)
-<span id="L822" class="ln">   822  </span>			assert.Nil(t, actual)
-<span id="L823" class="ln">   823  </span>			require.ErrorIs(t, err, ErrFailedToParseCIDR)
-<span id="L824" class="ln">   824  </span>		})
-<span id="L825" class="ln">   825  </span>	})
-<span id="L826" class="ln">   826  </span>}
-<span id="L827" class="ln">   827  </span>
-<span id="L828" class="ln">   828  </span>func Test_validatePortRange(t *testing.T) {
-<span id="L829" class="ln">   829  </span>	t.Parallel()
-<span id="L830" class="ln">   830  </span>
-<span id="L831" class="ln">   831  </span>	sentinel := ErrInvalidPortRange
-<span id="L832" class="ln">   832  </span>
-<span id="L833" class="ln">   833  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L834" class="ln">   834  </span>		t.Parallel()
-<span id="L835" class="ln">   835  </span>
-<span id="L836" class="ln">   836  </span>		t.Run(&#34;最小ポートの場合、nil を返す&#34;, func(t *testing.T) {
-<span id="L837" class="ln">   837  </span>			t.Parallel()
-<span id="L838" class="ln">   838  </span>
-<span id="L839" class="ln">   839  </span>			require.NoError(t, validatePortRange(MinPort, sentinel))
-<span id="L840" class="ln">   840  </span>		})
-<span id="L841" class="ln">   841  </span>
-<span id="L842" class="ln">   842  </span>		t.Run(&#34;最大ポートの場合、nil を返す&#34;, func(t *testing.T) {
-<span id="L843" class="ln">   843  </span>			t.Parallel()
+<span id="L818" class="ln">   818  </span>	codes := []int{200, 400, 500}
+<span id="L819" class="ln">   819  </span>	expected := map[int]bool{
+<span id="L820" class="ln">   820  </span>		200: true,
+<span id="L821" class="ln">   821  </span>		400: true,
+<span id="L822" class="ln">   822  </span>		500: true,
+<span id="L823" class="ln">   823  </span>	}
+<span id="L824" class="ln">   824  </span>
+<span id="L825" class="ln">   825  </span>	actual := buildStatusCodeSet(codes)
+<span id="L826" class="ln">   826  </span>	assert.Equal(t, expected, actual)
+<span id="L827" class="ln">   827  </span>}
+<span id="L828" class="ln">   828  </span>
+<span id="L829" class="ln">   829  </span>func Test_parseCIDR(t *testing.T) {
+<span id="L830" class="ln">   830  </span>	t.Parallel()
+<span id="L831" class="ln">   831  </span>
+<span id="L832" class="ln">   832  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L833" class="ln">   833  </span>		t.Parallel()
+<span id="L834" class="ln">   834  </span>
+<span id="L835" class="ln">   835  </span>		t.Run(&#34;有効な CIDR の場合、解析済みの *net.IPNet を返す&#34;, func(t *testing.T) {
+<span id="L836" class="ln">   836  </span>			t.Parallel()
+<span id="L837" class="ln">   837  </span>
+<span id="L838" class="ln">   838  </span>			actual, err := parseCIDR(&#34;192.168.0.0/16&#34;)
+<span id="L839" class="ln">   839  </span>			require.NoError(t, err)
+<span id="L840" class="ln">   840  </span>			require.NotNil(t, actual)
+<span id="L841" class="ln">   841  </span>			assert.Equal(t, &#34;192.168.0.0/16&#34;, actual.String())
+<span id="L842" class="ln">   842  </span>		})
+<span id="L843" class="ln">   843  </span>	})
 <span id="L844" class="ln">   844  </span>
-<span id="L845" class="ln">   845  </span>			require.NoError(t, validatePortRange(MaxPort, sentinel))
-<span id="L846" class="ln">   846  </span>		})
-<span id="L847" class="ln">   847  </span>	})
-<span id="L848" class="ln">   848  </span>
-<span id="L849" class="ln">   849  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L850" class="ln">   850  </span>		t.Parallel()
-<span id="L851" class="ln">   851  </span>
-<span id="L852" class="ln">   852  </span>		t.Run(&#34;最小ポート未満の場合、渡したエラーを返す&#34;, func(t *testing.T) {
-<span id="L853" class="ln">   853  </span>			t.Parallel()
-<span id="L854" class="ln">   854  </span>
-<span id="L855" class="ln">   855  </span>			require.ErrorIs(t, validatePortRange(MinPort-1, sentinel), sentinel)
-<span id="L856" class="ln">   856  </span>		})
+<span id="L845" class="ln">   845  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L846" class="ln">   846  </span>		t.Parallel()
+<span id="L847" class="ln">   847  </span>
+<span id="L848" class="ln">   848  </span>		t.Run(&#34;不正な CIDR の場合、ErrFailedToParseCIDR を返す&#34;, func(t *testing.T) {
+<span id="L849" class="ln">   849  </span>			t.Parallel()
+<span id="L850" class="ln">   850  </span>
+<span id="L851" class="ln">   851  </span>			actual, err := parseCIDR(&#34;invalid_cidr&#34;)
+<span id="L852" class="ln">   852  </span>			assert.Nil(t, actual)
+<span id="L853" class="ln">   853  </span>			require.ErrorIs(t, err, ErrFailedToParseCIDR)
+<span id="L854" class="ln">   854  </span>		})
+<span id="L855" class="ln">   855  </span>	})
+<span id="L856" class="ln">   856  </span>}
 <span id="L857" class="ln">   857  </span>
-<span id="L858" class="ln">   858  </span>		t.Run(&#34;最大ポート超過の場合、渡したエラーを返す&#34;, func(t *testing.T) {
-<span id="L859" class="ln">   859  </span>			t.Parallel()
+<span id="L858" class="ln">   858  </span>func Test_validatePortRange(t *testing.T) {
+<span id="L859" class="ln">   859  </span>	t.Parallel()
 <span id="L860" class="ln">   860  </span>
-<span id="L861" class="ln">   861  </span>			require.ErrorIs(t, validatePortRange(MaxPort+1, sentinel), sentinel)
-<span id="L862" class="ln">   862  </span>		})
-<span id="L863" class="ln">   863  </span>	})
-<span id="L864" class="ln">   864  </span>}
+<span id="L861" class="ln">   861  </span>	sentinel := ErrInvalidPortRange
+<span id="L862" class="ln">   862  </span>
+<span id="L863" class="ln">   863  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L864" class="ln">   864  </span>		t.Parallel()
 <span id="L865" class="ln">   865  </span>
-<span id="L866" class="ln">   866  </span>func TestValidateServerShutdown(t *testing.T) {
-<span id="L867" class="ln">   867  </span>	t.Parallel()
+<span id="L866" class="ln">   866  </span>		t.Run(&#34;最小ポートの場合、nil を返す&#34;, func(t *testing.T) {
+<span id="L867" class="ln">   867  </span>			t.Parallel()
 <span id="L868" class="ln">   868  </span>
-<span id="L869" class="ln">   869  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L870" class="ln">   870  </span>		t.Parallel()
+<span id="L869" class="ln">   869  </span>			require.NoError(t, validatePortRange(MinPort, sentinel))
+<span id="L870" class="ln">   870  </span>		})
 <span id="L871" class="ln">   871  </span>
-<span id="L872" class="ln">   872  </span>		t.Run(&#34;シャットダウン猶予がリクエスト予算を上回る場合、nilを返す&#34;, func(t *testing.T) {
+<span id="L872" class="ln">   872  </span>		t.Run(&#34;最大ポートの場合、nil を返す&#34;, func(t *testing.T) {
 <span id="L873" class="ln">   873  </span>			t.Parallel()
 <span id="L874" class="ln">   874  </span>
-<span id="L875" class="ln">   875  </span>			appCfg := &amp;ApplicationConfig{shutdownTimeout: 90 * time.Second}
-<span id="L876" class="ln">   876  </span>			srvCfg := &amp;ServerConfig{requestTimeout: 60 * time.Second}
-<span id="L877" class="ln">   877  </span>
-<span id="L878" class="ln">   878  </span>			require.NoError(t, ValidateServerShutdown(appCfg, srvCfg))
-<span id="L879" class="ln">   879  </span>		})
-<span id="L880" class="ln">   880  </span>	})
+<span id="L875" class="ln">   875  </span>			require.NoError(t, validatePortRange(MaxPort, sentinel))
+<span id="L876" class="ln">   876  </span>		})
+<span id="L877" class="ln">   877  </span>	})
+<span id="L878" class="ln">   878  </span>
+<span id="L879" class="ln">   879  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L880" class="ln">   880  </span>		t.Parallel()
 <span id="L881" class="ln">   881  </span>
-<span id="L882" class="ln">   882  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L883" class="ln">   883  </span>		t.Parallel()
+<span id="L882" class="ln">   882  </span>		t.Run(&#34;最小ポート未満の場合、渡したエラーを返す&#34;, func(t *testing.T) {
+<span id="L883" class="ln">   883  </span>			t.Parallel()
 <span id="L884" class="ln">   884  </span>
-<span id="L885" class="ln">   885  </span>		t.Run(&#34;シャットダウン猶予がリクエスト予算を下回る場合、ErrShutdownTimeoutBelowRequestTimeoutを返す&#34;, func(t *testing.T) {
-<span id="L886" class="ln">   886  </span>			t.Parallel()
+<span id="L885" class="ln">   885  </span>			require.ErrorIs(t, validatePortRange(MinPort-1, sentinel), sentinel)
+<span id="L886" class="ln">   886  </span>		})
 <span id="L887" class="ln">   887  </span>
-<span id="L888" class="ln">   888  </span>			appCfg := &amp;ApplicationConfig{shutdownTimeout: 60*time.Second - time.Second}
-<span id="L889" class="ln">   889  </span>			srvCfg := &amp;ServerConfig{requestTimeout: 60 * time.Second}
+<span id="L888" class="ln">   888  </span>		t.Run(&#34;最大ポート超過の場合、渡したエラーを返す&#34;, func(t *testing.T) {
+<span id="L889" class="ln">   889  </span>			t.Parallel()
 <span id="L890" class="ln">   890  </span>
-<span id="L891" class="ln">   891  </span>			err := ValidateServerShutdown(appCfg, srvCfg)
-<span id="L892" class="ln">   892  </span>			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
-<span id="L893" class="ln">   893  </span>		})
-<span id="L894" class="ln">   894  </span>	})
-<span id="L895" class="ln">   895  </span>}
-<span id="L896" class="ln">   896  </span>
-<span id="L897" class="ln">   897  </span>func TestValidateUploadBodyLimit(t *testing.T) {
-<span id="L898" class="ln">   898  </span>	t.Parallel()
-<span id="L899" class="ln">   899  </span>
-<span id="L900" class="ln">   900  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L901" class="ln">   901  </span>		t.Parallel()
-<span id="L902" class="ln">   902  </span>
-<span id="L903" class="ln">   903  </span>		t.Run(&#34;ボディ上限がアップロード上限を上回る場合、nilを返す&#34;, func(t *testing.T) {
-<span id="L904" class="ln">   904  </span>			t.Parallel()
-<span id="L905" class="ln">   905  </span>
-<span id="L906" class="ln">   906  </span>			srvCfg := &amp;ServerConfig{bodyLimitMB: 6}
-<span id="L907" class="ln">   907  </span>			objCfg := &amp;ObjectStorageConfig{maxUploadBytes: 5 * BytesPerMB}
-<span id="L908" class="ln">   908  </span>
-<span id="L909" class="ln">   909  </span>			require.NoError(t, ValidateUploadBodyLimit(srvCfg, objCfg))
-<span id="L910" class="ln">   910  </span>		})
-<span id="L911" class="ln">   911  </span>	})
-<span id="L912" class="ln">   912  </span>
-<span id="L913" class="ln">   913  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L914" class="ln">   914  </span>		t.Parallel()
-<span id="L915" class="ln">   915  </span>
-<span id="L916" class="ln">   916  </span>		t.Run(&#34;ボディ上限がアップロード上限と同値の場合、ErrBodyLimitBelowMaxUploadBytesを返す&#34;, func(t *testing.T) {
-<span id="L917" class="ln">   917  </span>			t.Parallel()
-<span id="L918" class="ln">   918  </span>
-<span id="L919" class="ln">   919  </span>			srvCfg := &amp;ServerConfig{bodyLimitMB: 5}
-<span id="L920" class="ln">   920  </span>			objCfg := &amp;ObjectStorageConfig{maxUploadBytes: 5 * BytesPerMB}
-<span id="L921" class="ln">   921  </span>
-<span id="L922" class="ln">   922  </span>			err := ValidateUploadBodyLimit(srvCfg, objCfg)
-<span id="L923" class="ln">   923  </span>			require.ErrorIs(t, err, ErrBodyLimitBelowMaxUploadBytes)
-<span id="L924" class="ln">   924  </span>		})
-<span id="L925" class="ln">   925  </span>	})
-<span id="L926" class="ln">   926  </span>}
-<span id="L927" class="ln">   927  </span>
-<span id="L928" class="ln">   928  </span>func Test_isActiveExporter(t *testing.T) {
-<span id="L929" class="ln">   929  </span>	t.Parallel()
-<span id="L930" class="ln">   930  </span>
-<span id="L931" class="ln">   931  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L932" class="ln">   932  </span>		t.Parallel()
-<span id="L933" class="ln">   933  </span>
-<span id="L934" class="ln">   934  </span>		t.Run(&#34;exporter名が指定されている場合、trueを返す&#34;, func(t *testing.T) {
-<span id="L935" class="ln">   935  </span>			t.Parallel()
-<span id="L936" class="ln">   936  </span>
-<span id="L937" class="ln">   937  </span>			assert.True(t, isActiveExporter(&#34;otlp&#34;))
-<span id="L938" class="ln">   938  </span>		})
-<span id="L939" class="ln">   939  </span>
-<span id="L940" class="ln">   940  </span>		t.Run(&#34;未設定を表す空文字の場合、falseを返す&#34;, func(t *testing.T) {
-<span id="L941" class="ln">   941  </span>			t.Parallel()
+<span id="L891" class="ln">   891  </span>			require.ErrorIs(t, validatePortRange(MaxPort+1, sentinel), sentinel)
+<span id="L892" class="ln">   892  </span>		})
+<span id="L893" class="ln">   893  </span>	})
+<span id="L894" class="ln">   894  </span>}
+<span id="L895" class="ln">   895  </span>
+<span id="L896" class="ln">   896  </span>func TestValidateServerShutdown(t *testing.T) {
+<span id="L897" class="ln">   897  </span>	t.Parallel()
+<span id="L898" class="ln">   898  </span>
+<span id="L899" class="ln">   899  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L900" class="ln">   900  </span>		t.Parallel()
+<span id="L901" class="ln">   901  </span>
+<span id="L902" class="ln">   902  </span>		t.Run(&#34;シャットダウン猶予がリクエスト予算を上回る場合、nilを返す&#34;, func(t *testing.T) {
+<span id="L903" class="ln">   903  </span>			t.Parallel()
+<span id="L904" class="ln">   904  </span>
+<span id="L905" class="ln">   905  </span>			appCfg := &amp;ApplicationConfig{shutdownTimeout: 90 * time.Second}
+<span id="L906" class="ln">   906  </span>			srvCfg := &amp;ServerConfig{requestTimeout: 60 * time.Second}
+<span id="L907" class="ln">   907  </span>
+<span id="L908" class="ln">   908  </span>			require.NoError(t, ValidateServerShutdown(appCfg, srvCfg))
+<span id="L909" class="ln">   909  </span>		})
+<span id="L910" class="ln">   910  </span>	})
+<span id="L911" class="ln">   911  </span>
+<span id="L912" class="ln">   912  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L913" class="ln">   913  </span>		t.Parallel()
+<span id="L914" class="ln">   914  </span>
+<span id="L915" class="ln">   915  </span>		t.Run(&#34;シャットダウン猶予がリクエスト予算を下回る場合、ErrShutdownTimeoutBelowRequestTimeoutを返す&#34;, func(t *testing.T) {
+<span id="L916" class="ln">   916  </span>			t.Parallel()
+<span id="L917" class="ln">   917  </span>
+<span id="L918" class="ln">   918  </span>			appCfg := &amp;ApplicationConfig{shutdownTimeout: 60*time.Second - time.Second}
+<span id="L919" class="ln">   919  </span>			srvCfg := &amp;ServerConfig{requestTimeout: 60 * time.Second}
+<span id="L920" class="ln">   920  </span>
+<span id="L921" class="ln">   921  </span>			err := ValidateServerShutdown(appCfg, srvCfg)
+<span id="L922" class="ln">   922  </span>			require.ErrorIs(t, err, ErrShutdownTimeoutBelowRequestTimeout)
+<span id="L923" class="ln">   923  </span>		})
+<span id="L924" class="ln">   924  </span>	})
+<span id="L925" class="ln">   925  </span>}
+<span id="L926" class="ln">   926  </span>
+<span id="L927" class="ln">   927  </span>func TestValidateUploadBodyLimit(t *testing.T) {
+<span id="L928" class="ln">   928  </span>	t.Parallel()
+<span id="L929" class="ln">   929  </span>
+<span id="L930" class="ln">   930  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L931" class="ln">   931  </span>		t.Parallel()
+<span id="L932" class="ln">   932  </span>
+<span id="L933" class="ln">   933  </span>		t.Run(&#34;ボディ上限がアップロード上限を上回る場合、nilを返す&#34;, func(t *testing.T) {
+<span id="L934" class="ln">   934  </span>			t.Parallel()
+<span id="L935" class="ln">   935  </span>
+<span id="L936" class="ln">   936  </span>			srvCfg := &amp;ServerConfig{bodyLimitMB: 6}
+<span id="L937" class="ln">   937  </span>			objCfg := &amp;ObjectStorageConfig{maxUploadBytes: 5 * BytesPerMB}
+<span id="L938" class="ln">   938  </span>
+<span id="L939" class="ln">   939  </span>			require.NoError(t, ValidateUploadBodyLimit(srvCfg, objCfg))
+<span id="L940" class="ln">   940  </span>		})
+<span id="L941" class="ln">   941  </span>	})
 <span id="L942" class="ln">   942  </span>
-<span id="L943" class="ln">   943  </span>			assert.False(t, isActiveExporter(&#34;&#34;))
-<span id="L944" class="ln">   944  </span>		})
+<span id="L943" class="ln">   943  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L944" class="ln">   944  </span>		t.Parallel()
 <span id="L945" class="ln">   945  </span>
-<span id="L946" class="ln">   946  </span>		t.Run(&#34;明示的な無効化を表すnoneの場合、falseを返す&#34;, func(t *testing.T) {
+<span id="L946" class="ln">   946  </span>		t.Run(&#34;ボディ上限がアップロード上限と同値の場合、ErrBodyLimitBelowMaxUploadBytesを返す&#34;, func(t *testing.T) {
 <span id="L947" class="ln">   947  </span>			t.Parallel()
 <span id="L948" class="ln">   948  </span>
-<span id="L949" class="ln">   949  </span>			assert.False(t, isActiveExporter(exporterNone))
-<span id="L950" class="ln">   950  </span>		})
+<span id="L949" class="ln">   949  </span>			srvCfg := &amp;ServerConfig{bodyLimitMB: 5}
+<span id="L950" class="ln">   950  </span>			objCfg := &amp;ObjectStorageConfig{maxUploadBytes: 5 * BytesPerMB}
 <span id="L951" class="ln">   951  </span>
-<span id="L952" class="ln">   952  </span>		t.Run(&#34;noneと大文字小文字だけが異なる場合、falseを返す&#34;, func(t *testing.T) {
-<span id="L953" class="ln">   953  </span>			t.Parallel()
-<span id="L954" class="ln">   954  </span>
-<span id="L955" class="ln">   955  </span>			assert.False(t, isActiveExporter(&#34;NoNe&#34;))
-<span id="L956" class="ln">   956  </span>		})
-<span id="L957" class="ln">   957  </span>	})
-<span id="L958" class="ln">   958  </span>}
-<span id="L959" class="ln">   959  </span>
+<span id="L952" class="ln">   952  </span>			err := ValidateUploadBodyLimit(srvCfg, objCfg)
+<span id="L953" class="ln">   953  </span>			require.ErrorIs(t, err, ErrBodyLimitBelowMaxUploadBytes)
+<span id="L954" class="ln">   954  </span>		})
+<span id="L955" class="ln">   955  </span>	})
+<span id="L956" class="ln">   956  </span>}
+<span id="L957" class="ln">   957  </span>
+<span id="L958" class="ln">   958  </span>func Test_isActiveExporter(t *testing.T) {
+<span id="L959" class="ln">   959  </span>	t.Parallel()
+<span id="L960" class="ln">   960  </span>
+<span id="L961" class="ln">   961  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L962" class="ln">   962  </span>		t.Parallel()
+<span id="L963" class="ln">   963  </span>
+<span id="L964" class="ln">   964  </span>		t.Run(&#34;exporter名が指定されている場合、trueを返す&#34;, func(t *testing.T) {
+<span id="L965" class="ln">   965  </span>			t.Parallel()
+<span id="L966" class="ln">   966  </span>
+<span id="L967" class="ln">   967  </span>			assert.True(t, isActiveExporter(&#34;otlp&#34;))
+<span id="L968" class="ln">   968  </span>		})
+<span id="L969" class="ln">   969  </span>
+<span id="L970" class="ln">   970  </span>		t.Run(&#34;未設定を表す空文字の場合、falseを返す&#34;, func(t *testing.T) {
+<span id="L971" class="ln">   971  </span>			t.Parallel()
+<span id="L972" class="ln">   972  </span>
+<span id="L973" class="ln">   973  </span>			assert.False(t, isActiveExporter(&#34;&#34;))
+<span id="L974" class="ln">   974  </span>		})
+<span id="L975" class="ln">   975  </span>
+<span id="L976" class="ln">   976  </span>		t.Run(&#34;明示的な無効化を表すnoneの場合、falseを返す&#34;, func(t *testing.T) {
+<span id="L977" class="ln">   977  </span>			t.Parallel()
+<span id="L978" class="ln">   978  </span>
+<span id="L979" class="ln">   979  </span>			assert.False(t, isActiveExporter(exporterNone))
+<span id="L980" class="ln">   980  </span>		})
+<span id="L981" class="ln">   981  </span>
+<span id="L982" class="ln">   982  </span>		t.Run(&#34;noneと大文字小文字だけが異なる場合、falseを返す&#34;, func(t *testing.T) {
+<span id="L983" class="ln">   983  </span>			t.Parallel()
+<span id="L984" class="ln">   984  </span>
+<span id="L985" class="ln">   985  </span>			assert.False(t, isActiveExporter(&#34;NoNe&#34;))
+<span id="L986" class="ln">   986  </span>		})
+<span id="L987" class="ln">   987  </span>	})
+<span id="L988" class="ln">   988  </span>}
+<span id="L989" class="ln">   989  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/config_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

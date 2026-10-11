@@ -58,26 +58,26 @@
 <pre><span id="L1" class="ln">     1  </span>package authz
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span><span class="comment">// sample-api:begin</span>
-<span id="L4" class="ln">     4  </span><span class="comment">// サンプル EC の操作。Action 型と String は基盤として残す。</span>
-<span id="L5" class="ln">     5  </span>const (
-<span id="L6" class="ln">     6  </span>	<span class="comment">// ActionUserList は、ユーザーの列挙操作（一覧・フィード・検索、admin）を表します。</span>
-<span id="L7" class="ln">     7  </span>	ActionUserList Action = &#34;user:list&#34;
-<span id="L8" class="ln">     8  </span>	<span class="comment">// ActionUserGet は、ユーザー取得操作を表します。</span>
-<span id="L9" class="ln">     9  </span>	ActionUserGet Action = &#34;user:get&#34;
-<span id="L10" class="ln">    10  </span>	<span class="comment">// ActionUserUpdate は、ユーザー更新操作（全更新・部分更新）を表します。</span>
-<span id="L11" class="ln">    11  </span>	ActionUserUpdate Action = &#34;user:update&#34;
-<span id="L12" class="ln">    12  </span>	<span class="comment">// ActionUserDelete は、ユーザー削除操作を表します。</span>
-<span id="L13" class="ln">    13  </span>	ActionUserDelete Action = &#34;user:delete&#34;
-<span id="L14" class="ln">    14  </span>	<span class="comment">// ActionProductImageUpload は、商品画像のアップロード操作（admin）を表します。</span>
-<span id="L15" class="ln">    15  </span>	ActionProductImageUpload Action = &#34;product:image:upload&#34;
-<span id="L16" class="ln">    16  </span>	<span class="comment">// ActionProductCreate は、商品の作成操作（admin）を表します。</span>
-<span id="L17" class="ln">    17  </span>	ActionProductCreate Action = &#34;product:create&#34;
-<span id="L18" class="ln">    18  </span>	<span class="comment">// ActionProductUpdate は、商品の更新操作（admin）を表します。</span>
-<span id="L19" class="ln">    19  </span>	ActionProductUpdate Action = &#34;product:update&#34;
-<span id="L20" class="ln">    20  </span>	<span class="comment">// ActionProductStockUpdate は、商品在庫の増減操作（admin）を表します。</span>
-<span id="L21" class="ln">    21  </span>	ActionProductStockUpdate Action = &#34;product:stock:update&#34;
-<span id="L22" class="ln">    22  </span>	<span class="comment">// ActionProductDiscontinue は、商品の廃番操作と、その影響の見積もりの参照（admin）を表します。</span>
-<span id="L23" class="ln">    23  </span>	<span class="comment">// 見積もりは廃番を実行できる主体だけが見るべき情報なので、実行と同じ権限で守ります。</span>
+<span id="L4" class="ln">     4  </span>const (
+<span id="L5" class="ln">     5  </span>	<span class="comment">// ActionUserList は、ユーザーの列挙操作（一覧・フィード・検索、admin）を表します。</span>
+<span id="L6" class="ln">     6  </span>	ActionUserList Action = &#34;user:list&#34;
+<span id="L7" class="ln">     7  </span>	<span class="comment">// ActionUserGet は、ユーザー取得操作を表します。</span>
+<span id="L8" class="ln">     8  </span>	ActionUserGet Action = &#34;user:get&#34;
+<span id="L9" class="ln">     9  </span>	<span class="comment">// ActionUserUpdate は、ユーザー更新操作（全更新・部分更新）を表します。</span>
+<span id="L10" class="ln">    10  </span>	ActionUserUpdate Action = &#34;user:update&#34;
+<span id="L11" class="ln">    11  </span>	<span class="comment">// ActionUserDelete は、ユーザー削除操作を表します。</span>
+<span id="L12" class="ln">    12  </span>	ActionUserDelete Action = &#34;user:delete&#34;
+<span id="L13" class="ln">    13  </span>	<span class="comment">// ActionProductImageUpload は、商品画像のアップロード操作（admin）を表します。</span>
+<span id="L14" class="ln">    14  </span>	ActionProductImageUpload Action = &#34;product:image:upload&#34;
+<span id="L15" class="ln">    15  </span>	<span class="comment">// ActionProductCreate は、商品の作成操作（admin）を表します。</span>
+<span id="L16" class="ln">    16  </span>	ActionProductCreate Action = &#34;product:create&#34;
+<span id="L17" class="ln">    17  </span>	<span class="comment">// ActionProductUpdate は、商品の更新操作（admin）を表します。</span>
+<span id="L18" class="ln">    18  </span>	ActionProductUpdate Action = &#34;product:update&#34;
+<span id="L19" class="ln">    19  </span>	<span class="comment">// ActionProductStockUpdate は、商品在庫の増減操作（admin）を表します。</span>
+<span id="L20" class="ln">    20  </span>	ActionProductStockUpdate Action = &#34;product:stock:update&#34;
+<span id="L21" class="ln">    21  </span>	<span class="comment">// ActionProductDiscontinue は、商品の廃番操作と、その影響の見積もりの参照（admin）を表します。</span>
+<span id="L22" class="ln">    22  </span>	<span class="comment">// 参照が実行と同一の Action を共有する理由は docs/spec/usecase/product.md の</span>
+<span id="L23" class="ln">    23  </span>	<span class="comment">// GetDiscontinueImpact を参照。</span>
 <span id="L24" class="ln">    24  </span>	ActionProductDiscontinue Action = &#34;product:discontinue&#34;
 <span id="L25" class="ln">    25  </span>	<span class="comment">// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。</span>
 <span id="L26" class="ln">    26  </span>	ActionProductListLowStock Action = &#34;product:low-stock:list&#34;
@@ -107,16 +107,22 @@
 <span id="L50" class="ln">    50  </span>	<span class="comment">// ActionCouponBulkIssue は、販促クーポンの一括発行（admin）を表します。</span>
 <span id="L51" class="ln">    51  </span>	<span class="comment">// 受給者を名指しする発行とは別の Action です。理由は docs/spec/usecase/coupon.md の Overview を参照。</span>
 <span id="L52" class="ln">    52  </span>	ActionCouponBulkIssue Action = &#34;coupon:bulk-issue&#34;
-<span id="L53" class="ln">    53  </span>)
-<span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span><span class="comment">// sample-api:end</span>
-<span id="L56" class="ln">    56  </span>
-<span id="L57" class="ln">    57  </span><span class="comment">// Action は、認可対象の操作を表す値オブジェクトです（例: &#34;user:delete&#34;）。</span>
-<span id="L58" class="ln">    58  </span>type Action string
-<span id="L59" class="ln">    59  </span>
-<span id="L60" class="ln">    60  </span><span class="comment">// String は、Action の文字列表現を返します。</span>
-<span id="L61" class="ln">    61  </span>func (a Action) String() string { return string(a) }
+<span id="L53" class="ln">    53  </span>	<span class="comment">// ActionCampaignDefine は、キャンペーンの定義（admin）を表します。</span>
+<span id="L54" class="ln">    54  </span>	ActionCampaignDefine Action = &#34;campaign:define&#34;
+<span id="L55" class="ln">    55  </span>	<span class="comment">// ActionCampaignList は、キャンペーンの列挙操作（admin）を表します。</span>
+<span id="L56" class="ln">    56  </span>	ActionCampaignList Action = &#34;campaign:list&#34;
+<span id="L57" class="ln">    57  </span>	<span class="comment">// ActionCampaignSuspend は、キャンペーンの停止（admin）を表します。</span>
+<span id="L58" class="ln">    58  </span>	ActionCampaignSuspend Action = &#34;campaign:suspend&#34;
+<span id="L59" class="ln">    59  </span>)
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span><span class="comment">// sample-api:end</span>
 <span id="L62" class="ln">    62  </span>
+<span id="L63" class="ln">    63  </span><span class="comment">// Action は、認可対象の操作を表す値オブジェクトです（例: &#34;user:delete&#34;）。</span>
+<span id="L64" class="ln">    64  </span>type Action string
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span><span class="comment">// String は、Action の文字列表現を返します。</span>
+<span id="L67" class="ln">    67  </span>func (a Action) String() string { return string(a) }
+<span id="L68" class="ln">    68  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
