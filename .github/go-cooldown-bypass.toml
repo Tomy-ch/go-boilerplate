@@ -11,3 +11,4 @@
 # 同じ状態を作れてしまうため。運用は .github/zizmor.yml と同じで、解決したらエントリを消す。
 #
 # 期限切れは go.mod が変わらなくても訪れるので、回収はスケジュール実行が担う。
+"github.com/exaring/otelpgx@v0.12.1" = { expires = 2026-10-14, issue = 1671, reason = "supply-chain-triage LOW 0/12: 2 commits by the main maintainer, zip matches tag and sum.golang.org, no new deps or signatures; ages out 2026-10-13" }
