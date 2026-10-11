@@ -167,6 +167,8 @@ fields:
   underlying_type: struct    # kind DiscountKind / value decimal.Decimal / maxAmount *int64
   validation: |
     定額は正の金額、定率は 0 より大きく 1 以下。範囲外は ErrInvalidDiscountValue。
+    定額の金額は価格スケール（商品 price と同じ USD のドル建て十進量）で、小数の桁数は制限しない。
+    セント未満の桁は Coupon.DiscountFor が決済スケールへ切り捨てる時点で落ちる。
     解決済みの種別から作る入口は NewDiscount で、種別ごとの生成関数へ振り分けるだけ。永続化された行
     からの復元も、要求が渡した名前からの構築も、種別を解決したあとはここを通る（値オブジェクトは
     永続化固有の状態を持たないため、復元と構築を分ける理由がない）。
