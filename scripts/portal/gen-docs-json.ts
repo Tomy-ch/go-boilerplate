@@ -3,7 +3,7 @@
 
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 import {
   buildDocsJson,

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 

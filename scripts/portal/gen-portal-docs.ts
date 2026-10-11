@@ -3,7 +3,7 @@
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 import {
   assertUniqueDestinations,
