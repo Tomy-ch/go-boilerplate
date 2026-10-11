@@ -345,7 +345,7 @@
 <span id="L288" class="ln">   288  </span>			res := server.ResponseOf(c)
 <span id="L289" class="ln">   289  </span>			require.NotNil(t, res)
 <span id="L290" class="ln">   290  </span>			res.Status = expectedStatus
-<span id="L291" class="ln">   291  </span>			c.Response().Header().Set(&#34;X-Request-Id&#34;, expectedRequestID)
+<span id="L291" class="ln">   291  </span>			c.Response().Header().Set(&#34;X-Request-ID&#34;, expectedRequestID)
 <span id="L292" class="ln">   292  </span>
 <span id="L293" class="ln">   293  </span>			l := requestLog{c: c, res: res, lf: lf}
 <span id="L294" class="ln">   294  </span>			fields := l.buildResponseLogFields(expectedEventAt, 150*time.Millisecond)

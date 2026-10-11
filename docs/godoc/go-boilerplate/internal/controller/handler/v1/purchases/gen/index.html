@@ -647,7 +647,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16465:16499#L424">BadRequest400</a>
+			<h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=17218:17252#L436">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -692,7 +692,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="Conflict409">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16687:16719#L427">Conflict409</a>
+			<h2 id="Conflict409">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=17440:17472#L439">Conflict409</a>
 				<a class="permalink" href="#Conflict409">¶</a>
 				
 				
@@ -737,7 +737,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponDiscount">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=2815:3423#L89">CouponDiscount</a>
+			<h2 id="CouponDiscount">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=2815:4176#L89">CouponDiscount</a>
 				<a class="permalink" href="#CouponDiscount">¶</a>
 				
 				
@@ -751,8 +751,20 @@ including any per-operation middleware.
     <span class="comment">// Example: rate</span>
     Kind <a href="#CouponDiscountKind">CouponDiscountKind</a> `json:&#34;kind&#34;`
 
+<span id="CouponDiscount.MaxAmount"></span>    <span class="comment">// MaxAmount 定率の値引きが 1 回に引ける額の上限。USD セント単位の整数です。</span>
+    <span class="comment">// 定率（`rate`）にのみ意味を持ち、定額（`flat`）では常に null です。</span>
+    <span class="comment">// 上限が無い場合も null で、そのときは対象額に率を掛けた額がそのまま引かれます。</span>
+    <span class="comment">//</span>
+    <span class="comment">//</span>
+    <span class="comment">// Example: 2000</span>
+    MaxAmount *<a href="../../../../../../../builtin/#int64">int64</a> `json:&#34;maxAmount&#34;`
+
 <span id="CouponDiscount.Value"></span>    <span class="comment">// Value 種別における値。定額なら差し引く金額、定率なら対象額に掛ける率を、</span>
     <span class="comment">// 正確な十進量を保つ decimal 文字列で表します（例 `&#34;0.10&#34;` は 10% 引き）。</span>
+    <span class="comment">// 定額の金額は商品の price と同じ USD のドル建てで（例 `&#34;5.00&#34;` は 5 ドル引き）、</span>
+    <span class="comment">// USD セント単位の整数で表す maxAmount とは桁が違います。</span>
+    <span class="comment">// 定額で引く額は対象額が上限で、セント未満の桁は値引き額を求める時点で切り捨てられます</span>
+    <span class="comment">// （四捨五入ではありません）。</span>
     <span class="comment">// JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。</span>
     <span class="comment">//</span>
     <span class="comment">//</span>
@@ -775,7 +787,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponDiscountKind">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=3593:3623#L108">CouponDiscountKind</a>
+			<h2 id="CouponDiscountKind">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=4346:4376#L120">CouponDiscountKind</a>
 				<a class="permalink" href="#CouponDiscountKind">¶</a>
 				
 				
@@ -819,7 +831,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="CouponScope">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=3776:4386#L111">CouponScope</a>
+			</p><h2 id="CouponScope">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=4529:5139#L123">CouponScope</a>
 				<a class="permalink" href="#CouponScope">¶</a>
 				
 				
@@ -857,7 +869,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponScopeKind">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=4640:4667#L131">CouponScopeKind</a>
+			<h2 id="CouponScopeKind">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=5393:5420#L143">CouponScopeKind</a>
 				<a class="permalink" href="#CouponScopeKind">¶</a>
 				
 				
@@ -903,7 +915,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="CursorAfterParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=15542:15572#L397">CursorAfterParam</a>
+			</p><h2 id="CursorAfterParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16295:16325#L409">CursorAfterParam</a>
 				<a class="permalink" href="#CursorAfterParam">¶</a>
 				
 				
@@ -926,7 +938,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CursorFirstParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=15606:15633#L400">CursorFirstParam</a>
+			<h2 id="CursorFirstParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16359:16386#L412">CursorFirstParam</a>
 				<a class="permalink" href="#CursorFirstParam">¶</a>
 				
 				
@@ -949,7 +961,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CursorPaginationMetadataResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=4757:5105#L134">CursorPaginationMetadataResponse</a>
+			<h2 id="CursorPaginationMetadataResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=5510:5858#L146">CursorPaginationMetadataResponse</a>
 				<a class="permalink" href="#CursorPaginationMetadataResponse">¶</a>
 				
 				
@@ -983,7 +995,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DisplayCurrencyParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=15672:15704#L403">DisplayCurrencyParam</a>
+			<h2 id="DisplayCurrencyParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16425:16457#L415">DisplayCurrencyParam</a>
 				<a class="permalink" href="#DisplayCurrencyParam">¶</a>
 				
 				
@@ -1060,7 +1072,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=5295:5697#L147">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=6048:6450#L159">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
@@ -1099,7 +1111,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponseWithDetails">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=6006:6634#L165">ErrorResponseWithDetails</a>
+			<h2 id="ErrorResponseWithDetails">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=6759:7387#L177">ErrorResponseWithDetails</a>
 				<a class="permalink" href="#ErrorResponseWithDetails">¶</a>
 				
 				
@@ -1143,7 +1155,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16908:16941#L430">Forbidden403</a>
+			<h2 id="Forbidden403">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=17661:17694#L442">Forbidden403</a>
 				<a class="permalink" href="#Forbidden403">¶</a>
 				
 				
@@ -1438,7 +1450,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetPurchasesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=18309:21871#L448">GetPurchasesParams</a>
+			<h2 id="GetPurchasesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=19062:22624#L460">GetPurchasesParams</a>
 				<a class="permalink" href="#GetPurchasesParams">¶</a>
 				
 				
@@ -1550,7 +1562,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="IdempotencyKeyParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=15775:15808#L406">IdempotencyKeyParam</a>
+			<h2 id="IdempotencyKeyParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16528:16561#L418">IdempotencyKeyParam</a>
 				<a class="permalink" href="#IdempotencyKeyParam">¶</a>
 				
 				
@@ -1573,7 +1585,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="IncludeOtherUsersParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=15851:15885#L409">IncludeOtherUsersParam</a>
+			<h2 id="IncludeOtherUsersParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16604:16638#L421">IncludeOtherUsersParam</a>
 				<a class="permalink" href="#IncludeOtherUsersParam">¶</a>
 				
 				
@@ -1596,7 +1608,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=17140:17183#L433">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=17893:17936#L445">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -1641,7 +1653,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=17379:17419#L436">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=18132:18172#L448">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -1686,7 +1698,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="OrderedAfterParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=15943:15977#L412">OrderedAfterParam</a>
+			<h2 id="OrderedAfterParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16696:16730#L424">OrderedAfterParam</a>
 				<a class="permalink" href="#OrderedAfterParam">¶</a>
 				
 				
@@ -1709,7 +1721,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="OrderedBeforeParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16036:16071#L415">OrderedBeforeParam</a>
+			<h2 id="OrderedBeforeParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16789:16824#L427">OrderedBeforeParam</a>
 				<a class="permalink" href="#OrderedBeforeParam">¶</a>
 				
 				
@@ -2019,7 +2031,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PostPurchasesJSONRequestBody">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=23155:23211#L505">PostPurchasesJSONRequestBody</a>
+			<h2 id="PostPurchasesJSONRequestBody">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=23908:23964#L517">PostPurchasesJSONRequestBody</a>
 				<a class="permalink" href="#PostPurchasesJSONRequestBody">¶</a>
 				
 				
@@ -2042,7 +2054,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PostPurchasesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=21934:22932#L490">PostPurchasesParams</a>
+			<h2 id="PostPurchasesParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=22687:23685#L502">PostPurchasesParams</a>
 				<a class="permalink" href="#PostPurchasesParams">¶</a>
 				
 				
@@ -2075,7 +2087,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PostPurchasesParamsDisplayCurrency">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=23010:23056#L502">PostPurchasesParamsDisplayCurrency</a>
+			<h2 id="PostPurchasesParamsDisplayCurrency">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=23763:23809#L514">PostPurchasesParamsDisplayCurrency</a>
 				<a class="permalink" href="#PostPurchasesParamsDisplayCurrency">¶</a>
 				
 				
@@ -2167,7 +2179,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseDetailInput">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=6728:7074#L188">PurchaseDetailInput</a>
+			<h2 id="PurchaseDetailInput">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=7481:7827#L200">PurchaseDetailInput</a>
 				<a class="permalink" href="#PurchaseDetailInput">¶</a>
 				
 				
@@ -2201,7 +2213,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseDetailResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=7203:7759#L201">PurchaseDetailResponse</a>
+			<h2 id="PurchaseDetailResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=7956:8512#L213">PurchaseDetailResponse</a>
 				<a class="permalink" href="#PurchaseDetailResponse">¶</a>
 				
 				
@@ -2242,7 +2254,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseListResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=7871:8366#L221">PurchaseListResponse</a>
+			<h2 id="PurchaseListResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=8624:9119#L233">PurchaseListResponse</a>
 				<a class="permalink" href="#PurchaseListResponse">¶</a>
 				
 				
@@ -2279,7 +2291,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseProductIdParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16145:16193#L418">PurchaseProductIdParam</a>
+			<h2 id="PurchaseProductIdParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16898:16946#L430">PurchaseProductIdParam</a>
 				<a class="permalink" href="#PurchaseProductIdParam">¶</a>
 				
 				
@@ -2302,7 +2314,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=8572:10913#L238">PurchaseResponse</a>
+			<h2 id="PurchaseResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=9325:11666#L250">PurchaseResponse</a>
 				<a class="permalink" href="#PurchaseResponse">¶</a>
 				
 				
@@ -2386,7 +2398,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseStatusCodesParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16236:16275#L421">PurchaseStatusCodesParam</a>
+			<h2 id="PurchaseStatusCodesParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=16989:17028#L433">PurchaseStatusCodesParam</a>
 				<a class="permalink" href="#PurchaseStatusCodesParam">¶</a>
 				
 				
@@ -2409,7 +2421,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=11193:11623#L301">PurchaseStatusRef</a>
+			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=11946:12376#L313">PurchaseStatusRef</a>
 				<a class="permalink" href="#PurchaseStatusRef">¶</a>
 				
 				
@@ -2449,7 +2461,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseSummaryResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=12076:13275#L321">PurchaseSummaryResponse</a>
+			<h2 id="PurchaseSummaryResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=12829:14028#L333">PurchaseSummaryResponse</a>
 				<a class="permalink" href="#PurchaseSummaryResponse">¶</a>
 				
 				
@@ -2504,7 +2516,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchasesPostRequest">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=13582:14517#L355">PurchasesPostRequest</a>
+			<h2 id="PurchasesPostRequest">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=14335:15270#L367">PurchasesPostRequest</a>
 				<a class="permalink" href="#PurchasesPostRequest">¶</a>
 				
 				
@@ -2544,7 +2556,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ReferenceAmount">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=14846:15484#L374">ReferenceAmount</a>
+			<h2 id="ReferenceAmount">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=15599:16237#L386">ReferenceAmount</a>
 				<a class="permalink" href="#ReferenceAmount">¶</a>
 				
 				
@@ -2717,7 +2729,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=17617:17659#L439">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=18370:18412#L451">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -2836,7 +2848,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=17851:17887#L442">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=18604:18640#L454">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				
@@ -2881,7 +2893,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UnprocessableEntity422">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=18194:18248#L445">UnprocessableEntity422</a>
+			<h2 id="UnprocessableEntity422">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/gen/type.gen.go.html?s=18947:19001#L457">UnprocessableEntity422</a>
 				<a class="permalink" href="#UnprocessableEntity422">¶</a>
 				
 				

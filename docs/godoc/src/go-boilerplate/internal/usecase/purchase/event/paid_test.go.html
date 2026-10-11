@@ -110,7 +110,7 @@
 <span id="L53" class="ln">    53  </span>			t.Parallel()
 <span id="L54" class="ln">    54  </span>
 <span id="L55" class="ln">    55  </span>			entity := unprocessed(t, &#34;bp&#34;)
-<span id="L56" class="ln">    56  </span>			now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+<span id="L56" class="ln">    56  </span>			now := time.Date(2026, time.July, 25, 21, 0, 0, 0, testJST)
 <span id="L57" class="ln">    57  </span>			_, err := entity.Pay(now)
 <span id="L58" class="ln">    58  </span>			require.NoError(t, err)
 <span id="L59" class="ln">    59  </span>
@@ -129,7 +129,7 @@
 <span id="L72" class="ln">    72  </span>			assert.Equal(t, &#34;bp-code&#34;, decoded.Code)
 <span id="L73" class="ln">    73  </span>			assert.Equal(t, entity.UserID().String(), decoded.UserID)
 <span id="L74" class="ln">    74  </span>			assert.Equal(t, domainpurchase.StatusPaid.Code(), decoded.StatusCode)
-<span id="L75" class="ln">    75  </span>			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.PaidAt)
+<span id="L75" class="ln">    75  </span>			assert.Equal(t, &#34;2026-07-25T12:00:00Z&#34;, decoded.PaidAt)
 <span id="L76" class="ln">    76  </span>		})
 <span id="L77" class="ln">    77  </span>
 <span id="L78" class="ln">    78  </span>		t.Run(&#34;paidAtがnilの購入はpaidAtが空文字列になる&#34;, func(t *testing.T) {

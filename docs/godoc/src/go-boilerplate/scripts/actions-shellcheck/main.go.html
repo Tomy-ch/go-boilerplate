@@ -527,8 +527,8 @@
 <span id="L470" class="ln">   470  </span>}
 <span id="L471" class="ln">   471  </span>
 <span id="L472" class="ln">   472  </span>func fieldBase(cmd string) string {
-<span id="L473" class="ln">   473  </span>	if i := strings.LastIndex(cmd, &#34;/&#34;); i &gt;= 0 {
-<span id="L474" class="ln">   474  </span>		return cmd[i+1:]
+<span id="L473" class="ln">   473  </span>	if _, after, ok := strings.CutLast(cmd, &#34;/&#34;); ok {
+<span id="L474" class="ln">   474  </span>		return after
 <span id="L475" class="ln">   475  </span>	}
 <span id="L476" class="ln">   476  </span>	return cmd
 <span id="L477" class="ln">   477  </span>}

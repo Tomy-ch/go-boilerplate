@@ -280,6 +280,34 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/campaigns">campaigns</a></td>
+			<td class="pkg-synopsis">
+				Package campaigns は、/v1/campaigns エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/campaigns/claims">claims</a></td>
+			<td class="pkg-synopsis">
+				Package claims は、POST /v1/campaigns/claims エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;">detail</td>
+			<td class="pkg-synopsis">
+				&nbsp;
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 140px;"><a href="go-boilerplate/internal/controller/handler/v1/campaigns/detail/suspend">suspend</a></td>
+			<td class="pkg-synopsis">
+				Package suspend は、POST /v1/campaigns/{campaignId}/suspend エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/carts">carts</a></td>
 			<td class="pkg-synopsis">
 				Package carts は、/v1/carts エンドポイントに関連するハンドラを提供します。
@@ -973,6 +1001,13 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/campaign">campaign</a></td>
+			<td class="pkg-synopsis">
+				Package campaign は、キャンペーンドメインを定義します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/cart">cart</a></td>
 			<td class="pkg-synopsis">
 				Package cart は、カートドメインを定義します。
@@ -1340,6 +1375,13 @@
 			<td class="pkg-name" style="padding-left: 80px;">repository</td>
 			<td class="pkg-synopsis">
 				&nbsp;
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/repository/campaign">campaign</a></td>
+			<td class="pkg-synopsis">
+				Package campaign は、キャンペーンリポジトリ（campaign.Repository）の RDB 実装を提供します。
 			</td>
 		</tr>
 
@@ -1736,6 +1778,13 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/campaign">campaign</a></td>
+			<td class="pkg-synopsis">
+				Package campaign は、キャンペーンの定義・列挙・停止と、コードによる受け取りのユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/cart">cart</a></td>
 			<td class="pkg-synopsis">
 				Package cart は、カートの参照ユースケースを提供します。
@@ -1935,6 +1984,13 @@
 			<td class="pkg-name" style="padding-left: 60px;">tools</td>
 			<td class="pkg-synopsis">
 				&nbsp;
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/tools/datetime">datetime</a></td>
+			<td class="pkg-synopsis">
+				Package datetime は、Usecase が外へ出す時刻のワイヤ表現を提供します。
 			</td>
 		</tr>
 

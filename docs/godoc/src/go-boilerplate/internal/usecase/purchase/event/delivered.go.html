@@ -59,9 +59,9 @@
 <span id="L2" class="ln">     2  </span>
 <span id="L3" class="ln">     3  </span>import (
 <span id="L4" class="ln">     4  </span>	&#34;encoding/json&#34;
-<span id="L5" class="ln">     5  </span>	&#34;time&#34;
-<span id="L6" class="ln">     6  </span>
-<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/domain/purchase&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/internal/domain/purchase&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/usecase/tools/datetime&#34;
 <span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L9" class="ln">     9  </span>)
 <span id="L10" class="ln">    10  </span>
@@ -81,7 +81,7 @@
 <span id="L24" class="ln">    24  </span>func BuildDelivered(p *purchase.Purchase) ([]byte, error) {
 <span id="L25" class="ln">    25  </span>	var deliveredAt string
 <span id="L26" class="ln">    26  </span>	if at := p.DeliveredAt(); at != nil {
-<span id="L27" class="ln">    27  </span>		deliveredAt = at.Format(time.RFC3339Nano)
+<span id="L27" class="ln">    27  </span>		deliveredAt = datetime.FormatUTC(*at)
 <span id="L28" class="ln">    28  </span>	}
 <span id="L29" class="ln">    29  </span>
 <span id="L30" class="ln">    30  </span>	payload, err := json.Marshal(delivered{

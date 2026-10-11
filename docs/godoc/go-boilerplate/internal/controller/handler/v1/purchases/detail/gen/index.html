@@ -431,7 +431,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponDiscount">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=2069:2677#L59">CouponDiscount</a>
+			<h2 id="CouponDiscount">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=2069:3430#L59">CouponDiscount</a>
 				<a class="permalink" href="#CouponDiscount">¶</a>
 				
 				
@@ -445,8 +445,20 @@ including any per-operation middleware.
     <span class="comment">// Example: rate</span>
     Kind <a href="#CouponDiscountKind">CouponDiscountKind</a> `json:&#34;kind&#34;`
 
+<span id="CouponDiscount.MaxAmount"></span>    <span class="comment">// MaxAmount 定率の値引きが 1 回に引ける額の上限。USD セント単位の整数です。</span>
+    <span class="comment">// 定率（`rate`）にのみ意味を持ち、定額（`flat`）では常に null です。</span>
+    <span class="comment">// 上限が無い場合も null で、そのときは対象額に率を掛けた額がそのまま引かれます。</span>
+    <span class="comment">//</span>
+    <span class="comment">//</span>
+    <span class="comment">// Example: 2000</span>
+    MaxAmount *<a href="../../../../../../../../builtin/#int64">int64</a> `json:&#34;maxAmount&#34;`
+
 <span id="CouponDiscount.Value"></span>    <span class="comment">// Value 種別における値。定額なら差し引く金額、定率なら対象額に掛ける率を、</span>
     <span class="comment">// 正確な十進量を保つ decimal 文字列で表します（例 `&#34;0.10&#34;` は 10% 引き）。</span>
+    <span class="comment">// 定額の金額は商品の price と同じ USD のドル建てで（例 `&#34;5.00&#34;` は 5 ドル引き）、</span>
+    <span class="comment">// USD セント単位の整数で表す maxAmount とは桁が違います。</span>
+    <span class="comment">// 定額で引く額は対象額が上限で、セント未満の桁は値引き額を求める時点で切り捨てられます</span>
+    <span class="comment">// （四捨五入ではありません）。</span>
     <span class="comment">// JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。</span>
     <span class="comment">//</span>
     <span class="comment">//</span>
@@ -469,7 +481,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponDiscountKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=2847:2877#L78">CouponDiscountKind</a>
+			<h2 id="CouponDiscountKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=3600:3630#L90">CouponDiscountKind</a>
 				<a class="permalink" href="#CouponDiscountKind">¶</a>
 				
 				
@@ -513,7 +525,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="CouponScope">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=3030:3640#L81">CouponScope</a>
+			</p><h2 id="CouponScope">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=3783:4393#L93">CouponScope</a>
 				<a class="permalink" href="#CouponScope">¶</a>
 				
 				
@@ -551,7 +563,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponScopeKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=3894:3921#L101">CouponScopeKind</a>
+			<h2 id="CouponScopeKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=4647:4674#L113">CouponScopeKind</a>
 				<a class="permalink" href="#CouponScopeKind">¶</a>
 				
 				
@@ -632,7 +644,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=4111:4513#L104">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=4864:5266#L116">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
@@ -935,7 +947,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=9419:9462#L239">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=10172:10215#L251">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -980,7 +992,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=9658:9698#L242">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=10411:10451#L254">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -1025,7 +1037,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="NotFound404">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=9886:9918#L245">NotFound404</a>
+			<h2 id="NotFound404">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=10639:10671#L257">NotFound404</a>
 				<a class="permalink" href="#NotFound404">¶</a>
 				
 				
@@ -1070,7 +1082,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseCodeParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=9189:9220#L236">PurchaseCodeParam</a>
+			<h2 id="PurchaseCodeParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=9942:9973#L248">PurchaseCodeParam</a>
 				<a class="permalink" href="#PurchaseCodeParam">¶</a>
 				
 				
@@ -1093,7 +1105,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseDetailItemResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=4756:5480#L123">PurchaseDetailItemResponse</a>
+			<h2 id="PurchaseDetailItemResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=5509:6233#L135">PurchaseDetailItemResponse</a>
 				<a class="permalink" href="#PurchaseDetailItemResponse">¶</a>
 				
 				
@@ -1140,7 +1152,7 @@ unitPrice は購入時点の単価スナップショットです。
 		
 			
 			
-			<h2 id="PurchaseGetDetailResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=6027:8410#L151">PurchaseGetDetailResponse</a>
+			<h2 id="PurchaseGetDetailResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=6780:9163#L163">PurchaseGetDetailResponse</a>
 				<a class="permalink" href="#PurchaseGetDetailResponse">¶</a>
 				
 				
@@ -1230,7 +1242,7 @@ unitPrice は購入時点の単価スナップショットです。
 		
 			
 			
-			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=8690:9120#L218">PurchaseStatusRef</a>
+			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=9443:9873#L230">PurchaseStatusRef</a>
 				<a class="permalink" href="#PurchaseStatusRef">¶</a>
 				
 				
@@ -1381,7 +1393,7 @@ unitPrice は購入時点の単価スナップショットです。
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=10116:10158#L248">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=10869:10911#L260">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -1497,7 +1509,7 @@ unitPrice は購入時点の単価スナップショットです。
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=10350:10386#L251">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/gen/type.gen.go.html?s=11103:11139#L263">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				
