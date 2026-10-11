@@ -41,12 +41,11 @@ func newID(t *testing.T) uuid.UUID {
 	return id
 }
 
-// newTestCampaign は、一意なコードを持つキャンペーンを組み立てます。
-func newTestCampaign(t *testing.T, mutate func(*domaincampaign.TemplateAttributes)) *domaincampaign.Campaign {
+// newTestCampaign は、指定したコードを持つキャンペーンを組み立てます。
+func newTestCampaign(t *testing.T, code string, mutate func(*domaincampaign.TemplateAttributes)) *domaincampaign.Campaign {
 	t.Helper()
 
-	// 一意制約に当たらないよう、コードは UUID の先頭 16 桁から作る。
-	code, err := domaincampaign.NewCode("C" + newID(t).String()[:15])
+	campaignCode, err := domaincampaign.NewCode(code)
 	require.NoError(t, err)
 
 	value, err := decimal.Parse("0.10")
@@ -65,7 +64,7 @@ func newTestCampaign(t *testing.T, mutate func(*domaincampaign.TemplateAttribute
 
 	startsAt := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Microsecond)
 	c, err := domaincampaign.New(newID(t), domaincampaign.Attributes{
-		Code:         code,
+		Code:         campaignCode,
 		Template:     template,
 		StartsAt:     startsAt,
 		EndsAt:       startsAt.Add(30 * 24 * time.Hour),
@@ -110,7 +109,7 @@ func Test_repository_Create(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				want := newTestCampaign(t, nil)
+				want := newTestCampaign(t, "CREATE-PLAIN", nil)
 
 				require.NoError(t, repo.Create(ctx, want))
 
@@ -139,7 +138,7 @@ func Test_repository_Create(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				usableFrom := time.Now().UTC().Add(24 * time.Hour).Truncate(time.Microsecond)
-				want := newTestCampaign(t, func(a *domaincampaign.TemplateAttributes) {
+				want := newTestCampaign(t, "CREATE-COND", func(a *domaincampaign.TemplateAttributes) {
 					a.DiscountMaxAmount = &maxAmount
 					a.MinPurchaseAmount = &minPurchase
 					a.UsableFrom = &usableFrom
@@ -171,21 +170,9 @@ func Test_repository_Create(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				first := newTestCampaign(t, nil)
-				require.NoError(t, repo.Create(ctx, first))
+				require.NoError(t, repo.Create(ctx, newTestCampaign(t, "CREATE-DUP", nil)))
 
-				second := newTestCampaign(t, nil)
-				dup, err := domaincampaign.New(newID(t), domaincampaign.Attributes{
-					Code:         first.Code(),
-					Template:     second.Template(),
-					StartsAt:     second.StartsAt(),
-					EndsAt:       second.EndsAt(),
-					TotalLimit:   second.TotalLimit(),
-					PerUserLimit: second.PerUserLimit(),
-				})
-				require.NoError(t, err)
-
-				require.ErrorIs(t, repo.Create(ctx, dup), apperror.ErrConflict)
+				require.ErrorIs(t, repo.Create(ctx, newTestCampaign(t, "CREATE-DUP", nil)), apperror.ErrConflict)
 			})
 		})
 	})
@@ -206,7 +193,7 @@ func Test_repository_LockByCode(t *testing.T) {
 
 			// 絞り込みを SQL に置かないため、「不在」と「対象外」が同じ 0 行に潰れない。
 			txm.WithinTx(func(ctx context.Context) {
-				want := newTestCampaign(t, nil)
+				want := newTestCampaign(t, "LOCK-CODE-ANY", nil)
 				require.NoError(t, repo.Create(ctx, want))
 				require.NoError(t, repo.UpdateSuspended(ctx, want.ID(), time.Now().UTC()))
 
@@ -250,7 +237,7 @@ func Test_repository_LockByID(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				want := newTestCampaign(t, nil)
+				want := newTestCampaign(t, "LOCK-BY-ID", nil)
 				require.NoError(t, repo.Create(ctx, want))
 
 				got, err := repo.LockByID(ctx, want.ID())
@@ -290,7 +277,7 @@ func Test_repository_RecordClaim(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				c := newTestCampaign(t, nil)
+				c := newTestCampaign(t, "CLAIM-RECORD", nil)
 				require.NoError(t, repo.Create(ctx, c))
 				couponID := insertTestCoupon(ctx, t, testDB)
 
@@ -322,7 +309,7 @@ func Test_repository_RecordClaim(t *testing.T) {
 			// RecordClaim は 2 回書き込む。2 本目（受け取り記録の挿入）の制約違反が
 			// 正規化されることを、1 本目の業務エラーとは別に押さえる。
 			txm.WithinTx(func(ctx context.Context) {
-				c := newTestCampaign(t, nil)
+				c := newTestCampaign(t, "CLAIM-FK", nil)
 				require.NoError(t, repo.Create(ctx, c))
 				couponID := insertTestCoupon(ctx, t, testDB)
 
@@ -340,7 +327,7 @@ func Test_repository_RecordClaim(t *testing.T) {
 
 			// 行ロックを取らずに呼ばれた場合に備える二重防御が働くことを固定する。
 			txm.WithinTx(func(ctx context.Context) {
-				c := newTestCampaign(t, nil)
+				c := newTestCampaign(t, "CLAIM-FULL", nil)
 				require.NoError(t, repo.Create(ctx, c))
 				fillToTotalLimit(ctx, t, testDB, c.ID(), c.TotalLimit())
 				couponID := insertTestCoupon(ctx, t, testDB)
@@ -368,7 +355,7 @@ func Test_repository_CountClaims(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				c := newTestCampaign(t, nil)
+				c := newTestCampaign(t, "COUNT-CLAIMS-0", nil)
 				require.NoError(t, repo.Create(ctx, c))
 
 				got, err := repo.CountClaims(ctx, domaincampaign.ClaimCountParams{
@@ -397,7 +384,7 @@ func Test_repository_UpdateSuspended(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				c := newTestCampaign(t, nil)
+				c := newTestCampaign(t, "SUSPEND-ONCE", nil)
 				require.NoError(t, repo.Create(ctx, c))
 				suspendedAt := time.Now().UTC().Truncate(time.Microsecond)
 
@@ -418,7 +405,7 @@ func Test_repository_UpdateSuspended(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				c := newTestCampaign(t, nil)
+				c := newTestCampaign(t, "SUSPEND-AGAIN", nil)
 				require.NoError(t, repo.Create(ctx, c))
 				require.NoError(t, repo.UpdateSuspended(ctx, c.ID(), time.Now().UTC()))
 
@@ -446,9 +433,9 @@ func Test_repository_FindList(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				// 隣接ペアの非逆転だけを見ると、期待する並びを名指ししていないことになる。
 				// 2 件の相対位置そのものを固定する。
-				older := newTestCampaignStartingAt(t, time.Now().UTC().Add(-48*time.Hour))
+				older := newTestCampaignStartingAt(t, "LIST-ORDER-OLD", time.Now().UTC().Add(-48*time.Hour))
 				require.NoError(t, repo.Create(ctx, older))
-				newer := newTestCampaignStartingAt(t, time.Now().UTC().Add(-24*time.Hour))
+				newer := newTestCampaignStartingAt(t, "LIST-ORDER-NEW", time.Now().UTC().Add(-24*time.Hour))
 				require.NoError(t, repo.Create(ctx, newer))
 
 				got, err := repo.FindList(ctx, domaincampaign.ListParams{Limit: 100, Offset: 0})
@@ -462,8 +449,8 @@ func Test_repository_FindList(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				require.NoError(t, repo.Create(ctx, newTestCampaign(t, nil)))
-				require.NoError(t, repo.Create(ctx, newTestCampaign(t, nil)))
+				require.NoError(t, repo.Create(ctx, newTestCampaign(t, "LIST-LIMIT-A", nil)))
+				require.NoError(t, repo.Create(ctx, newTestCampaign(t, "LIST-LIMIT-B", nil)))
 
 				got, err := repo.FindList(ctx, domaincampaign.ListParams{Limit: 1, Offset: 0})
 
@@ -491,7 +478,7 @@ func Test_repository_CountAll(t *testing.T) {
 				before, err := repo.CountAll(ctx)
 				require.NoError(t, err)
 
-				require.NoError(t, repo.Create(ctx, newTestCampaign(t, nil)))
+				require.NoError(t, repo.Create(ctx, newTestCampaign(t, "COUNT-ALL", nil)))
 
 				after, err := repo.CountAll(ctx)
 				require.NoError(t, err)
@@ -501,11 +488,11 @@ func Test_repository_CountAll(t *testing.T) {
 	})
 }
 
-// newTestCampaignStartingAt は、配布期間の開始日時だけを指定したキャンペーンを組み立てます。
-func newTestCampaignStartingAt(t *testing.T, startsAt time.Time) *domaincampaign.Campaign {
+// newTestCampaignStartingAt は、コードと配布期間の開始日時を指定したキャンペーンを組み立てます。
+func newTestCampaignStartingAt(t *testing.T, code string, startsAt time.Time) *domaincampaign.Campaign {
 	t.Helper()
 
-	base := newTestCampaign(t, nil)
+	base := newTestCampaign(t, code, nil)
 	c, err := domaincampaign.New(base.ID(), domaincampaign.Attributes{
 		Code:         base.Code(),
 		Template:     base.Template(),
@@ -678,7 +665,7 @@ func Test_campaignToCreateParams(t *testing.T) {
 		t.Run("集約を挿入パラメータへ写す", func(t *testing.T) {
 			t.Parallel()
 
-			c := newTestCampaign(t, nil)
+			c := newTestCampaign(t, "TO-PARAMS", nil)
 
 			got, err := campaignToCreateParams(c)
 
@@ -727,7 +714,7 @@ func Test_campaignToCreateParams(t *testing.T) {
 func newOverflowingCampaign(t *testing.T, totalLimit, perUserLimit int) *domaincampaign.Campaign {
 	t.Helper()
 
-	base := newTestCampaign(t, nil)
+	base := newTestCampaign(t, "OVERFLOW", nil)
 	c, err := domaincampaign.New(base.ID(), domaincampaign.Attributes{
 		Code:         base.Code(),
 		Template:     base.Template(),
