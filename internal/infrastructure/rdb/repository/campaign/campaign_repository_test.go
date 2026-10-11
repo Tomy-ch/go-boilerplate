@@ -3,6 +3,7 @@ package campaign
 import (
 	"context"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,8 +46,9 @@ func newID(t *testing.T) uuid.UUID {
 func newTestCampaign(t *testing.T, mutate func(*domaincampaign.TemplateAttributes)) *domaincampaign.Campaign {
 	t.Helper()
 
-	// 一意制約に当たらないよう、コードは UUID の先頭 16 桁から作る。
-	code, err := domaincampaign.NewCode("C" + newID(t).String()[:15])
+	// 一意制約に当たらないよう、コードは UUID の 32 桁全体から作る。
+	// UUIDv7 の先頭はミリ秒時刻なので、切り詰めると同じミリ秒に作った 2 件が衝突する。
+	code, err := domaincampaign.NewCode(strings.ReplaceAll(newID(t).String(), "-", ""))
 	require.NoError(t, err)
 
 	value, err := decimal.Parse("0.10")
