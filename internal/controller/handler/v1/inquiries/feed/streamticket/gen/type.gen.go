@@ -25,7 +25,8 @@ type ErrorResponse struct {
 	RequestId string `json:"requestId"`
 }
 
-// InquiryStreamTicketResponse 購読に使う 1 回限りの ticket。生値はこの応答にしか現れず、サーバは hash しか保存しない。
+// InquiryStreamTicketResponse 購読に使う ticket。有効期限まで、新しい接続を始めるたびに繰り返し使える（自動再接続を含む）。
+// 生値はこの応答にしか現れず、サーバは hash しか保存しない。
 // 接続は GET /v1/streams/{destination} に streamId を渡して開始する。
 type InquiryStreamTicketResponse struct {
 	// ExpiresAt この ticket で新しい接続を始められる期限。確立済みの接続は別に最大接続時間で区切られる。
