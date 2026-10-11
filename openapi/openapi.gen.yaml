@@ -2512,7 +2512,9 @@ paths:
         - v1/inquiries/me/stream-ticket
       summary: 自分の問い合わせを購読する ticket の発行
       description: |
-        呼び出し主体自身の問い合わせについて、購読に使う 1 回限りの ticket を発行します。
+        呼び出し主体自身の問い合わせについて、購読に使う ticket を発行します。
+        ticket は有効期限（応答の expiresAt）まで繰り返し使え、EventSource の自動再接続のように
+        同じ URL で新しい接続を始め直しても受け付けられます。
         応答の streamId を GET /v1/streams/{destination} の destination に渡して接続します。
         **生値はこの応答にしか現れません**。サーバは hash しか保存しないため、失った場合は再発行します。
         **開始位置には発行時点の stream の現在位置を束ねます**。cursor を持たずに接続した client へ
@@ -6184,7 +6186,8 @@ components:
     InquiryStreamTicketResponse:
       type: object
       description: |
-        購読に使う 1 回限りの ticket。生値はこの応答にしか現れず、サーバは hash しか保存しない。
+        購読に使う ticket。有効期限まで、新しい接続を始めるたびに繰り返し使える（自動再接続を含む）。
+        生値はこの応答にしか現れず、サーバは hash しか保存しない。
         接続は GET /v1/streams/{destination} に streamId を渡して開始する。
       required:
         - ticket
