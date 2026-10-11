@@ -202,13 +202,13 @@ func Test_newPanicLogFunc(t *testing.T) {
 			assert.True(t, recovered)
 		})
 
-		t.Run("X-Real-Ipヘッダがある場合、パニックをログしリカバリ済みを記録する", func(t *testing.T) {
+		t.Run("X-Real-IPヘッダがある場合、パニックをログしリカバリ済みを記録する", func(t *testing.T) {
 			t.Parallel()
 
 			obsLogger, observed := logging.NewObservedTestLogger(t)
 			ctx := context.Background()
 			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/other", nil)
-			req.Header.Set("X-Real-Ip", "10.0.0.1")
+			req.Header.Set("X-Real-IP", "10.0.0.1")
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 

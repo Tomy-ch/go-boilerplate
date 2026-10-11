@@ -78,11 +78,11 @@ func Test_cookieRewriteWriter_Header(t *testing.T) {
 		t.Run("ラップ前にorigへ書かれたヘッダをw.Header()から読み出せる", func(t *testing.T) {
 			t.Parallel()
 			orig := newFakeOrig()
-			orig.Header().Set("X-Request-Id", "rid-1")
+			orig.Header().Set("X-Request-ID", "rid-1")
 
 			w := newCookieRewriteWriter(orig, &SecurityCookie{})
 
-			assert.Equal(t, "rid-1", w.Header().Get("X-Request-Id"))
+			assert.Equal(t, "rid-1", w.Header().Get("X-Request-ID"))
 		})
 	})
 }

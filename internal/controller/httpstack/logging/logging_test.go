@@ -288,7 +288,7 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 			res := server.ResponseOf(c)
 			require.NotNil(t, res)
 			res.Status = expectedStatus
-			c.Response().Header().Set("X-Request-Id", expectedRequestID)
+			c.Response().Header().Set("X-Request-ID", expectedRequestID)
 
 			l := requestLog{c: c, res: res, lf: lf}
 			fields := l.buildResponseLogFields(expectedEventAt, 150*time.Millisecond)

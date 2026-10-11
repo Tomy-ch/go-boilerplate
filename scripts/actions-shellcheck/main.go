@@ -470,8 +470,8 @@ func isAssignment(field string) bool {
 }
 
 func fieldBase(cmd string) string {
-	if i := strings.LastIndex(cmd, "/"); i >= 0 {
-		return cmd[i+1:]
+	if _, after, ok := strings.CutLast(cmd, "/"); ok {
+		return after
 	}
 	return cmd
 }

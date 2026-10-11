@@ -340,11 +340,11 @@ func parseRef(ref string) (imageRef, bool) {
 
 // lastColonSplit は最後の ':' で分割する（tag に ':' は含まれない前提）。
 func lastColonSplit(s string) (string, string, bool) {
-	i := strings.LastIndex(s, ":")
-	if i < 0 {
+	before, after, ok := strings.CutLast(s, ":")
+	if !ok {
 		return "", "", false
 	}
-	return s[:i], s[i+1:], true
+	return before, after, true
 }
 
 func resolve(root string, targets []target, minAgeDays int) error {
