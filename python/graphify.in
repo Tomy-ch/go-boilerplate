@@ -2,4 +2,4 @@
 # 推移依存まで含めた解決結果と sha256 は graphify.txt が持つ。更新は `make py-lock`。
 #
 # sql extra は database/dml/** を解析対象に入れるために要る。
-graphifyy[sql]==0.9.53
+graphifyy[sql]==0.9.75
