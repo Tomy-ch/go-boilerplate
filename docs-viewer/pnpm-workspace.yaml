@@ -51,6 +51,8 @@ overrides:
   "dompurify@<3.4.16": ">=3.4.16 <4"
   # parseCommaParts の無制限再帰による DoS（GHSA-6j4f-fj2g-mc7p）。minimatch が引く。
   "brace-expansion@5": ">=5.0.10 <6"
+  # _.template の imports キー名経由のコード注入（GHSA-r5fr-rjxr-66jc）。chevrotain が 4.17.23 を固定で引く。
+  "lodash-es@<4.18.0": ">=4.18.0 <5"
   # TLS 証明書検証の迂回・WebSocket 経由の DoS・Set-Cookie のキャッシュによる別ユーザーへの漏洩ほか
   # （GHSA-w293-vg96-wgc3 / rfgv-xxqx-mfg5 ほか計 10 件）。jsdom が引く。
   "undici@<7.29.1": ">=7.29.1 <8"
