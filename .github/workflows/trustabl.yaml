@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -59,7 +59,7 @@ jobs:
       # report-only takes `continue-on-error` too — README.md § Agent Config Scan.
       - name: Scan agent configuration
         continue-on-error: true
-        uses: trustabl/trustabl-action@748a5fdd0c329a20c1f1b42efec47a4de6bede67 # v0.4.2
+        uses: trustabl/trustabl-action@d97575c864814bf4965fa2c72c044224d372723a # v0.4.3
         with:
           version: v0.1.6
           rules-ref: v0.2.0
