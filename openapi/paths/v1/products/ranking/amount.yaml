@@ -10,7 +10,7 @@ get:
     集計の母集団は「公開済み（published_at 非 NULL）の商品」×「キャンセルされていない購入」の明細です。
     未払いの購入は集計に含みます。
     この母集団は GET /v1/dashboard/summary の salesAmount とは一致しません。salesAmount は購入の
-    支払金額（小計 + 税額 + 送料）を商品の公開状態に関わらず合計するのに対し、こちらは明細を
+    支払金額（小計 - 値引き額 + 税額 + 送料）を商品の公開状態に関わらず合計するのに対し、こちらは明細を
     公開済み商品に限って集計するためです。
     集計対象期間は orderedAfter / orderedBefore が指す半開区間 [orderedAfter, orderedBefore) です。
     いずれも省略でき、両方省略した場合は全期間を集計します。orderedBefore が orderedAfter 以前

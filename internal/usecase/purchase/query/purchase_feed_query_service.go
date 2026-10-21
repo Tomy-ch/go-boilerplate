@@ -48,7 +48,7 @@ type ListFeedParams struct {
 type PurchaseFeedReadModel struct {
 	// Code は、購入コード（利用者へ注文番号として見せる一意の識別子）です。
 	Code string
-	// TotalAmount は、合計金額（小計 + 税額 + 送料）です。USD セント単位の整数です。
+	// TotalAmount は、合計金額（小計 - 値引き額 + 税額 + 送料）です。USD セント単位の整数です。
 	TotalAmount int
 	// StatusID は、購入ステータス ID（購入ステータスマスタで解決済み）です。
 	StatusID uuid.UUID

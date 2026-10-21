@@ -20,7 +20,7 @@ properties:
     type: integer
     format: int64
     description: |
-      対象期間の支払金額の合計（小計 + 税額 + 送料、キャンセル済みを除く）。
+      対象期間の支払金額の合計（小計 - 値引き額 + 税額 + 送料、キャンセル済みを除く）。
       statusBreakdown の totalAmount の総和と一致します。USD セント単位の整数です。対象がない場合は 0 です。
     example: 2118000
   itemsTotal:

@@ -52,7 +52,7 @@ type PurchaseShippableItemResponse struct {
 	// Example: 2026-07-23T00:00:00Z
 	OrderedAt time.Time `json:"orderedAt"`
 
-	// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+	// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。
 	//
 	// Example: 176500
 	TotalAmount int64 `json:"totalAmount"`
