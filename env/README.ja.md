@@ -234,7 +234,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 ### Realtime Delivery
 
-Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../docs/design/realtime-delivery.ja.md)）の背後にある DynamoDB 互換 store — EventLog（有界の replay）、stream ticket、instance lease — と、全 serve instance を起こす SNS / SQS 互換の fan-out の設定です。usecase は vendor 非依存の `realtime` 境界に依存し、adapter は DynamoDB と SNS / SQS（AWS SDK v2）なので、`local` / `ci` は DynamoDB Local と GoAWS へ、デプロイ環境は `ENDPOINT_REALTIME` / `ENDPOINT_REALTIME_PUBSUB` を空にして AWS へ繋ぎます。table 名は固定名（`realtime_event_log` / `realtime_stream_ticket` / `realtime_instance_lease`）に `_<REALTIME_TABLE_SUFFIX>` を付けた形で、1 つの DynamoDB（あるいは共有の DynamoDB Local）に複数環境を並べられます。table と topic は one-shot の `make realtime-init` が作り、application の起動時には作りません。instance ごとの queue だけは application 自身が serve 起動時に `REALTIME_QUEUE_PREFIX` の下で作ります。
+Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../docs/design/realtime-delivery.ja.md)）の背後にある DynamoDB 互換 store — EventLog（有界の replay）、stream ticket、instance lease — と、全 serve instance を起こす SNS / SQS 互換の fan-out の設定です。usecase は vendor 非依存の `realtime` 境界に依存し、adapter は DynamoDB と SNS / SQS（AWS SDK v2）なので、`local` / `ci` は DynamoDB Local と GoAWS へ、デプロイ環境は `ENDPOINT_REALTIME` / `ENDPOINT_REALTIME_PUBSUB` を空にして AWS へ繋ぎます。table 名は固定名（`realtime_event_log` / `realtime_stream_ticket` / `realtime_instance_lease`）に `_<REALTIME_TABLE_SUFFIX>` を付けた形で、1 つの DynamoDB（あるいは共有の DynamoDB Local）に複数環境を並べられます。table と topic は application の起動時には作りません。IaC が用意する環境では IaC が持ち主で、それ以外（`local`、`ci`、IaC を持たない環境）では one-shot の `realtime-init` が作ります。instance ごとの queue だけは application 自身が serve 起動時に `REALTIME_QUEUE_PREFIX` の下で作ります。
 
 |変数名|説明|型|例|Notes|
 |---|---|---|---|---|
