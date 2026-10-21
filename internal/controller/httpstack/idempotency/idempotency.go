@@ -20,6 +20,13 @@ const headerName = "Idempotency-Key"
 // maxKeyLength は、Idempotency-Key ヘッダの最大バイト長です。
 const maxKeyLength = 255
 
+const (
+	codeKeyReused        = "IDEMPOTENCY_KEY_REUSED"
+	messageKeyReused     = "この Idempotency-Key は別の要求に使われています。新しいキーで送り直してください。"
+	codeKeyInProgress    = "IDEMPOTENCY_KEY_IN_PROGRESS"
+	messageKeyInProgress = "同じ Idempotency-Key の要求を処理中です。しばらく待ってから再送してください。"
+)
+
 // NextFunc は、StrictHandlerFunc と構造的に同一の handler 呼び出しシグネチャです。
 type NextFunc func(ctx *echo.Context, request any) (any, error)
 
@@ -74,7 +81,20 @@ func handle(ec *echo.Context, request any, operationID string, next NextFunc) (a
 	})
 	ec.SetRequest(r.WithContext(reqCtx))
 
-	return next(ec, request)
+	res, err := next(ec, request)
+	return res, withErrorMeta(err)
+}
+
+// withErrorMeta は、冪等性キー由来のエラーに専用のエラーコードと文言を付与します。それ以外の err はそのまま返します。
+func withErrorMeta(err error) error {
+	switch {
+	case xerrors.Is(err, idempotencyuc.ErrKeyReused):
+		return apperror.WithMeta(err, apperror.NewMeta(codeKeyReused).WithMessage(messageKeyReused))
+	case xerrors.Is(err, idempotencyuc.ErrKeyInProgress):
+		return apperror.WithMeta(err, apperror.NewMeta(codeKeyInProgress).WithMessage(messageKeyInProgress))
+	default:
+		return err
+	}
 }
 
 // validateKey は、Idempotency-Key の健全性を検証します（≤255 / 印字可能 ASCII）。違反は 400。

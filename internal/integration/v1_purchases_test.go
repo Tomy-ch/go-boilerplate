@@ -12,6 +12,7 @@ import (
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
+	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
 	mock_idempotency "go-boilerplate/internal/usecase/boundary/idempotency/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	checkoutuc "go-boilerplate/internal/usecase/checkout"
@@ -193,6 +194,38 @@ func TestV1Purchases_Integration(t *testing.T) {
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/purchases", purchaseRequestBody(t), headers)
 			AssertErrorResponse(t, actual, http.StatusConflict)
+		})
+
+		t.Run("同じIdempotency-Keyを別の本文に使うと422でIDEMPOTENCY_KEY_REUSEDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			checkout := mock_checkoutuc.NewMockUsecase(ctrl)
+			checkout.EXPECT().CreatePurchase(gomock.Any(), gomock.Any()).Times(0)
+
+			store := mock_idempotency.NewMockStore(ctrl)
+			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(false, nil)
+			store.EXPECT().Get(gomock.Any(), gomock.Any(), "integration-key-reused").Return(&idempotencybndry.Record{
+				Status:      idempotencybndry.StatusCompleted,
+				Fingerprint: []byte("another-request"),
+			}, nil)
+			txm := mock_tx.NewMockManager(ctrl)
+			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+			)
+			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
+
+			v1purchases.BindHandler(e, tf, nil, checkout, idempotency.Deps{Txm: txm, Store: store, Clock: clk})
+
+			headers := availablePurchaseUser(t, e)
+			headers.Set("Idempotency-Key", "integration-key-reused")
+			actual := StartServer(t, e).DoJSON(http.MethodPost, "/v1/purchases", purchaseRequestBody(t), headers)
+			errResp := AssertErrorResponseBody(t, actual, http.StatusUnprocessableEntity)
+			assert.Equal(t, "IDEMPOTENCY_KEY_REUSED", errResp.Code)
 		})
 
 		t.Run("明細が空配列の場合は422を返す", func(t *testing.T) {
