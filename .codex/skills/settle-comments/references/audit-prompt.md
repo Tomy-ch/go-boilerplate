@@ -34,6 +34,12 @@ error meaning, and observable condition order. A test or `docs/spec/**` section 
 contract does not make the comment the copy. Reasons not observable from the call site belong to
 `docs/spec/**` and may make the comment the copy.
 
+Inside a `*_test.go`, the direction is reversed because a test publishes no contract.
+`docs/rules.md` declares the `t.Run` name canonical for what a case asserts, so a comment restating
+a case's intent is `不要`; name that `t.Run` line as the guard. Keep (`維持`) a constraint whose
+premise sits at that site and the reasons `docs/testing-conventions.md` requires in writing,
+including the one-line reason beside `//nolint:paralleltest`.
+
 ### Pass 1 — per-comment jurisdiction
 
 For every prose comment, ask: if the decision were reversed, which document would someone be obliged
@@ -130,7 +136,7 @@ Do not flag or side-note any of the following:
 
 - One-line `// Name は、〜です。` field comments; this repository deliberately preserves their visual
   uniformity.
-- Generated files, mocks, and tests (`*.gen.go`, `*.sql.go`, `*_mock.go`, `*_test.go`).
+- Generated files and mocks (`*.gen.go`, `*.sql.go`, `*_mock.go`).
 - Functional/directive comments: `go:generate`, `nolint`, `go:build`, `go:embed`, generated-code
   markers, shebangs, and SQL/YAML tool directives.
 - Unresolved TODO/FIXME markers.
