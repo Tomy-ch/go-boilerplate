@@ -65,7 +65,6 @@ jobs:
               - 'makefile'
               - '.makefiles/go/golangci-lint.mk'
               - '.makefiles/load.mk'
-              # Pins the golangci-lint version; a bump can add findings on unchanged code.
               - 'mise.toml'
 
   go-lint:
