@@ -85,7 +85,7 @@ func handle(ec *echo.Context, request any, operationID string, next NextFunc) (a
 	return res, withErrorMeta(err)
 }
 
-// withErrorMeta は、冪等性キー由来のエラーに専用のエラーコードと文言を付与します。それ以外の err はそのまま返します。
+// withErrorMeta は、冪等性キー由来のエラーに専用のエラーコードと文言を付与します。
 func withErrorMeta(err error) error {
 	switch {
 	case xerrors.Is(err, idempotencyuc.ErrKeyReused):

@@ -67,8 +67,9 @@ Two steps (opt-in; an endpoint without the steps is unchanged):
 
 - **`Idempotency-Key` header**: non-empty, ≤ 255 chars, printable ASCII (`0x21`–`0x7E`). UUID is recommended but not required. Malformed → **400**.
 - **Replay**: a retry with the same key + same request returns the original response.
-- **409 Conflict**: the key is currently being processed (concurrent retry) — retry later.
-- **422 Unprocessable Entity**: the same key was reused with a *different* request body.
+- **409 Conflict** (`code`: `IDEMPOTENCY_KEY_IN_PROGRESS`): the key is currently being processed (concurrent retry) — retry later.
+- **422 Unprocessable Entity** (`code`: `IDEMPOTENCY_KEY_REUSED`): the same key was reused with a *different* request body — send it again under a new key.
+- `Run` signals these two as `ErrKeyInProgress` / `ErrKeyReused`, which wrap `apperror.ErrConflict` / `apperror.ErrValidation`; the codes and their messages are attached by the controller middleware ([`internal/controller/httpstack/idempotency`](../../controller/httpstack/idempotency/README.md)), because the user-facing message belongs to the controller (`apperror.Meta.WithMessage`). A business error returned by `businessFn` keeps its own code.
 - Scoped to the authenticated principal: a key is unique **per user** (`UNIQUE (scope, idempotency_key)`), so one user cannot collide with or read another user's key.
 
 ## 5. (c) Per-endpoint scope extension (no config flag)
