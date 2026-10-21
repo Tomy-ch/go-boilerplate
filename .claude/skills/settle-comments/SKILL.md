@@ -1,7 +1,7 @@
 ---
 name: settle-comments
 description: >-
-  Settle the EXISTING STOCK of source-code comments in a chosen scope by asking two questions no other reviewer asks: does a mechanism already guard the fact this comment states, and does its content belong here at all. A fact some type, test case, lint rule, `internal/architest` scan, regeneration check or `docs/spec/**` statement already keeps true is dropped against a named `file:line`; a design rationale is relocated into `docs/adr/` / `docs/design/**` / `docs/spec/**` / a package README; a Why written at several declarations collapses to one authoritative site plus pointers. Use it whenever a comment restates what a test, a spec or a linter already enforces; whenever comments feel bloated, verbose, over-explained, or essay-like even though each line is individually true; whenever the same reason appears at several declarations and no one place is authoritative; whenever a doc comment has grown into a design argument, threat-model analysis, or rejected-alternative discussion; for a periodic hygiene pass over a package / layer / whole repo; before a large PR or a template cut; and when someone asks 「コメントが長すぎる」「コメントを整理して」「テストと同じことをコメントが書いている」「この Why はコードに置くべきか」「コメントを ADR に移したい」. Modes: 確認して適用 (default), 自動適用 (`--apply`), 報告のみ (`--report-only`). Sole owner of the comment subject — no review skill carries a comment lens — and it runs **unconditionally as the last step of every implementation** over the declarations the change touched (`AGENTS.md`, *Task Execution Protocol*), not as a review whose return gets estimated. Do NOT use it to judge README / docs prose quality (`doc-reviewer`), to fix README-to-code structural drift (`back-prop` / `sync-readme`), or to delete `// Name は、〜です。` field comments — that convention is deliberately preserved.
+  Settle the EXISTING STOCK of source-code comments in a chosen scope by asking two questions no other reviewer asks: does a mechanism already guard the fact this comment states, and does its content belong here at all. A fact some type, test case, lint rule, `internal/architest` scan, regeneration check or `docs/spec/**` statement already keeps true is dropped against a named `file:line`; a design rationale is relocated into `docs/adr/` / `docs/design/**` / `docs/spec/**` / a package README; a Why written at several declarations collapses to one authoritative site plus pointers. Use it whenever a comment restates what a test, a spec or a linter already enforces; whenever comments feel bloated, verbose, over-explained, or essay-like even though each line is individually true; whenever the same reason appears at several declarations and no one place is authoritative; whenever a doc comment has grown into a design argument, threat-model analysis, or rejected-alternative discussion; for a periodic hygiene pass over a package / layer / whole repo; before a large PR or a template cut; and when someone asks 「コメントが長すぎる」「コメントを整理して」「テストと同じことをコメントが書いている」「この Why はコードに置くべきか」「コメントを ADR に移したい」. Modes: 確認して適用 (default), 自動適用 (`--apply`), 報告のみ (`--report-only`). Sole owner of the comment subject — no review skill carries a comment lens — and it runs **unconditionally as the last step of every implementation** over the declarations the change touched (`AGENTS.md`, *Task Execution Protocol*), not as a review whose return gets estimated. Test files are in scope; whether a test's intent sits in its `t.Run` name rather than a comment is `test-review`'s. Do NOT use it to judge README / docs prose quality (`doc-reviewer`), to fix README-to-code structural drift (`back-prop` / `sync-readme`), or to delete `// Name は、〜です。` field comments — that convention is deliberately preserved.
 ---
 
 # Settle Comments
@@ -199,12 +199,18 @@ question, and the duplication this skill exists to find lives between the pieces
 
 ## Step 1 — Resolve targets
 
-Exclude generated files and tests; they are not this skill's business:
+Exclude generated files; they are not this skill's business:
 
 ```sh
 find <scope> -name '*.go' \
-  ! -name '*.gen.go' ! -name '*.sql.go' ! -name '*_mock.go' ! -name '*_test.go'
+  ! -name '*.gen.go' ! -name '*.sql.go' ! -name '*_mock.go'
 ```
+
+Test files (`*_test.go`) are in scope. What differs there is the canonical direction, not the
+standard: `docs/rules.md` declares the `t.Run` name canonical for what a case asserts, so a comment
+restating it is the copy. `/test-review` owns the shape (intent belongs in the `t.Run` name,
+`docs/testing-conventions.md` §10); this skill owns the content — whether a comment is true, whether
+something already guards it, and whether it belongs there.
 
 Non-Go sources (shell, Dockerfile, Makefile, SQL, YAML, `.mjs`) are in scope for the same content
 standard — `docs/rules.md` says so explicitly, and they are higher-risk because `revive` does not
@@ -426,7 +432,7 @@ because no human read the edits one at a time.
   consolidated content either. When the fragments really do add up to a package-level statement, that
   is a 移設 to the package README, which is already a supported destination and is where a reader
   looking for package-level prose goes.
-- **Generated files** (`**/*.gen.go`, `*.sql.go`, `*_mock.go`) and `*_test.go`.
+- **Generated files** (`**/*.gen.go`, `*.sql.go`, `*_mock.go`).
 - **Functional / directive comments** — `//go:generate`, `//nolint`, `//go:build`, `//go:embed`,
   `// Code generated ... DO NOT EDIT`, shebangs, tool directives. These are not prose.
 - **Docs prose quality** — `doc-reviewer` owns it. This skill only *adds* to a destination document;

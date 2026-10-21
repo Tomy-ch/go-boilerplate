@@ -50,6 +50,11 @@ deletion of a contract nothing else publishes:
   the call site — why the business works that way — belongs to `docs/spec/**` and is `移設` or `不要`
   in the comment. Treating a test's case names as canonical for a contract inverts this and is the
   single mistake to avoid.
+- **Inside a `*_test.go` the direction is reversed, because a test publishes no contract.**
+  `docs/rules.md` declares the `t.Run` name canonical for what a case asserts, so a comment restating
+  a case's intent is `不要`, naming that `t.Run` line as the guard. Keep what the name cannot carry: a
+  constraint whose premise sits at that site, and the reasons `docs/testing-conventions.md` requires in
+  writing (the one-line reason beside `//nolint:paralleltest`) — those are `維持`.
 
 ### Pass 1 — per comment: jurisdiction
 
@@ -211,7 +216,7 @@ far harder to undo than a comment left alone.
   `doc.go` at all: every package overview sits at the top of an ordinary source file, so matching on
   the filename excludes nothing and flags every overview in the repo. Usage and How belong in an
   overview; `docs/rules.md` exempts them.
-- **Generated files and `*_test.go`** — the orchestrator excludes them; if any reached you, skip them.
+- **Generated files** — the orchestrator excludes them; if any reached you, skip them.
 
 ## Go exported-declaration caveat
 
