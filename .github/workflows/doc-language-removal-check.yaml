@@ -32,6 +32,7 @@ on:
       - '.makefiles/**'
       - 'makefile'
       - 'docs/portal/manifest.yaml'
+      - '**/*.md'
   pull_request:
     paths:
       - '.github/workflows/doc-language-removal-check.yaml'
@@ -44,6 +45,7 @@ on:
       - '.makefiles/**'
       - 'makefile'
       - 'docs/portal/manifest.yaml'
+      - '**/*.md'
   workflow_dispatch:
 
 permissions:

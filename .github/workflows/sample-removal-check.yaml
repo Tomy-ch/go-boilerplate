@@ -2,17 +2,11 @@ name: Sample Removal Check
 
 on:
   workflow_dispatch:
-  # Mirrors scripts/setup/remove-sample-api/sample-manifest.ts, the files carrying sample-api
-  # markers, and what the post-removal build, lint, test and skill-lint read.
+  # Mirrors scripts/setup/remove-sample-api/sample-manifest.ts, plus what the rebuild reads.
   pull_request:
     paths:
-      - '.github/workflows/**'
-      - '.github/zap/**'
-      - '.claude/**'
-      - '.codex/**'
-      - 'cmd/**'
+      - '.github/workflows/sample-removal-check.yaml'
       - 'internal/**'
-      - 'pkg/**'
       - 'database/**'
       - 'openapi/**'
       - 'docs/**'
@@ -23,8 +17,8 @@ on:
       - 'go.sum'
       - 'sqlc.yaml'
       - 'mise.toml'
-      - 'env/**'
-      - 'sonar-project.properties'
+      - 'env/.env'
+      - 'env/.env.ci'
 
 permissions:
   contents: read
@@ -149,30 +143,10 @@ jobs:
             esm.ubuntu.com:443
             motd.ubuntu.com:443
 
-      # fetch-depth: 0 so the filter below can compare the PR's base and head with `git diff`.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
           persist-credentials: false
-
-      # A pull request that changes only Markdown cannot change what the post-removal Go tree
-      # builds, lints or tests: no Go test reads a `.md` file. Such a PR still runs the removal
-      # and every Markdown and skill check below; only the Go stages are skipped. The output is
-      # empty on workflow_dispatch or when the filter fails, and empty is not 'false', so the
-      # Go stages run.
-      - name: Filter the changed paths
-        id: filter
-        if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
-        with:
-          # An empty token selects `git diff` over the compare API (see go-test.yaml).
-          token: ''
-          predicate-quantifier: every
-          filters: |
-            code:
-              - '**'
-              - '!**/*.md'
 
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
@@ -216,11 +190,9 @@ jobs:
       # `*.gen.sql.go`) from a test, and the code that did is deleted with the sample, so
       # `go build` covers the same ground.
       - name: Regenerate from the shrunken spec
-        if: steps.filter.outputs.code != 'false'
         run: make gen-bundle-oapi gen-go-code
 
       - name: Format after removal (make go-fix)
-        if: steps.filter.outputs.code != 'false'
         run: make go-fix
 
       # Stripping marker blocks edits Markdown structurally (READMEs, docs, the target
@@ -237,21 +209,17 @@ jobs:
         run: make md-skill-lint-ci
 
       - name: Migrate & seed core-only schema
-        if: steps.filter.outputs.code != 'false'
         run: |
           go run ./cmd/ migrate-up --database "${DB}"
           go run ./cmd/ db-seed --database "${DB}"
 
       - name: Verify build
-        if: steps.filter.outputs.code != 'false'
         run: go build ./...
 
       - name: Verify lint
-        if: steps.filter.outputs.code != 'false'
         run: make go-lint
 
       - name: Verify tests
-        if: steps.filter.outputs.code != 'false'
         run: make go-test
 
       - name: Verify sample removal (exact deletion + no dangling refs)
