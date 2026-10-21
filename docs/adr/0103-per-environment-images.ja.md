@@ -64,8 +64,8 @@ go build ... -o /app/bin/server ./cmd/
 
 ## 補足
 
-- `docker/server/Dockerfile` 25-30 行: `ARG APP_ENV=prd` と `cp` コマンド。
-- `.github/workflows/deploy-app.yaml` の `Define build environment` ステップ（54-63 行）: ブランチ → `app_env` マッピング。
+- `docker/server/Dockerfile` の `builder` ステージ: `ARG APP_ENV=prd` と `cp` コマンド。
+- `.github/workflows/deploy-app.yaml` の `Define build environment` ステップ: ブランチ → `app_env` マッピング。
 - `env/README.md`: "Env files are embedded into the binary at build time (`embed.go`). The Docker `builder` stage materializes the target via the `APP_ENV` build arg."
 - 埋め込み設定メカニズム自体は ADR-0046 に文書化されている。
 - ソース: `docker/server/Dockerfile`、`.github/workflows/deploy-app.yaml`、`env/README.md`。

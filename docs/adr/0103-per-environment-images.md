@@ -84,8 +84,8 @@ A separate Dockerfile per environment. Duplicates build and maintenance effort; 
 
 ## Notes
 
-- `docker/server/Dockerfile` lines 25-30: `ARG APP_ENV=prd` and the `cp` command.
-- `.github/workflows/deploy-app.yaml` `Define build environment` step (lines 54-63): branch
+- `docker/server/Dockerfile`, `builder` stage: `ARG APP_ENV=prd` and the `cp` command.
+- `.github/workflows/deploy-app.yaml` `Define build environment` step: branch
   → `app_env` mapping.
 - `env/README.md`: "Env files are embedded into the binary at build time (`embed.go`). The
   Docker `builder` stage materializes the target via the `APP_ENV` build arg."

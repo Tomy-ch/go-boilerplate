@@ -63,7 +63,7 @@ migration and app binary is a latent correctness risk.
 
 ## Notes
 
-- `docker/server/Dockerfile` lines 55-57: `CMD ["/app/server", "serve"]` is the default;
+- `docker/server/Dockerfile`, `runtime` stage: `CMD ["/app/server", "serve"]` is the default;
   migrations override this to `["/app/server", "migrate-up"]`.
 - `docker/server/README.md`: "Schema migrations run from the `runtime` image via command
   override, so no dedicated migration target exists."
