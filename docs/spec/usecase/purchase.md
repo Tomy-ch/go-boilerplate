@@ -280,7 +280,7 @@ output:
   struct: SummaryView          # package summary
   fields:
     - name: TotalCount / TotalAmount
-      type: int64              # 購入件数 / 支払金額（小計 + 税額 + 送料、USD セント整数）。対象 0 件でも 0 を返しエラーにしない
+      type: int64              # 購入件数 / 支払金額（小計 - 値引き額 + 税額 + 送料、USD セント整数）。対象 0 件でも 0 を返しエラーにしない
     - name: ItemsTotal
       type: decimal.Decimal    # 明細金額（単価 × 数量）の合計。価格スケールの正確な decimal（丸めない）
     - name: StatusBreakdown
@@ -313,7 +313,7 @@ workflow:
 成立しなかった取引を含む合計は支出として読めない（会計・決済 API の慣行どおり、キャンセルを負値で表現することもしない。
 金額は非負のまま状態で区別する）。
 
-**金額は 2 つの尺度で返す。** `TotalAmount` は購入の支払金額（小計 + 税額 + 送料）の合計で決済スケールの整数セント、
+**金額は 2 つの尺度で返す。** `TotalAmount` は購入の支払金額（小計 - 値引き額 + 税額 + 送料）の合計で決済スケールの整数セント、
 `ItemsTotal` は明細金額（単価 × 数量）の合計で価格スケールの正確な decimal。税額・送料は明細へ按分できないため
 両者は一致しない。`ItemsTotal` を決済スケールへ丸めないのは、[ADR-0038 (two-scale-quantity-model)] が丸めを
 「正確な量が決済確定値になる 1 箇所」に限っているためで、参照系の集計はその 1 箇所ではない。丸めをグループごとに

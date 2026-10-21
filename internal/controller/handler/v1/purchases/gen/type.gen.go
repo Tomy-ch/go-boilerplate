@@ -307,7 +307,7 @@ type PurchaseResponse struct {
 	// Example: 16000
 	TaxAmount int64 `json:"taxAmount"`
 
-	// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+	// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。
 	//
 	// Example: 176500
 	TotalAmount int64 `json:"totalAmount"`
@@ -365,7 +365,7 @@ type PurchaseSummaryResponse struct {
 	// 表示には name を、分岐にはドメインの業務キーである code を用います。
 	Status PurchaseStatusRef `json:"status"`
 
-	// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。
+	// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。
 	//
 	// Example: 176500
 	TotalAmount int64 `json:"totalAmount"`

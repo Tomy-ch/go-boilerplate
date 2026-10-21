@@ -65,7 +65,7 @@ type GroupNodeView struct {
 // SummaryView は、購入集計のユースケース出力 DTO です。全フィールドは GetPurchaseSummary が定義する
 // 同一の母集団から算出されるため、フィールド間で不整合は生じません。
 type SummaryView struct {
-	// TotalCount / TotalAmount は、購入件数と支払金額（小計 + 税額 + 送料）の合計です。
+	// TotalCount / TotalAmount は、購入件数と支払金額（小計 - 値引き額 + 税額 + 送料）の合計です。
 	// 対象がない場合はいずれも 0 で、TotalAmount は USD セント単位の整数です。
 	TotalCount  int64
 	TotalAmount int64

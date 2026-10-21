@@ -212,7 +212,7 @@ findings** — 業務が使っていてモデルが使っていない語は、�
   が product-status と purchase-status の 2 つの feature に跨って重複する。**後者は単一の feature の
   spec からは見えない。**マスタ側だけを改名するか、値オブジェクト側を業務の言葉へ寄せるかは未決
 
-- **`salesAmount`** — `dashboard/query.SalesResult` は購入の支払金額（小計 + 税額 + 送料）を決済スケールの
+- **`salesAmount`** — `dashboard/query.SalesResult` は購入の支払金額（小計 - 値引き額 + 税額 + 送料）を決済スケールの
   セント整数で合計し、商品の公開状態を見ない。`ranking.AmountRankingItemView.SalesAmount` は明細
   （単価 × 数量）を価格スケールの正確な decimal で合計し、公開済み商品に限る。**母集団もスケールも
   違うのに、公開名が同じ `salesAmount` である。**両者が一致しないことは各 op の description に

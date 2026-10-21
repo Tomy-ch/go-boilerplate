@@ -50,6 +50,6 @@ docker run <image> /app/server migrate-up
 
 ## 補足
 
-- `docker/server/Dockerfile` 55-57 行: `CMD ["/app/server", "serve"]` がデフォルト。マイグレーションはこれを `["/app/server", "migrate-up"]` にオーバーライドする。
+- `docker/server/Dockerfile` の `runtime` ステージ: `CMD ["/app/server", "serve"]` がデフォルト。マイグレーションはこれを `["/app/server", "migrate-up"]` にオーバーライドする。
 - `docker/server/README.md`: "Schema migrations run from the `runtime` image via command override, so no dedicated migration target exists."
 - マイグレーションオーケストレーション（ワンショット事前デプロイジョブ）は別の関心事である。ADR-0104 を参照。

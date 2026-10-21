@@ -67,7 +67,7 @@ type PurchaseAggregateResponse struct {
 	// 対象がない場合は空配列です。キャンセル済みは集計対象外のため、キャンセルのステータスは現れません。
 	StatusBreakdown []PurchaseStatusBreakdownResponse `json:"statusBreakdown"`
 
-	// TotalAmount 対象期間の支払金額の合計（小計 + 税額 + 送料、キャンセル済みを除く）。
+	// TotalAmount 対象期間の支払金額の合計（小計 - 値引き額 + 税額 + 送料、キャンセル済みを除く）。
 	// statusBreakdown の totalAmount の総和と一致します。USD セント単位の整数です。対象がない場合は 0 です。
 	//
 	//
