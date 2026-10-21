@@ -3,7 +3,7 @@ name: OpenAPI Lint
 on:
   pull_request:
     paths:
-      - 'openapi/**'
+      - 'openapi/**/*.yaml'
       - 'redocly.yaml'
       - '.makefiles/openapi/**'
       - '.github/workflows/oapi-lint.yaml'

@@ -11,12 +11,14 @@ on:
       - staging
       - production
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yaml'
+      - '.github/workflows/*.yml'
       - '.github/actions/**'
       - 'docker/**/Dockerfile'
   pull_request:
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yaml'
+      - '.github/workflows/*.yml'
       - '.github/actions/**'
       - 'docker/**/Dockerfile'
   schedule:

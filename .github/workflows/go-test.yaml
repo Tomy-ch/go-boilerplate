@@ -64,14 +64,14 @@ jobs:
               - '**/testdata/**'
               - 'internal/**/*.yaml'
               - '**/*.tpl'
-              - 'openapi/**'
+              - 'openapi/**/*.yaml'
               - 'env/.env*'
               - 'docker-compose*.yaml'
               - 'docker/server/Dockerfile'
               - '.github/workflows/*.yaml'
               - 'mise.toml'
               - '.octocov.yaml'
-              - '.makefiles/**'
+              - '.makefiles/**/*.mk'
               - 'makefile'
 
   go-test:

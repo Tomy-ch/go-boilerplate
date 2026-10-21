@@ -4,14 +4,22 @@ on:
   pull_request:
     paths:
       - 'database/migrations/**'
+      - 'scripts/migration-lint/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'pkg/xerrors/**'
       - '.github/workflows/migration-check.yaml'
-      - '.makefiles/**'
+      - '.makefiles/**/*.mk'
       - 'makefile'
   workflow_dispatch:
 
 permissions:
   contents: read
   pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   migration-check:

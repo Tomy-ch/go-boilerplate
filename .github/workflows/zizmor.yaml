@@ -3,7 +3,8 @@ name: Actions Static Analysis
 on:
   pull_request:
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yaml'
+      - '.github/workflows/*.yml'
       - '.github/actions/**'
       - '.github/zizmor.yml'
       - '.makefiles/security/zizmor.mk'
@@ -15,7 +16,8 @@ on:
       - production
       - 'release/*'
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yaml'
+      - '.github/workflows/*.yml'
       - '.github/actions/**'
       - '.github/zizmor.yml'
       - '.makefiles/security/zizmor.mk'

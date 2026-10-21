@@ -3,7 +3,8 @@ name: Actions Lint
 on:
   pull_request:
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yaml'
+      - '.github/workflows/*.yml'
       - '.github/actions/**'
       - '.github/actionlint.yaml'
       - 'docker/tools/Dockerfile'
@@ -22,6 +23,7 @@ on:
       - 'scripts/pnpm-lock.yaml'
       - 'scripts/pnpm-workspace.yaml'
       - 'scripts/actions-shellcheck/**'
+      - '**/*.sh'
   workflow_dispatch:
 
 permissions:

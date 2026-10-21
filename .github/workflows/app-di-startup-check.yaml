@@ -12,7 +12,7 @@ on:
       - 'env/.env'
       - 'go.mod'
       - 'go.sum'
-      - '.makefiles/**'
+      - '.makefiles/**/*.mk'
       - 'makefile'
   workflow_dispatch:
 

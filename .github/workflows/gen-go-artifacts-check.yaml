@@ -63,7 +63,7 @@ jobs:
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
-              - '.makefiles/**'
+              - '.makefiles/**/*.mk'
               - 'openapi/**/*.yaml'
               - '**/*.tpl'
               - 'docker/tools/Dockerfile'

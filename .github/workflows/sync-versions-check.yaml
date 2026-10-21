@@ -11,7 +11,7 @@ on:
       - 'docker/**/README.ja.md'
       - 'scripts/sync-versions/**'
       - '.github/workflows/sync-versions-check.yaml'
-      - '.makefiles/**'
+      - '.makefiles/**/*.mk'
       - 'makefile'
   workflow_dispatch:
 
