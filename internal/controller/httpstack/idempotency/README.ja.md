@@ -14,3 +14,4 @@
 - `Idempotency-Key` が無い、または空白のみの場合は素通しされます。値がある場合は検証され、違反キーは `400`（`apperror.ErrInvalidArgument`）で拒否されます。キーは 255 バイト以下・印字可能 ASCII のみで構成されている必要があります。
 - リクエスト指紋は `method + path + JSON(型付き request)` の SHA-256 です。request の marshal は fail-closed とし、失敗時は弱い指紋で処理を続行せず内部エラー（`apperror.ErrInternal`）を返します。
 - 成功時、ミドルウェアは usecase の `WithRequest` を介して `idempotency.Request`（scope・key・fingerprint・method・path・operationID）をリクエストコンテキストへ格納し、次のハンドラへ委譲します。以降の処理は usecase 層が消費します。
+- 戻り道では、ハンドラが返したエラーが `idempotency.ErrKeyReused` / `idempotency.ErrKeyInProgress` なら、コード `IDEMPOTENCY_KEY_REUSED` / `IDEMPOTENCY_KEY_IN_PROGRESS` と文言を持つ `apperror.Meta` を付けます。ステータスは 422 / 409 のままです。それ以外のエラーはそのまま通します。

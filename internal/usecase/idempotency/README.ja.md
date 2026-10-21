@@ -67,8 +67,9 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 
 - **`Idempotency-Key` ヘッダ**：非空 / ≤255 / 印字可能 ASCII（`0x21`–`0x7E`）。UUID 推奨・非必須。形式不正 → **400**。
 - **replay**：同キー・同リクエストの再送は最初の結果を返す。
-- **409**：そのキーは処理中（並行再送）→ 後で再試行。
-- **422**：同キーを*別*リクエストボディで使い回した。
+- **409**（`code`: `IDEMPOTENCY_KEY_IN_PROGRESS`）：そのキーは処理中（並行再送）→ 後で再試行。
+- **422**（`code`: `IDEMPOTENCY_KEY_REUSED`）：同キーを*別*リクエストボディで使い回した → 新しいキーで送り直す。
+- `Run` はこの 2 つを `ErrKeyInProgress` / `ErrKeyReused`（それぞれ `apperror.ErrConflict` / `apperror.ErrValidation` を包む）で知らせます。コードと文言は controller の middleware（[`internal/controller/httpstack/idempotency`](../../controller/httpstack/idempotency/README.ja.md)）が付けます。利用者向け文言は controller に属するためです（`apperror.Meta.WithMessage`）。`businessFn` が返す業務エラーは自身のコードのままです。
 - 認証プリンシパル単位でスコープ（`UNIQUE (scope, idempotency_key)`）。他人のキーに衝突・覗きはできない。
 
 ## 5. (c) per-endpoint スコープ拡張（config フラグにはしない）

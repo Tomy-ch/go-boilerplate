@@ -264,7 +264,7 @@ func TestRun(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("claimed への並行再送は 409(Conflict) を返す", func(t *testing.T) {
+		t.Run("claimed への並行再送は 409(Conflict)で処理中を表す ErrKeyInProgress を返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
@@ -280,9 +280,10 @@ func TestRun(t *testing.T) {
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrConflict)
+			require.ErrorIs(t, err, idempotency.ErrKeyInProgress)
 		})
 
-		t.Run("指紋不一致(同キー別ボディ)は 422(Validation) を返す", func(t *testing.T) {
+		t.Run("指紋不一致(同キー別ボディ)は 422(Validation)でキーの使い回しを表す ErrKeyReused を返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
@@ -297,6 +298,7 @@ func TestRun(t *testing.T) {
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrValidation)
+			require.ErrorIs(t, err, idempotency.ErrKeyReused)
 		})
 
 		t.Run("業務処理失敗時は complete せずエラーを伝播する(キー解放)", func(t *testing.T) {
@@ -341,7 +343,7 @@ func TestRun(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
-		t.Run("ロック待ちタイムアウトは 409(Conflict) を返す", func(t *testing.T) {
+		t.Run("ロック待ちタイムアウトは 409(Conflict)で処理中を表す ErrKeyInProgress を返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
@@ -352,9 +354,10 @@ func TestRun(t *testing.T) {
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrConflict)
+			require.ErrorIs(t, err, idempotency.ErrKeyInProgress)
 		})
 
-		t.Run("claim衝突直後に行が消えたレースは 409(Conflict) を返す", func(t *testing.T) {
+		t.Run("claim衝突直後に行が消えたレースは 409(Conflict)で処理中を表す ErrKeyInProgress を返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
@@ -366,6 +369,7 @@ func TestRun(t *testing.T) {
 				func(context.Context) (payload, error) { return payload{}, nil })
 
 			require.ErrorIs(t, err, apperror.ErrConflict)
+			require.ErrorIs(t, err, idempotency.ErrKeyInProgress)
 		})
 
 		t.Run("保存済みペイロードが壊れていれば 500(Internal) を返す", func(t *testing.T) {

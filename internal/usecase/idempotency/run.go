@@ -17,6 +17,12 @@ import (
 // ttl は、冪等性キーの保持期間（= リトライ許容窓）です。
 const ttl = 24 * time.Hour
 
+// ErrKeyReused は、同じ冪等性キーが別の要求に使われたことを表します（422）。
+var ErrKeyReused = xerrors.Wrap(apperror.ErrValidation, "idempotency key reused with a different request")
+
+// ErrKeyInProgress は、同じ冪等性キーの初回がまだ処理中であることを表します（409）。
+var ErrKeyInProgress = xerrors.Wrap(apperror.ErrConflict, "idempotency key is being processed, retry later")
+
 // Metrics は、冪等性判定結果の o11y カウンタです（operationID ラベルで分解）。
 // 各メソッドは ctx を第 1 引数に取り、OTel exemplar（メトリクス→トレース相関）を維持します。
 type Metrics interface {
@@ -77,7 +83,7 @@ func Run[T any](
 		if err != nil {
 			if xerrors.Is(err, idempotencybndry.ErrLockTimeout) {
 				deps.metrics().IncConflict(ctx, req.OperationID)
-				return xerrors.Wrap(apperror.ErrConflict, "idempotency key is being processed, retry later")
+				return xerrors.Wrap(ErrKeyInProgress, "claim lock timed out")
 			}
 			deps.metrics().IncClaimFailure(ctx, req.OperationID)
 			return err
@@ -133,17 +139,17 @@ func decideExisting[T any](
 	if rec == nil {
 		// claim 衝突直後にエントリが消えた稀なレース。後で再試行させる。
 		deps.metrics().IncConflict(ctx, req.OperationID)
-		return zero, false, xerrors.Wrap(apperror.ErrConflict, "idempotency key state unavailable, retry later")
+		return zero, false, xerrors.Wrap(ErrKeyInProgress, "idempotency key state unavailable")
 	}
 
 	if !bytes.Equal(rec.Fingerprint, req.Fingerprint) {
 		deps.metrics().IncFingerprintMismatch(ctx, req.OperationID)
-		return zero, false, xerrors.Wrap(apperror.ErrValidation, "idempotency key reused with a different request")
+		return zero, false, xerrors.Wrap(ErrKeyReused, "fingerprint mismatch")
 	}
 
 	if rec.Status != idempotencybndry.StatusCompleted {
 		deps.metrics().IncConflict(ctx, req.OperationID)
-		return zero, false, xerrors.Wrap(apperror.ErrConflict, "idempotency key is being processed, retry later")
+		return zero, false, xerrors.Wrap(ErrKeyInProgress, "entry not completed")
 	}
 
 	// completed → 保存済み DTO を復元して replay。

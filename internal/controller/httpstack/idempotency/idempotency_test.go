@@ -264,6 +264,21 @@ func Test_handle(t *testing.T) {
 			assert.False(t, called)
 		})
 
+		t.Run("後段が返した冪等性キー処理中のエラーに専用コードを付けて返す", func(t *testing.T) {
+			t.Parallel()
+			next := NextFunc(func(*echo.Context, any) (any, error) {
+				return nil, idempotencyuc.ErrKeyInProgress
+			})
+			ec := newEcho(t, "key-abc", true, testSubject)
+
+			_, err := Middleware()(next, testOperationID)(ec, spyRequest{Name: "alice"})
+
+			require.ErrorIs(t, err, apperror.ErrConflict)
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, "IDEMPOTENCY_KEY_IN_PROGRESS", meta.Code())
+		})
+
 		t.Run("指紋生成に失敗するリクエストは500で後段を呼ばない(fail-closed)", func(t *testing.T) {
 			t.Parallel()
 			called := false
@@ -464,6 +479,68 @@ func TestMiddleware(t *testing.T) {
 			_, err := Middleware()(next, "PostResources")(newEcho(t, "key-1", true, testSubject), spyRequest{})
 
 			require.ErrorIs(t, err, boom)
+		})
+	})
+}
+
+func Test_withErrorMeta(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キーの使い回しは422のままIDEMPOTENCY_KEY_REUSEDと専用文言を付ける", func(t *testing.T) {
+			t.Parallel()
+
+			err := withErrorMeta(xerrors.Wrap(idempotencyuc.ErrKeyReused, "wrapped"))
+
+			require.ErrorIs(t, err, apperror.ErrValidation)
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, "IDEMPOTENCY_KEY_REUSED", meta.Code())
+			assert.Equal(t, "この Idempotency-Key は別の要求に使われています。新しいキーで送り直してください。", meta.Message())
+		})
+
+		t.Run("処理中は409のままIDEMPOTENCY_KEY_IN_PROGRESSと専用文言を付ける", func(t *testing.T) {
+			t.Parallel()
+
+			err := withErrorMeta(xerrors.Wrap(idempotencyuc.ErrKeyInProgress, "wrapped"))
+
+			require.ErrorIs(t, err, apperror.ErrConflict)
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, "IDEMPOTENCY_KEY_IN_PROGRESS", meta.Code())
+			assert.Equal(t, "同じ Idempotency-Key の要求を処理中です。しばらく待ってから再送してください。", meta.Message())
+		})
+
+		t.Run("業務由来の409には何も付けずそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			businessErr := xerrors.Wrap(apperror.ErrConflict, "business conflict")
+
+			err := withErrorMeta(businessErr)
+
+			assert.Equal(t, businessErr, err)
+			_, ok := apperror.MetaFrom(err)
+			assert.False(t, ok)
+		})
+
+		t.Run("業務由来の422には何も付けずそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			businessErr := xerrors.Wrap(apperror.ErrValidation, "business validation")
+
+			err := withErrorMeta(businessErr)
+
+			assert.Equal(t, businessErr, err)
+			_, ok := apperror.MetaFrom(err)
+			assert.False(t, ok)
+		})
+
+		t.Run("nilはnilのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, withErrorMeta(nil))
 		})
 	})
 }
