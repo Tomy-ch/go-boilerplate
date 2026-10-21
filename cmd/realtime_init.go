@@ -28,7 +28,9 @@ func newRealtimeInitCommand() *cobra.Command {
 
 REALTIME_* と ENDPOINT_REALTIME の設定が指す store に対して、無い table は作り、ACTIVE を待ち、
 TTL が未設定なら設定します。既にある table は変えません。application の起動時には実行されないため、
-新しい環境や REALTIME_TABLE_SUFFIX を変えた後に一度実行してください。`,
+新しい環境や REALTIME_TABLE_SUFFIX を変えた後に一度実行してください。
+対象は local / CI と、IaC がこれらの資源を用意しない環境です。IaC が用意する環境では IaC が持ち主で、
+このコマンドは実行しません。`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runRealtimeInit(cmd.Context())
 		},

@@ -50,8 +50,11 @@ of those, and it lives in [`scripts/`](../../scripts/README.md) instead. The two
 placements for the same thing.
 
 `realtime-init` and `scripts/realtime-reset` are the pair that makes this visible, and the split
-between them is intentional. Creating the Realtime Delivery tables is something a real environment
-does, so it is a subcommand here. Deleting them is not, and staying outside this binary is what lets
+between them is intentional. `realtime-init` creates the Realtime Delivery tables and topic for local,
+CI, and any environment whose infrastructure-as-code does not provision them; where IaC does, IaC owns
+those resources and the command is not run there. It is a subcommand because it ships in the runtime
+image (ADR-0101), so an environment without IaC can run it as a one-shot exactly as it runs
+`migrate-up`. Deleting them is never an environment's operation, and staying outside this binary is what lets
 the reset tool sign with a credential real AWS rejects — a guard that holds independently of its
 endpoint check. Bringing it in would give it the app's `REALTIME_*` credentials and reduce two guards
 to one. Do not "fix" the asymmetry by moving it.

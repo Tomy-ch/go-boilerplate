@@ -48,9 +48,11 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
 ならない操作である。ローカルの emulator しか相手にしない開発用ツールはそれに当たらず、
 [`scripts/`](../../scripts/README.md) に置く。両者は同じものの配置先を争っているのではない。
 
-それが見える対が `realtime-init` と `scripts/realtime-reset` で、この分割は意図的である。Realtime
-Delivery の table を作ることは実環境が行う操作なのでここのサブコマンドになる。削除することはそうでは
-なく、このバイナリの外に居ることが、実 AWS が拒む資格情報で署名できる理由になっている —— endpoint の
+それが見える対が `realtime-init` と `scripts/realtime-reset` で、この分割は意図的である。`realtime-init`
+は Realtime Delivery の table と topic を、local / CI と、IaC がそれらを用意しない環境のために作る。IaC が
+用意する環境では IaC が持ち主で、このコマンドは実行しない。サブコマンドである理由は runtime イメージに
+同梱されること（ADR-0101）で、IaC を持たない環境が `migrate-up` と同じく one-shot として実行できる。
+削除することはどの環境の操作でもなく、このバイナリの外に居ることが、実 AWS が拒む資格情報で署名できる理由になっている —— endpoint の
 検査とは独立に効く防御である。取り込めば app の `REALTIME_*` 資格情報が渡り、2 つの防御が 1 つになる。
 非対称を「揃える」目的で動かさないこと。
 

@@ -164,8 +164,10 @@ local stack, but only one of them can take something away.
 Such a tool stays in `scripts/` even when the application already owns the creating half of the same
 resource — `realtime-init` creates the Realtime Delivery tables as a `cmd/` subcommand ([`internal/cli/README.md`](../internal/cli/README.md)),
 and `realtime-reset` deletes them from here. That asymmetry is deliberate and load-bearing, not an
-oversight in the placement rule. The creating half is an operation a deployed environment genuinely
-performs, so it belongs to the application. The deleting half is not, and keeping it out of the
+oversight in the placement rule. The creating half ships in the runtime image, so an environment whose
+infrastructure-as-code does not provision these resources can run it as a one-shot, the way it runs
+`migrate-up`; where IaC does provision them, IaC owns them. The deleting half is never an environment's
+operation, and keeping it out of the
 application binary is what allows it to sign with a credential real AWS rejects — a second, independent
 guard behind the endpoint check. Moving it to `cmd/` would hand it the app's `REALTIME_*` credentials
 and leave `validateEndpoint` as the only thing between a mistyped flag and a production table.
