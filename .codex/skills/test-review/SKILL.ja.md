@@ -15,6 +15,7 @@ Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias �
 
 - **実装コードのレビュー** → `code-review` / `impl-review` / `arch-check`。
 - **HTTP 統合テスト** (`internal/integration/` 配下) → 別 convention（`internal/integration/README.md` + `scaffold-integration-test`）。本スキルは同一パッケージ unit test 専用。
+- **コメント内容の判定**（コメントが真か、すでに仕組みで保護されているか、その場所に置くべきか）→ `settle-comments`。本スキルはケースの意図がコメントではなく `t.Run` 名に置かれているかだけを確認する。
 - 修正の適用 → 本スキルはファイル編集しない。指摘後、user が `scaffold-test` 実行 or 手で編集する。
 
 ## 読む / 書く
@@ -119,7 +120,7 @@ Output: README が宣言しているが test が exercise していない観点�
 
 ### Lens 3: 意味的品質
 
-アサーションが本当に意味を持っているかを、**`docs/testing-conventions.md` section 10（意味的品質のバー / アンチパターン）を唯一の source of truth として**監査する。 この節は `scaffold-test` と共有する SSOT（生成器はこれを満たすように生成し、本 lens はこれへの違反を検出する）— runtime で読み、その時点で列挙されている内容を適用する。 アンチパターンのカタログを本スキルにハードコードしない（doc からドリフトする）。 執筆時点の §10 の列挙: 弱いアサーション（trivial constructor の 1:1 *その場で強化*例外つき — より強い assert を推奨し、専用 `TestXxx` を削除・他 subject へ畳み込まない）、ケース名がアサートを過剰約束（分岐なし pass-through / 配線の系 — 冗長な `NotNil` 再実行は畳む）、内部結合の脆さ、過剰モック、時刻リテラル漏れ、`TestXxx` 責務肥大、ヘルパ重複、冗長コメント。 §10 がアンチパターンを追加・削除・改訂したら、この段落ではなく doc に従う。
+アサーションが本当に意味を持っているかを、**`docs/testing-conventions.md` section 10（意味的品質のバー / アンチパターン）を唯一の source of truth として**監査する。 この節は `scaffold-test` と共有する SSOT（生成器はこれを満たすように生成し、本 lens はこれへの違反を検出する）— runtime で読み、その時点で列挙されている内容を適用する。 アンチパターンのカタログを本スキルにハードコードしない（doc からドリフトする）。 執筆時点の §10 の列挙: 弱いアサーション（trivial constructor の 1:1 *その場で強化*例外つき — より強い assert を推奨し、専用 `TestXxx` を削除・他 subject へ畳み込まない）、ケース名がアサートを過剰約束（分岐なし pass-through / 配線の系 — 冗長な `NotNil` 再実行は畳む）、内部結合の脆さ、過剰モック、時刻リテラル漏れ、`TestXxx` 責務肥大、ヘルパ重複、冗長コメント。 コメントについて本レンズが所管するのは形だけ — ケースの意図が `t.Run` 名ではなくコメントに置かれているか。コメント内容が真か、すでに仕組みで保護されているか、別の場所に置くべきかは `settle-comments` の所管。 §10 がアンチパターンを追加・削除・改訂したら、この段落ではなく doc に従う。
 
 Output: `file:line` + 違反した §10 アンチパターン + 「なぜ弱い / 脆いか」の 1 文説明 finding リスト。
 

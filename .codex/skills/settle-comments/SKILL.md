@@ -1,7 +1,7 @@
 ---
 name: settle-comments
 description: >-
-  Settle source-code comments by deciding whether a mechanism already guards their facts (不要), their content belongs at the declaration or in a governing document (移設), or repeated content should be consolidated at one owning declaration (集約). Use unconditionally as the last step of an implementation over touched declarations, and for bloated or essay-like comments, repeated or fragmented Why across files or packages, doc comments grown into design arguments, periodic hygiene of a package/layer/repository, or a template cut; supports 確認して適用 (default), 自動適用 (`--apply`), and 報告のみ (`--report-only`). Japanese triggers include 「コメントが長すぎる」「コメントを整理して」「テストと同じことをコメントが書いている」「この Why はコードに置くべきか」「コメントを ADR に移したい」. Do not use for README or docs prose quality, which `doc-reviewer` owns, or README-to-code structural drift, which `back-prop` / `sync-readme` own.
+  Settle source-code comments by deciding whether a mechanism already guards their facts (不要), their content belongs at the declaration or in a governing document (移設), or repeated content should be consolidated at one owning declaration (集約). Use unconditionally as the last step of an implementation over touched declarations, and for bloated or essay-like comments, repeated or fragmented Why across files or packages, doc comments grown into design arguments, periodic hygiene of a package/layer/repository, or a template cut; supports 確認して適用 (default), 自動適用 (`--apply`), and 報告のみ (`--report-only`). Test files are in scope for comment content; `test-review` owns whether case intent sits in the `t.Run` name rather than a comment. Japanese triggers include 「コメントが長すぎる」「コメントを整理して」「テストと同じことをコメントが書いている」「この Why はコードに置くべきか」「コメントを ADR に移したい」. Do not use for README or docs prose quality, which `doc-reviewer` owns, or README-to-code structural drift, which `back-prop` / `sync-readme` own.
 ---
 
 # Settle Comments
@@ -69,9 +69,15 @@ reading the target scope.
 
 ## 2. Resolve and rank targets
 
-Resolve all source files under the selected scope. Exclude `*.gen.go`, `*.sql.go`, `*_mock.go`, and
-`*_test.go`. Include non-Go sources such as shell, Dockerfile, Makefile, SQL, YAML, and `.mjs` when
-they are in scope; their prose follows the same standard and is not covered by `revive`.
+Resolve all source files under the selected scope. Exclude `*.gen.go`, `*.sql.go`, and `*_mock.go`.
+Include non-Go sources such as shell, Dockerfile, Makefile, SQL, YAML, and `.mjs` when they are in
+scope; their prose follows the same standard and is not covered by `revive`.
+
+Test files (`*_test.go`) are in scope. The standard is unchanged there, but the canonical direction
+is reversed: `docs/rules.md` declares the `t.Run` name canonical for what a case asserts, so a
+comment restating it is the copy. `test-review` owns the shape (intent belongs in the `t.Run` name,
+per `docs/testing-conventions.md` section 10); this skill owns the content — whether a comment is
+true, already guarded, or belongs there.
 
 Count comment lines, rank files from highest volume to lowest, and show that ranking in Japanese.
 Group files by package directory. A package is the audit unit because its nearest README can be the

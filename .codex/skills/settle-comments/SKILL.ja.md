@@ -44,7 +44,9 @@ findings・選択肢・提案する文面・要約を含め、ユーザーに見
 
 ## 2. 対象を解決し順位付ける
 
-選択したスコープ配下のソースファイルをすべて解決する。`*.gen.go` / `*.sql.go` / `*_mock.go` / `*_test.go` は除外する。スコープ内にあれば、シェル・Dockerfile・Makefile・SQL・YAML・`.mjs` などの非 Go ソースも含める。それらの散文も同じ基準に従い、`revive` の守備範囲ではない。
+選択したスコープ配下のソースファイルをすべて解決する。`*.gen.go` / `*.sql.go` / `*_mock.go` は除外する。スコープ内にあれば、シェル・Dockerfile・Makefile・SQL・YAML・`.mjs` などの非 Go ソースも含める。それらの散文も同じ基準に従い、`revive` の守備範囲ではない。
+
+テストファイル（`*_test.go`）も対象に含める。そこでも基準は同じだが、正本方向が逆になる。`docs/rules.md` は case が何を assert するかの正本を `t.Run` 名と定めているため、それを反復する comment が写しである。形（intent は `t.Run` 名に置く。`docs/testing-conventions.md` section 10）は `test-review` が所管し、この skill は内容、すなわち comment が正しいか、既に guard されているか、そこに属するかを所管する。
 
 コメント行を数え、分量の多い順にファイルを並べ、その順位を日本語で示す。ファイルはパッケージディレクトリごとにまとめる。監査の単位がパッケージなのは、その最も近い README が管轄上の移設先になり得るからである。
 
