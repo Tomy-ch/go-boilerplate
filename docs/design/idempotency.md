@@ -104,7 +104,9 @@ stateDiagram-v2
     Deleted --> [*]
 
     note right of Stale
-      after TTL a retry is treated as a fresh operation (no cached state).
+      the key is retained at least 24h from first acceptance. Claim never reads expires_at
+      (ON CONFLICT DO NOTHING), so a Stale row still replays / 409s / 422s; a retry becomes
+      a fresh operation only once the GC has deleted the row.
       DeleteExpired removes ≤ limit rows ordered by expires_at; the index keeps it cheap.
     end note
 ```
@@ -247,7 +249,7 @@ Operational notes (no per-route config flags — these are coded constants):
 | **Run[T]** | The orchestrator. `Run(ctx, deps, successStatus, businessFn) (T, bool, error)`. No key in ctx (or empty scope) → `businessFn` runs directly. |
 | **Deps** | Injected bundle for `Run`: `Txm` (`tx.Manager`), `Store`, `Clock`, optional `Metrics` (nil = no-op). |
 | **Request (context)** | In-flight metadata threaded by the middleware: `Scope` / `Key` / `Fingerprint` / `Method` / `Path` / `OperationID`. |
-| **ttl** | `24 * time.Hour`. `expires_at = now + ttl`. After it, a retry is a fresh op. |
+| **ttl** | `24 * time.Hour`. `expires_at = now + ttl`. The minimum retention: `Claim` does not consult `expires_at`, so the key stays in force until the GC has deleted the row, and only then is a retry a fresh op. |
 | **GCUsecase / idempotencygc** | `SweepExpired(batchSize)` loops `Store.DeleteExpired` until a short batch; run from the bundled CLI [job](job.md). Default batch 10,000. |
 | **Store** | The persistence seam (`internal/usecase/boundary/idempotency`): `Claim` / `Get` / `Complete` / `DeleteExpired`, all scope-mandatory. |
 | **Metrics** | Optional o11y counters labelled by `operationID`: `IncHit` / `IncMiss` / `IncConflict` / `IncFingerprintMismatch` / `IncClaimFailure` / `IncCompleteFailure`. Default no-op. |

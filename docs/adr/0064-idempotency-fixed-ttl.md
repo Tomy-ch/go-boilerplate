@@ -32,8 +32,10 @@ transient network failures and manual retries.
 
 The TTL is fixed at **24 hours** (`ttl = 24 * time.Hour`), coded as a constant in the
 `Run[T]` orchestrator. There is no per-route or per-handler configuration flag. Every
-claim sets `expires_at = now + 24h`. After the TTL has elapsed, a retry with the same key
-is treated as a fresh operation — no cached state is present.
+claim sets `expires_at = now + 24h`. The TTL is the minimum retention a client is promised,
+not the moment the key is released: `expires_at` only makes the row eligible for the GC sweep
+and is never consulted by the claim, so the key stays in force — replay, 409 or 422 — until
+the GC job has deleted the row, and only then is a retry with the same key a fresh operation.
 
 ## Consequences
 
