@@ -498,7 +498,7 @@ func Test_withErrorMeta(t *testing.T) {
 			meta, ok := apperror.MetaFrom(err)
 			require.True(t, ok)
 			assert.Equal(t, "IDEMPOTENCY_KEY_REUSED", meta.Code())
-			assert.Equal(t, messageKeyReused, meta.Message())
+			assert.Equal(t, "この Idempotency-Key は別の要求に使われています。新しいキーで送り直してください。", meta.Message())
 		})
 
 		t.Run("処理中は409のままIDEMPOTENCY_KEY_IN_PROGRESSと専用文言を付ける", func(t *testing.T) {
@@ -510,7 +510,7 @@ func Test_withErrorMeta(t *testing.T) {
 			meta, ok := apperror.MetaFrom(err)
 			require.True(t, ok)
 			assert.Equal(t, "IDEMPOTENCY_KEY_IN_PROGRESS", meta.Code())
-			assert.Equal(t, messageKeyInProgress, meta.Message())
+			assert.Equal(t, "同じ Idempotency-Key の要求を処理中です。しばらく待ってから再送してください。", meta.Message())
 		})
 
 		t.Run("業務由来の409には何も付けずそのまま返す", func(t *testing.T) {
@@ -520,7 +520,19 @@ func Test_withErrorMeta(t *testing.T) {
 
 			err := withErrorMeta(businessErr)
 
-			require.Equal(t, businessErr, err)
+			assert.Equal(t, businessErr, err)
+			_, ok := apperror.MetaFrom(err)
+			assert.False(t, ok)
+		})
+
+		t.Run("業務由来の422には何も付けずそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			businessErr := xerrors.Wrap(apperror.ErrValidation, "business validation")
+
+			err := withErrorMeta(businessErr)
+
+			assert.Equal(t, businessErr, err)
 			_, ok := apperror.MetaFrom(err)
 			assert.False(t, ok)
 		})
@@ -528,7 +540,7 @@ func Test_withErrorMeta(t *testing.T) {
 		t.Run("nilはnilのまま返す", func(t *testing.T) {
 			t.Parallel()
 
-			assert.NoError(t, withErrorMeta(nil))
+			require.NoError(t, withErrorMeta(nil))
 		})
 	})
 }

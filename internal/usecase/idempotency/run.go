@@ -83,7 +83,7 @@ func Run[T any](
 		if err != nil {
 			if xerrors.Is(err, idempotencybndry.ErrLockTimeout) {
 				deps.metrics().IncConflict(ctx, req.OperationID)
-				return ErrKeyInProgress
+				return xerrors.Wrap(ErrKeyInProgress, "claim lock timed out")
 			}
 			deps.metrics().IncClaimFailure(ctx, req.OperationID)
 			return err
@@ -144,12 +144,12 @@ func decideExisting[T any](
 
 	if !bytes.Equal(rec.Fingerprint, req.Fingerprint) {
 		deps.metrics().IncFingerprintMismatch(ctx, req.OperationID)
-		return zero, false, ErrKeyReused
+		return zero, false, xerrors.Wrap(ErrKeyReused, "fingerprint mismatch")
 	}
 
 	if rec.Status != idempotencybndry.StatusCompleted {
 		deps.metrics().IncConflict(ctx, req.OperationID)
-		return zero, false, ErrKeyInProgress
+		return zero, false, xerrors.Wrap(ErrKeyInProgress, "entry not completed")
 	}
 
 	// completed → 保存済み DTO を復元して replay。
