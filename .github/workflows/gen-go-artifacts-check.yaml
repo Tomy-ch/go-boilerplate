@@ -65,7 +65,9 @@ jobs:
               - 'go.sum'
               - '.makefiles/**'
               - 'openapi/**/*.yaml'
+              - '**/*.tpl'
               - 'docker/tools/Dockerfile'
+              - 'docker-compose.yaml'
               - 'mise.toml'
 
   generate-go-check:

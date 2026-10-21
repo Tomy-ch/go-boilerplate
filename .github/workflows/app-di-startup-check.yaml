@@ -6,6 +6,9 @@ on:
       - '.github/workflows/app-di-startup-check.yaml'
       - 'cmd/**.go'
       - 'internal/**.go'
+      - 'pkg/**.go'
+      # The root package embeds env/.env and the migrations into the binary.
+      - '*.go'
       - 'env/.env.ci'
       - 'env/.env'
       - 'go.mod'

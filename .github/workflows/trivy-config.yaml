@@ -25,6 +25,7 @@ on:
       - '.makefiles/security/trivy.mk'
       - '.trivyignore.yaml'
       - 'docker/**/Dockerfile'
+      - 'mise.toml'
   pull_request:
   workflow_dispatch:
 
@@ -84,6 +85,7 @@ jobs:
               - '.makefiles/security/trivy.mk'
               - '.trivyignore.yaml'
               - 'docker/**/Dockerfile'
+              - 'mise.toml'
 
   trivy-config:
     needs: changes

@@ -56,12 +56,28 @@ jobs:
           filters: |
             relevant:
               - '.github/workflows/go-test.yaml'
+              - '.github/actions/setup-postgres/**'
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
               - '**/*.sql'
-              - 'env/.env'
-              - 'env/.env.ci'
+              # Non-Go inputs the test binaries read or embed: fixtures, the outbox payload
+              # parity tables, the code generator's templates, and the hand-written spec that
+              # internal/architest compares the registered routes against.
+              - '**/testdata/**'
+              - 'internal/**/*.yaml'
+              - '**/*.tpl'
+              - 'openapi/**'
+              # internal/architest also checks every env file, the compose files, the server
+              # image and the workflows themselves (time zone and slot wiring), so a change to
+              # any of them can turn this suite red without touching Go.
+              - 'env/.env*'
+              - 'docker-compose*.yaml'
+              - 'docker/server/Dockerfile'
+              - '.github/workflows/*.yaml'
+              # Pins the shellcheck the scripts tool tests run against.
+              - 'mise.toml'
+              - '.octocov.yaml'
               - '.makefiles/**'
               - 'makefile'
 

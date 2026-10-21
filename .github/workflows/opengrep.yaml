@@ -48,6 +48,7 @@ on:
       # pattern.
       - 'docs-viewer/**'
       - 'scripts/**'
+      - 'mise.toml'
   pull_request:
   schedule:
     # New rules can turn existing code into a finding, so a scheduled run earns its place
@@ -115,6 +116,7 @@ jobs:
               - 'database/**'
               - 'docs-viewer/**'
               - 'scripts/**'
+              - 'mise.toml'
 
   sast:
     needs: changes
