@@ -62,6 +62,7 @@ jobs:
               - '.makefiles/**/*.mk'
               - 'redocly.yaml'
               - 'docker/tools/Dockerfile'
+              - 'docker-compose.yaml'
               - 'mise.toml'
               - 'docs/openapi/index.html'
 

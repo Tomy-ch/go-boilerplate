@@ -7,7 +7,8 @@ name: Dependency Review
 on:
   pull_request:
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yaml'
+      - '.github/workflows/*.yml'
       - '.github/actions/**'
       - 'go.mod'
       - 'go.sum'

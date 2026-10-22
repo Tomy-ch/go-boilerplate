@@ -64,6 +64,8 @@ jobs:
               - '.golangci-min.yaml'
               - 'makefile'
               - '.makefiles/go/golangci-lint.mk'
+              - '.makefiles/load.mk'
+              - 'mise.toml'
 
   go-lint:
     needs: changes

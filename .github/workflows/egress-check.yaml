@@ -3,9 +3,12 @@ name: Egress Check
 on:
   pull_request:
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yaml'
       - '.github/egress.toml'
       - 'scripts/egress/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'pkg/xerrors/**'
       - '.makefiles/github/egress.mk'
   workflow_dispatch:
 

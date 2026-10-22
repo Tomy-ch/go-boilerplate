@@ -23,8 +23,8 @@ on:
     paths:
       - '.github/workflows/openapi-security.yaml'
       - '.spectral.yaml'
-      - 'openapi/**'
-      - '.makefiles/**'
+      - 'openapi/**/*.yaml'
+      - '.makefiles/**/*.mk'
       - 'makefile'
       - 'mise.toml'
   workflow_dispatch:
@@ -83,11 +83,11 @@ jobs:
             relevant:
               - '.github/workflows/openapi-security.yaml'
               - '.spectral.yaml'
-              - 'openapi/**'
+              - 'openapi/**/*.yaml'
               - 'scripts/package.json'
               - 'scripts/pnpm-lock.yaml'
               - 'scripts/pnpm-workspace.yaml'
-              - '.makefiles/**'
+              - '.makefiles/**/*.mk'
               - 'makefile'
               - 'mise.toml'
 

@@ -9,8 +9,6 @@ on:
       - 'python/graphify.*'
       - 'scripts/graphify-check/**'
       - '.makefiles/graphify/export.mk'
-  push:
-    paths:
       - '.github/workflows/graphify-check.yaml'
   workflow_dispatch:
 

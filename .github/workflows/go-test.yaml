@@ -56,13 +56,22 @@ jobs:
           filters: |
             relevant:
               - '.github/workflows/go-test.yaml'
+              - '.github/actions/setup-postgres/**'
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
               - '**/*.sql'
-              - 'env/.env'
-              - 'env/.env.ci'
-              - '.makefiles/**'
+              - '**/testdata/**'
+              - 'internal/**/*.yaml'
+              - '**/*.tpl'
+              - 'openapi/**/*.yaml'
+              - 'env/.env*'
+              - 'docker-compose*.yaml'
+              - 'docker/server/Dockerfile'
+              - '.github/workflows/*.yaml'
+              - 'mise.toml'
+              - '.octocov.yaml'
+              - '.makefiles/**/*.mk'
               - 'makefile'
 
   go-test:

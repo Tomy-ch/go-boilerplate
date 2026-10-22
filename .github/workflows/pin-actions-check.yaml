@@ -3,10 +3,16 @@ name: Pin Actions Check
 on:
   pull_request:
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/*.yaml'
+      - '.github/workflows/*.yml'
       - '.github/actions/**'
       - '.github/actions-pin.toml'
       - 'scripts/pin-actions/**'
+      - 'scripts/lib/ghfiles/**'
+      - 'scripts/lib/yamlblock/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'pkg/xerrors/**'
       - '.makefiles/github/pin.mk'
   workflow_dispatch:
 

@@ -6,11 +6,13 @@ on:
       - '.github/workflows/worker-boot-check.yaml'
       - 'cmd/**.go'
       - 'internal/**.go'
+      - 'pkg/**.go'
+      - '*.go'
       - 'env/.env.ci'
       - 'env/.env'
       - 'go.mod'
       - 'go.sum'
-      - '.makefiles/**'
+      - '.makefiles/**/*.mk'
       - 'makefile'
   workflow_dispatch:
 
