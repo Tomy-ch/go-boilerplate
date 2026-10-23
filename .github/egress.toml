@@ -1,80 +1,91 @@
-# harden-runner の allowed-endpoints の SSOT。インラインブロックを手で編集してはならない。
+# 各ジョブの先頭の bullfrog ステップの入力の SSOT。生成された with ブロックを手で編集してはならない。
 # クラスの意味・追加手順・反映と検査のコマンドは .github/workflows/README.md の Runner Hardening 節。
+#
+# ホストはポートを持たないドメイン名で書く（bullfrog はポートで絞らない）。`*.example.com` は
+# サブドメインだけに当たり apex を含まない。apex も要るなら別に並べる。
+#
+# sudo は既定で外す（enable-sudo: false）。残すジョブは job セクションに sudo = "<それが要る根拠>" を
+# 書く。そのジョブでは遮断を外せるので、長命の secret と id-token を渡さない。理由は README の Runner Hardening 節。
+
+# 全ジョブが許す IP。セクション名が IP か CIDR で、reason がそれを許す根拠と外す条件。
+[ip."127.0.0.100"]
+reason = "一部の hosted runner（westus2）では egress proxy の試験が resolv.conf の先頭をこのローカル転送役にする。bullfrog が信用する DNS サーバに無いので、許さないと名前解決が止まる。転送先の問い合わせも bullfrog の DNS 判定を通るので許すドメインは広がらない。外す条件は runner の resolv.conf が 127.0.0.53 だけを指すようになること"
+
+[ip."172.16.0.0/12"]
+reason = "docker の既定のアドレス帯。ホストからサービスコンテナへの接続（localhost の公開ポート）はコンテナの IP 宛てとして判定されるので、許さないと DB などに繋がらない。私設のアドレス帯で外への宛先は増えない。外す条件はサービスコンテナと公開ポートを使うジョブが無くなること"
+
+[ip."::1"]
+reason = "IPv6 のループバック。bullfrog の既定は 127.0.0.1 だけなので、localhost が ::1 に解決されると公開ポートへの接続が Blocked として残る。runner 自身であって外への宛先ではない"
 
 [class.base]
 hosts = [
-  "agent.api.stepsecurity.io:443",
-  "api.github.com:443",
-  "github.com:443",
-  "codeload.github.com:443",
-  "objects.githubusercontent.com:443",
-  "raw.githubusercontent.com:443",
-  "release-assets.githubusercontent.com:443",
-  "*.actions.githubusercontent.com:443",
-  "*.blob.core.windows.net:443",
+  "api.github.com",
+  "github.com",
+  "codeload.github.com",
+  "objects.githubusercontent.com",
+  "raw.githubusercontent.com",
+  "release-assets.githubusercontent.com",
+  "*.actions.githubusercontent.com",
+  "*.blob.core.windows.net",
 ]
 
 [class.mise]
 hosts = [
-  "mise.jdx.dev:443",
-  "mise-versions.jdx.dev:443",
-  "mise.run:443",
-  "mise.en.dev:443",
-  "aquaproj.github.io:443",
-  "proxy.golang.org:443",
-  "sum.golang.org:443",
-  "index.golang.org:443",
-  "storage.googleapis.com:443",
-  "dl.google.com:443",
-  "go.dev:443",
-  "golang.org:443",
-  "downloads.sqlc.dev:443",
-  "nodejs.org:443",
-  "registry.npmjs.org:443",
-  "get.pnpm.io:443",
-  "astral.sh:443",
-  "pypi.org:443",
-  "files.pythonhosted.org:443",
-  "tuf-repo-cdn.sigstore.dev:443",
-  "rekor.sigstore.dev:443",
-  "fulcio.sigstore.dev:443",
+  "mise.jdx.dev",
+  "mise-versions.jdx.dev",
+  "mise.run",
+  "mise.en.dev",
+  "aquaproj.github.io",
+  "proxy.golang.org",
+  "sum.golang.org",
+  "index.golang.org",
+  "storage.googleapis.com",
+  "dl.google.com",
+  "go.dev",
+  "golang.org",
+  "downloads.sqlc.dev",
+  "nodejs.org",
+  "registry.npmjs.org",
+  "get.pnpm.io",
+  "astral.sh",
+  "pypi.org",
+  "files.pythonhosted.org",
+  "tuf-repo-cdn.sigstore.dev",
+  "rekor.sigstore.dev",
+  "fulcio.sigstore.dev",
   # aube（mise 内蔵の npm インストーラ）が依存解決時に問い合わせる supply-chain 情報源。遮断すると解決自体が失敗する
-  "api.npmjs.org:443",
-  "api.osv.dev:443",
-  "npm.jsr.io:443",
+  "api.npmjs.org",
+  "api.osv.dev",
+  "npm.jsr.io",
 ]
 
 [class.image]
 includes = ["mise"]
 hosts = [
-  "docker.io:443",
-  "index.docker.io:443",
-  "registry-1.docker.io:443",
-  "auth.docker.io:443",
-  "*.docker.io:443",
-  "production.cloudflare.docker.com:443",
-  "production.cloudfront.docker.com:443",
-  "mirror.gcr.io:443",
-  "ghcr.io:443",
-  "pkg-containers.githubusercontent.com:443",
-  "dl-cdn.alpinelinux.org:443",
-  "dl-cdn.alpinelinux.org:80",
-  "deb.debian.org:443",
-  "deb.debian.org:80",
-  "security.debian.org:443",
-  "security.debian.org:80",
+  "docker.io",
+  "index.docker.io",
+  "registry-1.docker.io",
+  "auth.docker.io",
+  "*.docker.io",
+  "production.cloudflare.docker.com",
+  "production.cloudfront.docker.com",
+  "mirror.gcr.io",
+  "ghcr.io",
+  "pkg-containers.githubusercontent.com",
+  "dl-cdn.alpinelinux.org",
+  "deb.debian.org",
+  "security.debian.org",
 ]
 
 [class.db]
 hosts = [
-  "apt.postgresql.org:443",
-  "apt.postgresql.org:80",
-  "www.postgresql.org:443",
-  "archive.ubuntu.com:80",
-  "azure.archive.ubuntu.com:80",
-  "security.ubuntu.com:80",
-  "esm.ubuntu.com:443",
-  "motd.ubuntu.com:443",
+  "apt.postgresql.org",
+  "www.postgresql.org",
+  "archive.ubuntu.com",
+  "azure.archive.ubuntu.com",
+  "security.ubuntu.com",
+  "esm.ubuntu.com",
+  "motd.ubuntu.com",
 ]
 
 [job."actions-lint.yaml:actions-lint"]
@@ -85,6 +96,10 @@ classes = ["image"]
 
 [job."auto-generate-docs.yaml:generate-docs"]
 classes = ["image", "db"]
+sudo = "setup-postgres が sudo apt-get で PostgreSQL のクライアントを入れる。gen-db-schema-ci の docker run がホストのパスをマウントし --network host を使い、tool-runner の docker compose run がリポジトリをマウントする"
+
+[job."auto-generate-docs.yaml:open-pr"]
+classes = []
 
 [job."bearer.yaml:bearer"]
 classes = ["mise"]
@@ -95,11 +110,11 @@ classes = ["mise"]
 [job."claude.yaml:claude"]
 classes = []
 extra = [
-  "api.anthropic.com:443",
-  "*.anthropic.com:443",
-  "statsig.anthropic.com:443",
-  "sentry.io:443",
-  "*.ingest.sentry.io:443",
+  "api.anthropic.com",
+  "*.anthropic.com",
+  "statsig.anthropic.com",
+  "sentry.io",
+  "*.ingest.sentry.io",
 ]
 
 [job."closed-loop-weekly.yaml:weekly"]
@@ -108,11 +123,11 @@ classes = ["mise"]
 [job."closed-loop-summarize.yaml:summarize"]
 classes = []
 extra = [
-  "api.anthropic.com:443",
-  "*.anthropic.com:443",
-  "statsig.anthropic.com:443",
-  "sentry.io:443",
-  "*.ingest.sentry.io:443",
+  "api.anthropic.com",
+  "*.anthropic.com",
+  "statsig.anthropic.com",
+  "sentry.io",
+  "*.ingest.sentry.io",
 ]
 
 [job."checkov.yaml:checkov"]
@@ -121,7 +136,7 @@ classes = ["mise"]
 [job."code-ql.yaml:codeql"]
 classes = ["mise"]
 extra = [
-  "uploads.github.com:443",
+  "uploads.github.com",
 ]
 
 [job."commitlint.yaml:commitlint"]
@@ -134,15 +149,16 @@ classes = []
 # 一度も出ていかない。そのため、この 2 ホストが欠けていても依存を足す PR が現れるまで
 # 誰も気づかず、現れた瞬間にその PR だけが fetch failed で落ちる。
 extra = [
-  "api.securityscorecards.dev:443",
-  "api.deps.dev:443",
+  "api.securityscorecards.dev",
+  "api.deps.dev",
 ]
 
 [job."deploy-app.yaml:build"]
 classes = ["image"]
+sudo = "docker/setup-buildx-action の docker-container driver が buildkit を特権コンテナで起動する"
 extra = [
-  "oauth2.sigstore.dev:443",
-  "*.sigstore.dev:443",
+  "oauth2.sigstore.dev",
+  "*.sigstore.dev",
 ]
 
 [job."deploy-app.yaml:deploy"]
@@ -154,14 +170,14 @@ classes = ["mise"]
 [job."deploy-docs.yaml:deploy"]
 classes = ["mise"]
 extra = [
-  "*.github.io:443",
+  "*.github.io",
 ]
 
 [job."devskim.yaml:devskim"]
 classes = []
 extra = [
-  "api.nuget.org:443",
-  "globalcdn.nuget.org:443",
+  "api.nuget.org",
+  "globalcdn.nuget.org",
 ]
 
 [job."compose-lint.yaml:compose-lint"]
@@ -184,6 +200,7 @@ classes = []
 
 [job."gen-db-artifacts-check.yaml:generate-db-check"]
 classes = ["image", "db"]
+sudo = "setup-postgres が sudo apt-get で PostgreSQL のクライアントを入れる"
 
 [job."gen-go-artifacts-check.yaml:changes"]
 classes = []
@@ -214,6 +231,7 @@ classes = []
 
 [job."go-test.yaml:go-test"]
 classes = ["image", "db"]
+sudo = "setup-postgres が sudo apt-get で PostgreSQL のクライアントを入れる"
 
 [job."graphify-check.yaml:graphify-check"]
 classes = ["mise"]
@@ -221,11 +239,11 @@ classes = ["mise"]
 [job."graphify-extract.yaml:graphify-extract"]
 classes = ["mise"]
 extra = [
-  "api.anthropic.com:443",
-  "*.anthropic.com:443",
-  "statsig.anthropic.com:443",
-  "sentry.io:443",
-  "*.ingest.sentry.io:443",
+  "api.anthropic.com",
+  "*.anthropic.com",
+  "statsig.anthropic.com",
+  "sentry.io",
+  "*.ingest.sentry.io",
 ]
 
 [job."graphify-sync.yaml:graphify-sync"]
@@ -234,11 +252,12 @@ classes = ["mise"]
 [job."grype.yaml:grype"]
 classes = ["mise"]
 extra = [
-  "grype.anchore.io:443",
+  "grype.anchore.io",
 ]
 
 [job."image-scan.yaml:build"]
 classes = ["image"]
+sudo = "docker/setup-buildx-action の docker-container driver が buildkit を特権コンテナで起動する"
 
 [job."job-boot-check.yaml:job-boot-check"]
 classes = ["image"]
@@ -264,7 +283,7 @@ classes = ["image"]
 [job."notify.yaml:notify"]
 classes = []
 extra = [
-  "hooks.slack.com:443",
+  "hooks.slack.com",
 ]
 
 [job."oapi-lint.yaml:oapi-lint"]
@@ -285,16 +304,16 @@ classes = []
 [job."opengrep.yaml:sast"]
 classes = ["mise"]
 extra = [
-  "semgrep.dev:443",
-  "*.semgrep.dev:443",
+  "semgrep.dev",
+  "*.semgrep.dev",
 ]
 
 [job."osv-release-gate.yaml:osv-release"]
 classes = ["mise"]
 extra = [
-  "api.osv.dev:443",
-  "api.deps.dev:443",
-  "osv-vulnerabilities.storage.googleapis.com:443",
+  "api.osv.dev",
+  "api.deps.dev",
+  "osv-vulnerabilities.storage.googleapis.com",
 ]
 
 [job."osv-scanner.yaml:changes"]
@@ -303,17 +322,17 @@ classes = []
 [job."osv-scanner.yaml:osv-diff"]
 classes = ["mise"]
 extra = [
-  "api.osv.dev:443",
-  "api.deps.dev:443",
-  "osv-vulnerabilities.storage.googleapis.com:443",
+  "api.osv.dev",
+  "api.deps.dev",
+  "osv-vulnerabilities.storage.googleapis.com",
 ]
 
 [job."osv-scanner.yaml:osv-scanner"]
 classes = ["mise"]
 extra = [
-  "api.osv.dev:443",
-  "api.deps.dev:443",
-  "osv-vulnerabilities.storage.googleapis.com:443",
+  "api.osv.dev",
+  "api.deps.dev",
+  "osv-vulnerabilities.storage.googleapis.com",
 ]
 
 [job."outbox-relay-boot-check.yaml:outbox-relay-boot-check"]
@@ -331,22 +350,24 @@ classes = ["mise"]
 # sample-api:begin
 [job."sample-removal-check.yaml:sample-removal-check"]
 classes = ["image", "db"]
+sudo = "setup-postgres が sudo apt-get で PostgreSQL のクライアントを入れる"
 # sample-api:end
 
 [job."scorecard.yaml:scorecard"]
 classes = []
+sudo = "ossf/scorecard-action は Docker コンテナの action で、runner がワークスペースと docker.sock をホストのパスとしてマウントして起動する"
 extra = [
-  "api.securityscorecards.dev:443",
-  "api.scorecard.dev:443",
-  "api.osv.dev:443",
-  "api.deps.dev:443",
-  "www.bestpractices.dev:443",
-  "bestpractices.coreinfrastructure.org:443",
-  "oss-fuzz-build-logs.storage.googleapis.com:443",
-  "storage.googleapis.com:443",
-  "tuf-repo-cdn.sigstore.dev:443",
-  "rekor.sigstore.dev:443",
-  "fulcio.sigstore.dev:443",
+  "api.securityscorecards.dev",
+  "api.scorecard.dev",
+  "api.osv.dev",
+  "api.deps.dev",
+  "www.bestpractices.dev",
+  "bestpractices.coreinfrastructure.org",
+  "oss-fuzz-build-logs.storage.googleapis.com",
+  "storage.googleapis.com",
+  "tuf-repo-cdn.sigstore.dev",
+  "rekor.sigstore.dev",
+  "fulcio.sigstore.dev",
 ]
 
 [job."scan-issue-report.yaml:report"]
@@ -376,14 +397,14 @@ classes = []
 [job."sonarqube.yaml:sonarqube"]
 classes = ["image", "db", "mise"]
 extra = [
-  "sonarcloud.io:443",
-  "*.sonarcloud.io:443",
-  "binaries.sonarsource.com:443",
+  "sonarcloud.io",
+  "*.sonarcloud.io",
+  "binaries.sonarsource.com",
   # スキャナ CLI の署名検証が SonarSource の公開鍵を鍵サーバから取りに行く。到達できないと
   # アクションは検証を飛ばさずハードエラーで落ちるため、この 2 つは検証の一部である。
   # フォールバック側も許可するのは、アクションが一次側の失敗時に自動で切り替えるため。
-  "keyserver.ubuntu.com:443",
-  "keys.openpgp.org:443",
+  "keyserver.ubuntu.com",
+  "keys.openpgp.org",
 ]
 
 [job."sql-lint.yaml:sql-lint"]
@@ -410,9 +431,9 @@ classes = []
 [job."trivy-config.yaml:trivy-config"]
 classes = ["mise"]
 extra = [
-  "mirror.gcr.io:443",
-  "ghcr.io:443",
-  "pkg-containers.githubusercontent.com:443",
+  "mirror.gcr.io",
+  "ghcr.io",
+  "pkg-containers.githubusercontent.com",
 ]
 
 [job."trivy-fs.yaml:trivy-fs"]
@@ -424,9 +445,9 @@ classes = ["image"]
 [job."trivy-release-gate.yaml:trivy-fs-release"]
 classes = ["mise"]
 extra = [
-  "mirror.gcr.io:443",
-  "ghcr.io:443",
-  "pkg-containers.githubusercontent.com:443",
+  "mirror.gcr.io",
+  "ghcr.io",
+  "pkg-containers.githubusercontent.com",
 ]
 
 # base のみ。エンジンバイナリは GitHub Releases から、ルールパックは
@@ -437,7 +458,7 @@ classes = []
 [job."vulnerability-check.yaml:govulncheck"]
 classes = ["mise"]
 extra = [
-  "vuln.go.dev:443",
+  "vuln.go.dev",
 ]
 
 [job."worker-boot-check.yaml:worker-boot-check"]
@@ -445,9 +466,10 @@ classes = ["image"]
 
 [job."zap-api-scan.yaml:dast"]
 classes = ["image"]
+sudo = "ZAP の action が docker run でワークスペースをマウントし --network host を使う。mock-auth の docker run も設定ファイルをホストのパスからマウントする"
 extra = [
-  "zaproxy.org:443",
-  "*.zaproxy.org:443",
+  "zaproxy.org",
+  "*.zaproxy.org",
 ]
 
 [job."zizmor.yaml:zizmor"]

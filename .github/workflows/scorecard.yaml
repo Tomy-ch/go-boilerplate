@@ -41,30 +41,35 @@ jobs:
 
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        uses: bullfrogsec/bullfrog@7dee337d4575320b6d8cbe9a56d48d2fb765963a # v0.11.1
         with:
           egress-policy: block
-          allowed-endpoints: >
-            agent.api.stepsecurity.io:443
-            api.github.com:443
-            github.com:443
-            codeload.github.com:443
-            objects.githubusercontent.com:443
-            raw.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-            *.actions.githubusercontent.com:443
-            *.blob.core.windows.net:443
-            api.securityscorecards.dev:443
-            api.scorecard.dev:443
-            api.osv.dev:443
-            api.deps.dev:443
-            www.bestpractices.dev:443
-            bestpractices.coreinfrastructure.org:443
-            oss-fuzz-build-logs.storage.googleapis.com:443
-            storage.googleapis.com:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
+          dns-policy: allowed-domains-only
+          enable-sudo: true
+          allowed-ips: |
+            127.0.0.100
+            172.16.0.0/12
+            ::1
+          allowed-domains: |
+            api.github.com
+            github.com
+            codeload.github.com
+            objects.githubusercontent.com
+            raw.githubusercontent.com
+            release-assets.githubusercontent.com
+            *.actions.githubusercontent.com
+            *.blob.core.windows.net
+            api.securityscorecards.dev
+            api.scorecard.dev
+            api.osv.dev
+            api.deps.dev
+            www.bestpractices.dev
+            bestpractices.coreinfrastructure.org
+            oss-fuzz-build-logs.storage.googleapis.com
+            storage.googleapis.com
+            tuf-repo-cdn.sigstore.dev
+            rekor.sigstore.dev
+            fulcio.sigstore.dev
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
