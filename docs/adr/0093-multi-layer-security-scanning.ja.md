@@ -109,19 +109,60 @@ PR はその変更が持ち込むリスクを surface し、protected branch へ
 CLI ベースのスキャナ（`govulncheck` / zizmor / OSV-Scanner / TruffleHog / gitleaks / Trivy）は
 バージョンを `mise.toml` で宣言する。これによりサプライチェーン面の拡大が「1 箇所で固定された
 バイナリ」であり、サードパーティ製アクションの追加ではなくなる。CLI として実行できないもの——
-Dependency Review（GitHub の依存グラフ API）、Scorecard（OIDC による公開）、Harden Runner
-（ランナーレベルの監視）——だけをアクションとして取り込み、それらは
+Dependency Review（GitHub の依存グラフ API）、Scorecard（OIDC による公開）、bullfrog
+（ランナーレベルの egress フィルタ）——だけをアクションとして取り込み、それらは
 [ADR-0094](0094-sha-pinned-actions.ja.md) の SHA pin と隔離期間を通す。
 
 **3. 全ジョブをランナーレベルでハードニングする。**
 
-`.github/workflows/**` の各ジョブは `step-security/harden-runner` を `egress-policy: block` と
-そのジョブ専用の `allowed-endpoints` とで先頭に置き、そのジョブが本来行わない外向き通信を
-すべて拒否する。ファイル改変の記録は併走する。`trufflehog` の 1 ジョブだけは `audit` のままで、
+`.github/workflows/**` のうちステップを持つ全ジョブは、checkout より前に `bullfrogsec/bullfrog` を
+置く。`egress-policy: block` とし、名前解決も同じ一覧に限る（`dns-policy: allowed-domains-only`）。
+これでそのジョブが本来行わない外向き通信をすべて拒否する。`trufflehog` の 1 ジョブだけは `audit` のままで、
 上限のない発行元集合へ候補資格情報を問い合わせて検証するため、ここでの遮断は本物の漏洩を黙って
-「未検証」へ格下げしてしまう。各一覧はジョブごとに手書きせず、`.github/egress.toml` の SSOT から
-能力クラス単位で生成する。checkout 後に git 認証情報を必要としないジョブは
-`persist-credentials: false` を指定する。
+「未検証」へ格下げしてしまう。このステップは先頭でなければならないため、composite action には
+置けない（`uses: ./…` は先に checkout を要する）。代わりに入力を `.github/egress.toml` の SSOT から
+生成する。中身は、能力クラス単位の許可ドメインとジョブ固有の `extra`、全ジョブが許可する IP、
+sudo を残すジョブである。IP と sudo の例外には、それぞれ理由を付ける。`make egress-check` は次の
+いずれでも落ちる。drift、`steps:` を持つのに bullfrog ステップが無いジョブ、ジョブの先頭にない
+bullfrog ステップ、生成側が管理するステップの形の外でのこのアクションへの言及、どの workflow の
+ジョブにも一致しない宣言。宛先はポートを付けないドメイン名で、
+`*.example.com` はサブドメインだけに一致し、apex には一致しない。
+
+**sudo は既定で外す（`enable-sudo: false`）。** sudo があれば、ステップはフィルタを迂回する生の
+パケットを送れるし、フィルタのルールを消すこともできる。sudo が無ければ、bullfrog は Docker API
+も検査し、特権コンテナ、ホストパスのマウント、ホストの名前空間を拒否する。これらが無いと動かない
+ジョブだけが、根拠を書いた `sudo` エントリで sudo を残す（特権コンテナとして起動する buildx
+builder、workspace をマウントしホストネットワークで動かすスキャナ、Docker コンテナアクション、
+`sudo apt-get` によるパッケージ導入）。そうしたジョブではフィルタを外せるため、長期の資格情報も
+`id-token` も渡さない。docs の pull request を開く GitHub App の鍵は、sudo の無い別ジョブに置く。
+`GITHUB_TOKEN` はこの規則の対象外である。`api.github.com` はどのフィルタでも到達可能なままで、
+sudo の有無にかかわらずトークンはそこ経由で悪用できるからである。
+
+全ジョブが許可する IP はランナー内部のものである。`127.0.0.100`（GitHub が egress proxy を試験
+している間に一部のホステッドランナーへ与えられる resolver）、Docker のアドレス範囲
+`172.16.0.0/12`（ホストから service container の公開ポートへの接続は、コンテナのアドレスで判定
+される）、`::1`（bullfrog は既定で loopback のうち `127.0.0.1` しか許可しない）。どれも外部の宛先
+ではない。
+
+**ベンダーの選定。** bullfrog を選んだのは、有料プランなしで private リポジトリでも遮断できるから
+である。このテンプレートの複製はほとんどが private である。ソースは MIT ライセンスで、pin した SHA
+の時点で読める。ここでの前任の `step-security/harden-runner` は、無料プランでは public リポジトリ
+でしか遮断せず、それ以外では黙って素通しする。**以下は v0.11.1（agent v0.11.2）のソースから読んだ
+もので、pin した SHA が動くたびに確認し直す。その場は `actions-pin` による更新である**: agent の
+バイナリはアクションのダウンロードスクリプト内の sha256 リテラルで検証されるため、アクションの SHA
+が agent も pin する。`api-token` を渡さない限りベンダーへは何も送られず、このリポジトリは渡して
+いない。フィルタはカーネル内で nftables と NFQueue により行う。ポートはドメインの照合に含まれない。
+post ステップはすべての接続を判定付きでジョブサマリに書き出す。agent のログはデバッグ出力としてしか
+ジョブログに出ない。**受け入れた限界**: 1 社が保守する小さなプロジェクトである。agent には SLSA
+provenance が無く、あるのはそのチェックサムだけである。このステップは、フィルタが立ち上がる前に
+`nftables` と `libnetfilter-queue-dev` を pin なしで `sudo apt-get install` する。ワイルドカードや
+CDN の共有 IP は、意図した 1 ホストより多くを通す。ユーザー定義ネットワーク上のコンテナが、自分が
+既に持つアドレスへ張る IPv4 接続は判定されない（解決する名前は判定される）。対応するのは GitHub
+ホステッドの Ubuntu ランナーだけである。**覆す条件**: GitHub 自身のホステッドランナー向け egress
+firewall が public preview 以降に達し、Free / Team プランの private リポジトリで使えるようになる
+こと。
+
+checkout 後に git 認証情報を必要としないジョブは `persist-credentials: false` を指定する。
 
 ## 影響
 
@@ -153,9 +194,10 @@ Dependency Review（GitHub の依存グラフ API）、Scorecard（OIDC によ�
   変わればフィルタの前提を見直す必要が生じうる。
 - シークレットスキャンは全 PR で無条件に実行される（paths フィルタなし）ため、固定の
   オーバーヘッドが乗る。
-- `harden-runner` は全ジョブにサードパーティ製ステップを追加し、外部サービスへ送信する。
-  `block` では allowlist が漏らしたエンドポイントでジョブが落ちるため、新しい外向き依存は
-  警告ではなくビルドの赤として現れる。
+- bullfrog は全ジョブにサードパーティ製ステップを追加する。`block` では allowlist が漏らした
+  宛先でジョブが落ちるため、新しい外向き依存は警告ではなくビルドの赤として現れる。
+- sudo を残すジョブはフィルタを外せる。そのためそれらのジョブでは、フィルタは事故への備えであって、
+  侵害されたステップへの備えではない。
 - TruffleHog の `--results=verified` は `unknown` を意図的に落とすため、検証呼び出しに失敗した
   クレデンシャルは報告されない。
 - スケジュール実行はどの PR にも紐づかない finding を生むため、メンテナによる能動的な
@@ -204,7 +246,7 @@ Trivy は CVE とシークレットの両方を走査できるが、意味解析
 **その後、採用した。** 許可リストを導出し、全ジョブを `block` へ移した（`trufflehog` は上記の理由で
 除く）。却下が予期したことは実際に起きた — 初回の実行は未登録ホストで何度も壊れた — が、解決は
 ジョブごとの一覧をより正確にすることではなく、単位を粗くすることだった。エンドポイントはジョブの
-能力クラスから決まり、そのクラスは `.github/egress.toml` で宣言され、各インラインブロックへ生成される。
+能力クラスから決まり、そのクラスは `.github/egress.toml` で宣言され、各ジョブのステップへ生成される。
 却下の記述をここに残すのは、移行先の許可リストを持たないまま同じ移行を考える人にとって、その理屈が
 今も有効だからである。
 

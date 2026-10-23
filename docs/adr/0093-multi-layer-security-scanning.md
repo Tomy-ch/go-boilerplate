@@ -124,19 +124,63 @@ The CLI-based scanners (`govulncheck`, zizmor, OSV-Scanner, TruffleHog, gitleaks
 declare their version in `mise.toml`, so the supply-chain surface grows by binaries pinned
 in one place rather than by additional third-party actions. Only the tools that genuinely
 cannot run as a CLI — Dependency Review (GitHub's dependency-graph API), Scorecard (OIDC
-publishing), Harden Runner (runner-level monitoring) — are consumed as actions, and those
+publishing), bullfrog (runner-level egress filtering) — are consumed as actions, and those
 go through the SHA pinning and quarantine of [ADR-0094](0094-sha-pinned-actions.md).
 
 **3. Every job is hardened at the runner level.**
 
-Each job in `.github/workflows/**` starts with `step-security/harden-runner` in
-`egress-policy: block` with its own `allowed-endpoints`, refusing every outbound call the
-job has no business making and recording file-integrity events alongside. One job —
-`trufflehog` — stays on `audit`, because it verifies a candidate credential against an
-open-ended set of issuers and a blocked endpoint there would silently downgrade a real leak
-to an unverified result. The lists are generated from the SSOT in `.github/egress.toml` by
-capability class rather than written per job. Jobs that need no git credentials after
-checkout set `persist-credentials: false`.
+Every job in `.github/workflows/**` that has steps starts with `bullfrogsec/bullfrog`, before
+checkout, in `egress-policy: block` with name resolution limited to the same list
+(`dns-policy: allowed-domains-only`), refusing every outbound call the job has no business
+making. One job — `trufflehog` — stays on `audit`, because it verifies a candidate credential
+against an open-ended set of issuers and a blocked endpoint there would silently downgrade a
+real leak to an unverified result. The step must be the first one, so it cannot live in a
+composite action (`uses: ./…` needs a checkout first). Its inputs are generated from the SSOT
+in `.github/egress.toml` instead: allowed domains by capability class plus a job's own
+`extra`, the IPs every job allows, and the jobs that keep sudo. Each IP and each sudo
+exception carries its reason. `make egress-check` fails on drift, on a job with `steps:` and no
+bullfrog step, on a bullfrog step that is not the job's first, on a mention of the action
+outside the step shape it owns, and on a declaration no workflow job matches. Destinations
+are domain names without ports, and `*.example.com` matches subdomains only, never the apex.
+
+**sudo is removed by default (`enable-sudo: false`).** With sudo a step can send raw packets
+past the filter or delete the filter's rules. Without it, bullfrog also filters the Docker
+API and refuses privileged containers, host-path mounts and host namespaces. A job that
+cannot run without one of those keeps sudo only through a `sudo` entry naming the evidence
+(a buildx builder started as a privileged container, a scanner run with the workspace
+mounted and host networking, a Docker container action, a package install through
+`sudo apt-get`). In such a job the filter can be lifted, so it gets no long-lived credential
+and no `id-token`: the GitHub App key that opens the docs pull request lives in a separate
+job without sudo. The `GITHUB_TOKEN` is not part of that rule, because `api.github.com` stays
+reachable under any filter and the token can be misused through it with or without sudo.
+
+The IPs every job allows are runner-local: `127.0.0.100` (the resolver some hosted runners
+are given while GitHub trials an egress proxy), the Docker address range `172.16.0.0/12`
+(connections from the host to a service container's published port are judged by the
+container's address) and `::1` (bullfrog allows only `127.0.0.1` of the loopback by default).
+None of them is an outside destination.
+
+**The vendor choice.** bullfrog is chosen because it blocks on private repositories with no
+paid tier — the copies of this template mostly are private — and its source is MIT-licensed
+and readable at the pinned SHA. Its predecessor here, `step-security/harden-runner`, blocks
+only on public repositories in its free tier and passes silently elsewhere. **The following was
+read from the source at v0.11.1 (agent v0.11.2) and is re-checked whenever the pinned SHA
+moves — the `actions-pin` upgrade is where that happens**: the agent binary is verified by a
+sha256 literal in the action's download script, so the action SHA pins the agent too;
+nothing is sent to the vendor unless an `api-token` is passed, and this repository passes
+none; filtering is done in the kernel with nftables and NFQueue; ports are not part of a
+domain's match; and the post step writes every connection with its verdict to the job
+summary, while the agent's log reaches the job log only as debug output. **Accepted limits**:
+it is a small project maintained by a single company; its agent has no SLSA provenance, only
+that checksum; the step runs `sudo apt-get install` of `nftables` and
+`libnetfilter-queue-dev` unpinned, before the filter is up; a wildcard and a CDN's shared IPs
+let through more than the one host that was meant; an IPv4 connection a container on a
+user-defined network makes to an address it already holds is not judged (the names it
+resolves are); and it supports only GitHub-hosted Ubuntu runners. **Reversal condition**:
+GitHub's own egress firewall for hosted runners reaches public preview or later and is usable
+on private repositories of the Free and Team plans.
+
+Jobs that need no git credentials after checkout set `persist-credentials: false`.
 
 ## Consequences
 
@@ -179,9 +223,11 @@ checkout set `persist-credentials: false`.
 - Govulncheck's reachability analysis requires Go module awareness; if the module graph
   changes structure, filtering assumptions may need revisiting.
 - Secret scans run unconditionally on every PR (no path filter), adding fixed overhead.
-- `harden-runner` adds a third-party step to every job and reports to an external service.
-  Under `block` an endpoint the allowlist omits fails the job, so a new outbound dependency
-  surfaces as a red build rather than as a warning.
+- bullfrog adds a third-party step to every job. Under `block` a destination the allowlist
+  omits fails the job, so a new outbound dependency surfaces as a red build rather than as a
+  warning.
+- The jobs that keep sudo can lift the filter, so for them the filter is a guard against
+  accidents rather than against a compromised step.
 - TruffleHog's `--results=verified` deliberately drops `unknown` results, so a credential
   whose verification call failed is not reported.
 - Scheduled runs may produce findings not associated with any open PR, requiring
@@ -230,7 +276,7 @@ unlisted host. Audit first, then narrow.
 excepted, for the reason given above). What the rejection anticipated did happen — the first
 runs broke on unlisted hosts, over several rounds — and the resolution was not more accurate
 per-job lists but a coarser unit: the endpoints follow from a job's capability class, which
-is declared in `.github/egress.toml` and generated into every inline block. The rejection is
+is declared in `.github/egress.toml` and generated into every job's step. The rejection is
 kept here because its reasoning still holds for anyone considering the same move without an
 allowlist to move to.
 

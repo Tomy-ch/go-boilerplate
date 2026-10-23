@@ -52,13 +52,13 @@ Where each mechanism sits:
 | Mechanism | Kind | Note |
 | --- | --- | --- |
 | `pin-actions-check` / `pin-images-check` | Enforcement | Fail-closed: an unpinned or unregistered reference is an error |
-| `egress-check` | Enforcement | Fail-closed: an inline `allowed-endpoints` that has drifted from `.github/egress.toml` is an error |
+| `egress-check` | Enforcement | Fail-closed: a bullfrog step whose inputs have drifted from `.github/egress.toml`, a job with steps but no bullfrog step first, and a sudo exception no job matches are errors |
 | Release gates (`trivy-release-gate` / `osv-release-gate`) | Enforcement | Only on PRs into a deploy branch |
 | `dependency-review` | Enforcement | Evaluates only what the PR *adds* |
 | Secret scans (gitleaks / TruffleHog) | Enforcement | A committed secret is never an acceptable trade |
 | `zizmor` | Enforcement | High severity only; exceptions are file-scoped in `.github/zizmor.yml`. Also gates pre-commit, offline audits only |
 | Reporting scanners (`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL) | Detection | Findings reach code scanning and the PR, but do not block |
-| `harden-runner` (`egress-policy: block`) | Enforcement | Refuses any egress outside the job's `allowed-endpoints`; `trufflehog` alone stays on `audit` |
+| `bullfrog` (`egress-policy: block`, `enable-sudo: false`) | Enforcement | Refuses any egress outside the job's allowed domains and IPs, and without sudo refuses privileged containers and host-path mounts; `trufflehog` alone stays on `audit`, and the jobs declared in the SSOT keep sudo |
 | `CODEOWNERS` | Enforcement | The review requirement behind "this decision belongs to a role" |
 | OpenSSF Scorecard | Detection | Posture measurement, no verdict |
 
@@ -484,12 +484,15 @@ repository's toolchain.
 
 Worth stating so nobody builds on a stronger assumption than the controls support:
 
-- `harden-runner` runs in `block` mode, and an allowlist is only as good as its accuracy. The
+- bullfrog runs in `block` mode, and an allowlist is only as good as its accuracy. The
   lists are inferred from what each job does rather than measured, and they are generated from
   the SSOT in `.github/egress.toml` by capability class, so a class is wider than the narrowest
   job in it. One job — `trufflehog` — stays on `audit` deliberately: it verifies a candidate
   credential against an open-ended set of issuers, so a missing endpoint there would turn a real
   leak into an unverified result instead of a red build.
+- A job that keeps sudo can lift the filter, so there it guards against accidents, not against a
+  compromised step. Those jobs are declared with their reason in `.github/egress.toml` and get
+  no long-lived credential.
 - Release gates only block if registered as **required status checks**. Without that branch
   protection rule they report and nothing more, and the reporting/gating split degrades to
   reporting everywhere.

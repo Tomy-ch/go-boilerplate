@@ -24,11 +24,11 @@ event の列として独自の deadline と in-band の切断を持ち `Response
 各ハンドラーファイルの先頭に 2 つの `go:generate` ディレクティブを記述する：
 
 ```go
-//go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=types -o ./gen/type.gen.go <path-to-root>/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go <path-to-root>/openapi/openapi.gen.yaml
 ```
 
-`--include-tags=<tag>` フラグはバンドルされた仕様をこのハンドラーパッケージに属するオペレーションのみにフィルタリングする。生成された `gen/` サブパッケージには以下が含まれる：
+`<path-to-root>` はハンドラーパッケージからリポジトリルートへの相対パスである。`go generate` は各ディレクティブをそのパッケージのディレクトリで実行するためである。`--include-tags=<tag>` フラグはバンドルされた仕様をこのハンドラーパッケージに属するオペレーションのみにフィルタリングする。生成された `gen/` サブパッケージには以下が含まれる：
 
 - `type.gen.go` — タグのリクエスト/レスポンス型。
 - `server.gen.go` — タグの `StrictServerInterface` と、ルートを登録して strict ハンドラーを呼び出す `echo-server` グルーコード。

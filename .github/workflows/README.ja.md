@@ -93,7 +93,7 @@
 |Commitlint|`commitlint.yaml`|PR が base ブランチへ加えるコミットのメッセージを検証（`commit-msg` フックが覆えない経路を担う）|
 |Pin Actions Check|`pin-actions-check.yaml`|GitHub Actions が SHA でピン留めされているか検証（サプライチェーン対策）|
 |Pin Images Check|`pin-images-check.yaml`|Docker base image が lockfile 通り digest でピン留めされているか検証（サプライチェーン対策）|
-|Egress Check|`egress-check.yaml`|各ジョブのインライン `allowed-endpoints` が SSOT 通りか検証（[ランナーのハードニング](#ランナーのハードニング)を参照）|
+|Egress Check|`egress-check.yaml`|各ジョブの bullfrog ステップが SSOT 通りか検証（[ランナーのハードニング](#ランナーのハードニング)を参照）|
 |Graphify Check|`graphify-check.yaml`|追跡している graphify の生成物が可搬なまま保たれているか検証。`.gitignore` のホワイトリスト外が追跡されていないこと、生成したマシンの絶対パスがどの生成物にも残っていないこと|
 |Setup Scripts Check|`setup-scripts-check.yaml`|文書化されたローカライズ手順を実際に走らせ、結果を検証する。dry run が何も書かないこと、再実行で何も起きないこと、ツールとその `make` ターゲットが揃って自爆すること、サンプル撤去がまだ必要とする共有モジュールは残ること<!-- boilerplate-only:line -->|
 |Sample Removal Check|`sample-removal-check.yaml`|サンプル API を撤去し、縮んだ spec から再生成したうえで、撤去後のリポジトリが build / lint / test / migrate を通り、参照の取りこぼしが無いことを検証<!-- sample-api:line -->|
@@ -274,7 +274,7 @@ OSI の定義の外にあること自体は Bearer に固有ではありませ�
 | このファイルと `README.ja.md` の行および散文 | 残るスキャナの行 |
 | CodeQL の `.github/codeql/**` | — |
 
-lockfile の規則は例外リストではありません。スクリプトは残るワークフロー側の参照数を数え、0 になったエントリだけを削除します。`github/codeql-action` のエントリは数えることがリストに勝つ理由を示す例です。CodeQL に紐づいて登録されたエントリですが、SARIF を publish するスキャナはいずれも同じアクションの `upload-sarif` を呼ぶため、CodeQL を撤去してもエントリは残ります。固定のリストなら消していたところです。`actions/download-artifact` は逆の例で、いま使っているのは Sonar の report ジョブだけなので、Sonar の撤去が一緒に消します。`make pin-actions-check` と `make egress-check` はどちらも孤児で落ちるため、消し忘れは静かな残骸ではなく赤い run になります。
+lockfile の規則は例外リストではありません。スクリプトは残るワークフロー側の参照数を数え、0 になったエントリだけを削除します。`github/codeql-action` のエントリは数えることがリストに勝つ理由を示す例です。CodeQL に紐づいて登録されたエントリですが、SARIF を publish するスキャナはいずれも同じアクションの `upload-sarif` を呼ぶため、CodeQL を撤去してもエントリは残ります。固定のリストなら消していたところです。`actions/download-artifact` も同じ理由で残ります。Sonar の report ジョブが使い、`auto-generate-docs.yaml` の `open-pr` ジョブも使うからです。`make pin-actions-check` と `make egress-check` はどちらも孤児で落ちるため、消し忘れは静かな残骸ではなく赤い run になります。
 
 この参照数の数え方は、1 つのスキャナを revert したときに `make pin-actions-check` が孤児ではなく**未登録の参照**で赤くなる理由でもあります。撤去対象どうしで共有するエントリは「最後の利用者を消したコミット」が削除するため、より前のスキャナを戻すと、後のコミットが既に消したエントリを参照する `uses:` が復活します。いまの 2 件は共有するエントリを持たないため、この形で赤くなることは現状ありません。3 つ目が加わった時点で戻ります。`make pin-actions-resolve` で戻せますし、どのエントリかは検査が名指しします。
 
@@ -384,17 +384,17 @@ SARIF アップロードと sticky な PR コメントはどちらも切って�
 
 #### ランナーのハードニング
 
-このディレクトリの全ジョブは `step-security/harden-runner` を `egress-policy: block` と、そのジョブ専用の `allowed-endpoints` とで先頭に置いています。外向き接続はすべてこの一覧と照合され、載っていない宛先は遮断されます。侵害されたアクションやツールの推移的ダウンロードは、そのジョブが本来必要としない宛先へ持ち出すことができません。ファイル改変の記録は従来どおり併走します。
+このディレクトリのうちステップを持つ全ジョブは、`bullfrogsec/bullfrog` を `egress-policy: block` で先頭に置いています。許可ドメインはジョブ専用で、名前解決もそれに限ります（`dns-policy: allowed-domains-only`）。新しい外向き接続はすべてこの一覧と照合され、載っていない宛先は遮断されます。侵害されたアクションやツールの推移的ダウンロードは、そのジョブが本来必要としない宛先へ持ち出すことができません。決定の記録とベンダーについて受け入れた限界は [ADR-0093](../../docs/adr/0093-multi-layer-security-scanning.ja.md) の決定 3 にあります。
 
-このステップは**全ジョブにインラインのまま置きます**。これは好みではなく制約です。ローカルの composite action（`uses: ./.github/actions/*`）はリポジトリが checkout 済みでなければ解決できず、harden-runner は checkout の**前**に走る必要があります。checkout 自体が外向き通信であり、それを守るのが目的だからです。括り出せば、塞ごうとしている窓がそのまま開きます。この案は繰り返し再提案されますが、答えは「検討して見送った」ではなく「そもそも成立しない」です。
+このステップは**全ジョブにインラインのまま置きます**。これは好みではなく制約です。ローカルの composite action（`uses: ./.github/actions/*`）はリポジトリが checkout 済みでなければ解決できず、bullfrog は checkout の**前**に走る必要があります。checkout 自体が外向き通信であり、それを守るのが目的だからです。括り出せば、塞ごうとしている窓がそのまま開きます。この案は繰り返し再提案されますが、答えは「検討して見送った」ではなく「そもそも成立しない」です。
 
-**固定されていないのは、その一覧を何処から持ってくるかです。** 正本は [`.github/egress.toml`](../egress.toml) です。`make egress-apply` が各ジョブへ書き込み、インラインのブロックが正本からずれていれば `make egress-check` が落とします（pre-commit フックと `egress-check.yaml` の両方）。
+**固定されていないのは、その一覧を何処から持ってくるかです。** 正本は [`.github/egress.toml`](../egress.toml) です。`make egress-apply` が各ジョブの bullfrog ステップの `with:` ブロックへ書き込みます。`make egress-check` は、ステップが正本からずれたとき、ステップを持つジョブの先頭に bullfrog ステップが無いとき、どのジョブにも一致しない宣言があるときに落とします（pre-commit フックと `egress-check.yaml` の両方）。宛先はポートを付けないドメイン名です。`*.example.com` はサブドメインだけに一致し、apex には一致しません。
 
 **ジョブが宣言するのは能力クラスであって、ホストの列挙ではありません。** ジョブが何処へ到達するかは、そのジョブが**何をするか**（ツールを入れる / イメージを作る / DB を起動する）から決まり、ジョブそれ自体の性質ではありません。実行は `make` → docker → コンテナ内 `mise` と潜っていくため、必要な宛先はジョブの YAML には現れません。クラスは 4 つで足り、ジョブは自分に当たるものを名指しします。
 
 | クラス | エンドポイント | 対象 |
 | --- | --- | --- |
-| `base` | harden-runner 自身の agent、GitHub の API / web / codeload、`objects` / `raw` / `release-assets.githubusercontent.com`、`*.actions.githubusercontent.com`、`*.blob.core.windows.net` | **全ジョブへ暗黙に適用**（checkout、action の取得、artifact のアップロード）。`classes` へは書きません |
+| `base` | GitHub の API / web / codeload、`objects` / `raw` / `release-assets.githubusercontent.com`、`*.actions.githubusercontent.com`、`*.blob.core.windows.net` | **全ジョブへ暗黙に適用**（checkout、action の取得、artifact のアップロード）。`classes` へは書きません |
 | `mise` | mise 自身の配布元と、`mise.toml` が解決に使う全 backend: aqua / GitHub リリース、Go のツールチェーンと module proxy、`downloads.sqlc.dev`、npm レジストリと `get.pnpm.io`、`astral.sh` と PyPI。加えて Sigstore（mise は各ツールの GitHub artifact attestation をここで検証します） | ツールを入れる全ジョブ。`setup-go` しか使わないジョブもこのクラスを名指しします。module proxy はここに居り、Go 専用の細いクラスを設ければ判定を 1 つ増やすだけだからです |
 | `image` | Docker Hub の各ホストと CDN 2 種、`mirror.gcr.io`、`ghcr.io`、`pkg-containers.githubusercontent.com`、および Alpine / Debian のパッケージミラー。`mise` を継承します（イメージのビルドがコンテナ内で `mise install` を走らせるため） | イメージの build / push、service container、Trivy の DB と checks bundle、`make` 経由で docker を起こすもの全般 |
 | `db` | PGDG の apt リポジトリと、Postgres の service container が導入時に参照する Ubuntu のアーカイブミラー | Postgres を起動するジョブ |
@@ -403,11 +403,15 @@ SARIF アップロードと sticky な PR コメントはどちらも切って�
 
 **クラスは意図的に粗く保ちます。** 細かく割れば allowlist は締まりますが、そのぶん分類の判定点が増えます。そしてこの仕組みが取り除こうとしている失敗は、まさにジョブのクラス判定を誤ることです。必要より少し広いクラスでも、その外側は依然として全部遮断されます。クラスを取り違えたジョブは落ちます。
 
-エンドポイントを足すときは `.github/egress.toml` を直します。能力から導けるものはクラスへ、導けないものはそのジョブの `extra` へ。そのうえで `make egress-apply` を実行し、生成されたブロックをコミットします。インラインのブロックを手で書き換えてはいけません。`make egress-check` が弾きます。
+エンドポイントを足すときは `.github/egress.toml` を直します。能力から導けるものはクラスへ、導けないものはそのジョブの `extra` へ。そのうえで `make egress-apply` を実行し、生成されたブロックをコミットします。生成されたブロックを手で書き換えてはいけません。`make egress-check` が弾きます。
 
-遮断された宛先は harden-runner の実行サマリに拒否接続として現れます。ジョブ自身のログからは理由が読めない失敗のとき読むべきはそこで、対処はクラスか `extra` を広げることであり、`audit` へ戻すことではありません。
+遮断された接続は run のジョブサマリに現れます。bullfrog の post ステップが、すべての接続を判定付きで並べます。ジョブ自身のログからは理由が読めない失敗のとき読むべきはそこです。ジョブが解決した名前をすべて見るには、デバッグログを有効にして再実行します。agent のログはデバッグ出力としてしかジョブログに出ないからです。対処はクラスか `extra` を広げることであり、`audit` へ戻すことではありません。温まった run だけでなく、キャッシュを外してイメージを pull する run でも測ってください。
 
-**1 つだけ失敗の出方が逆転しているジョブがあり、その旨は当該ファイルに書いてあります。** `trufflehog.yaml` は候補の資格情報を発行元サービスへ問い合わせて検証しますが、その発行元の集合には上限がありません。ここでのエンドポイント漏れはジョブを赤くせず、本物の漏洩を「未検証」に変えます。このワークフローは検証済みのみを報告するため、結果として黙って緑になります。TruffleHog の検出が消えたときは allowlist の漏れをまず疑ってください。`egress-policy: audit` を持つ唯一のジョブで、SSOT 上もそう宣言してあるため `allowed-endpoints` を一切持ちません。両者が食い違えば `make egress-check` が落ちます。
+**全ジョブはランナー内部の IP もいくつか許可します。** それぞれ `[ip."…"]` セクションとして、理由と外す条件を付けて宣言してあります。GitHub が egress proxy を試験している間に一部のホステッドランナーへ与えられる resolver、Docker のアドレス範囲（ホストから service container の公開ポートへの接続はコンテナのアドレスで判定されます）、IPv6 の loopback です。
+
+**sudo は既定で外します（`enable-sudo: false`）。** sudo があればステップはフィルタを外せます。sudo が無ければ、bullfrog は Docker API 経由の特権コンテナ、ホストパスのマウント、ホストの名前空間も拒否します。これらが無いと動かないジョブだけが、自分のセクションの `sudo = "<reason>"` 行で sudo を残します。ジョブを消せば例外も一緒に消えます。そうしたジョブには長期のシークレットも `id-token` も渡しません。`auto-generate-docs.yaml` が別の `open-pr` ジョブから pull request を開くのはそのためです。
+
+**1 つだけ失敗の出方が逆転しているジョブがあり、その旨は当該ファイルに書いてあります。** `trufflehog.yaml` は候補の資格情報を発行元サービスへ問い合わせて検証しますが、その発行元の集合には上限がありません。ここでのエンドポイント漏れはジョブを赤くせず、本物の漏洩を「未検証」に変えます。このワークフローは検証済みのみを報告するため、結果として黙って緑になります。TruffleHog の検出が消えたときは allowlist の漏れをまず疑ってください。`egress-policy: audit` を持つ唯一のジョブで、SSOT 上もそう宣言してあるため、そのステップは許可ドメインを一切持ちません。両者が食い違えば `make egress-check` が落ちます。
 
 テンプレート作成時に読み直す価値のある前提が 2 つあります。`deploy-app.yaml` の build ジョブは `ghcr.io` と公開 Sigstore インスタンスを前提にしており（その `extra`）、deploy ジョブは placeholder でクラスを 1 つも宣言しないため `base` だけを持ちます。実際のデプロイを結線する際は、その環境の control plane のホストをそのジョブの `extra` へ足す必要があります。`id-token` の交換も外向き通信だからです。
 
