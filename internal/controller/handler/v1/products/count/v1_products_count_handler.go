@@ -1,5 +1,5 @@
-//go:generate oapi-codegen --include-tags=v1/products/count --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/products/count --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products/count --package=gen --generate=types -o ./gen/type.gen.go ../../../../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/products/count --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../../openapi/openapi.gen.yaml
 
 // Package productcount は、/v1/products/count エンドポイントに関連するハンドラを提供します。
 package productcount

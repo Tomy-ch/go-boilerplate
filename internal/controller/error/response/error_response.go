@@ -1,4 +1,4 @@
-//go:generate oapi-codegen --include-tags=internal/types/error-response --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=internal/types/error-response --package=gen --generate=types -o ./gen/type.gen.go ../../../../openapi/openapi.gen.yaml
 
 // Package response は、echoでのエラーレスポンスを生成するためのユーティリティを提供します。
 package response

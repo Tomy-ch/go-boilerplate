@@ -1,5 +1,5 @@
-//go:generate oapi-codegen --include-tags=v1/carts --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/carts --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/carts --package=gen --generate=types -o ./gen/type.gen.go ../../../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/carts --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../openapi/openapi.gen.yaml
 
 // Package carts は、/v1/carts エンドポイントに関連するハンドラを提供します。
 package carts

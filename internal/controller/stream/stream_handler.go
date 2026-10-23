@@ -1,5 +1,5 @@
-//go:generate oapi-codegen --include-tags=v1/streams --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/streams --package=gen --generate=echo5-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/streams --package=gen --generate=types -o ./gen/type.gen.go ../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/streams --package=gen --generate=echo5-server -o ./gen/server.gen.go ../../../openapi/openapi.gen.yaml
 
 // Package stream は、SSE stream endpoint（GET /v1/streams/{destination}）の handler です。
 // レスポンスを確定する前の判定 — ticket の検証（security scheme が済ませ StreamGrant に置く）、cursor の解決、
