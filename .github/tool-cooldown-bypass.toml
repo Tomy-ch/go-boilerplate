@@ -18,3 +18,4 @@
 "golangci-lint@2.15.0" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
 "aqua:zizmorcore/zizmor@1.31.1" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
 "aqua:google/osv-scanner@2.7.0" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"uv@0.13.5" = { expires = 2026-11-07, issue = 1708, reason = "mise.toml の python 3.14.9 を解決できる最初の版。supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし、attestation 検証済み）" }

@@ -73,9 +73,9 @@ rtk = "0.51.0"
 "npm:pnpm" = "11.28.6"
 
 # Python ベース
-# 下限は 0.12.2。CPython 3.14.7 の配布物を知るのがこの版からで、これより古いと
+# 下限は 0.13.5。CPython 3.14.9 の配布物を知るのがこの版からで、これより古いと
 # sql-lint がホストで走らせる uv venv が宣言中の python を解決できない。
-uv = "0.13.0"
+uv = "0.13.5"
 # Python 実装だが実行環境を同梱した単体バイナリで配布されるため、python/*.in ではなく
 # aqua backend で入れる。
 "aqua:bridgecrewio/checkov" = "3.3.26"
