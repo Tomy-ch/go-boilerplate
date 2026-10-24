@@ -67,8 +67,11 @@ overrides:
   # jqff-g426-hqxp）と、閉じない角括弧による host 混同（GHSA-58mr-gqgx-xq4g）を塞ぐ。
   "fast-uri@<3.1.7": ">=3.1.7 <4"
   # IN_PLACE で node を除去する afterSanitize hook が切り離された部分木を実行可能なまま残す
-  # （GHSA-55q2-fjhq-7xh7 / GHSA-p98j-92pf-mc4p）。
-  "dompurify@<3.4.16": ">=3.4.16 <4"
+  # （GHSA-55q2-fjhq-7xh7 / GHSA-p98j-92pf-mc4p / GHSA-mrv2-3pqr-j5jr）と、SAFE_FOR_TEMPLATES が
+  # shadow root 内で分割された template 式を残す（GHSA-cg2g-xh64-v4q7）。mermaid が引く。
+  "dompurify@<3.4.17": ">=3.4.17 <4"
+  # 過剰な content-encoding の未処理エラーによる DoS（GHSA-xjj6-f33q-929c）。@scalar/json-magic が引く。
+  "undici@<7.30.1": ">=7.30.1 <8"
   # indexed source map の section offset によるイベントループの DoS（GHSA-68fv-2mgg-jv7q）。magicast が引く。
   "source-map-js@<1.2.2": ">=1.2.2 <2"
   # settings 経由のプロトタイプ汚染で trust 制限を迂回される（GHSA-238p-pmpm-9mq7）。mermaid が引く。
