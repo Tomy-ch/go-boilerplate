@@ -179,7 +179,14 @@ that checksum; the step runs `sudo apt-get install` of `nftables` and
 `libnetfilter-queue-dev` unpinned, before the filter is up; a wildcard and a CDN's shared IPs
 let through more than the one host that was meant; an IPv4 connection a container on a
 user-defined network makes to an address it already holds is not judged (the names it
-resolves are); and it supports only GitHub-hosted Ubuntu runners. **Reversal condition**:
+resolves are); every new connection, loopback included, waits for a verdict from a single
+userspace loop, so connection-heavy work is slower than unfiltered; a refused IPv6 connection
+is dropped without a reset, so a client that tries `::1` before `127.0.0.1` waits for its own
+connect timeout (the DAST job disables IPv6 on the loopback for that reason, and jobs without
+sudo pay the delay); and it supports only GitHub-hosted Ubuntu runners. The agent's per-verdict
+process lookup is turned off (`collect-process-info: false`): it queries the Docker API on every
+packet from a build container and alone stalled a job past its timeout, so the job summary
+names no process. **Reversal condition**:
 GitHub's own egress firewall for hosted runners reaches public preview or later and is usable
 on private repositories of the Free and Team plans.
 
