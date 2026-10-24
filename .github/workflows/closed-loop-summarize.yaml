@@ -90,7 +90,7 @@ jobs:
 
       - name: Run Claude
         if: steps.config.outputs.configured == 'true'
-        uses: anthropics/claude-code-action@1f291e1cfe0f5fc21db2aef19af844591600ade7 # v1.0.206
+        uses: anthropics/claude-code-action@db77d4d3c98f3f6380e7cd45ffba2342a3dbde3c # v1.0.254
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         with:
