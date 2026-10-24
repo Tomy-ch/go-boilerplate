@@ -104,7 +104,9 @@ stateDiagram-v2
     Deleted --> [*]
 
     note right of Stale
-      TTL 後はリトライを新規操作として扱う（キャッシュ状態なし）。
+      キーは初回受付から少なくとも 24h 保持される。Claim は expires_at を読まない
+      （ON CONFLICT DO NOTHING）ため Stale な行も replay / 409 / 422 のまま。
+      リトライが新規操作になるのは GC が行を削除した後だけ。
       DeleteExpired は expires_at 順に ≤ limit 行を削除、index で安価に保つ。
     end note
 ```
@@ -247,7 +249,7 @@ flowchart LR
 | **Run[T]** | オーケストレータ。`Run(ctx, deps, successStatus, businessFn) (T, bool, error)`。ctx にキー無し（または scope 空）→ `businessFn` を直実行。 |
 | **Deps** | `Run` の注入束：`Txm`（`tx.Manager`）/ `Store` / `Clock` / 任意 `Metrics`（nil ＝ no-op）。 |
 | **Request（context）** | middleware が載せる in-flight メタ：`Scope` / `Key` / `Fingerprint` / `Method` / `Path` / `OperationID`。 |
-| **ttl** | `24 * time.Hour`。`expires_at = now + ttl`。経過後はリトライを新規操作として扱う。 |
+| **ttl** | `24 * time.Hour`。`expires_at = now + ttl`。最低保持期間であり、`Claim` は `expires_at` を参照しないため、GC が行を削除するまでキーは有効なまま。リトライが新規操作になるのはその後だけ。 |
 | **GCUsecase / idempotencygc** | `SweepExpired(batchSize)` が短いバッチまで `Store.DeleteExpired` をループ。同梱 [job](job.ja.md) から実行。既定バッチ 10,000。 |
 | **Store** | 永続化 seam（`internal/usecase/boundary/idempotency`）：`Claim` / `Get` / `Complete` / `DeleteExpired`、すべて scope 必須。 |
 | **Metrics** | `operationID` ラベルの任意 o11y カウンタ：`IncHit` / `IncMiss` / `IncConflict` / `IncFingerprintMismatch` / `IncClaimFailure` / `IncCompleteFailure`。既定 no-op。 |

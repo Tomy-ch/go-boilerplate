@@ -237,9 +237,11 @@ Generated code is output under `gen/`.
 3. Add generation comments at the top of the file
 
 ```go
-//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go ../../../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../openapi/openapi.gen.yaml
 ```
+
+The spec path is relative to the package directory, because `go generate` runs each directive there. It gains one `../` per directory level below the repository root.
 
 1. Bundle/validate OpenAPI with swagger-cli and generate with oapi-codegen
    - Can be executed collectively with `make gen`
@@ -689,8 +691,8 @@ rec := testecho.NewEchoTestClient(t, e).
 ## Reference Snippet
 
 ```go
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go ../../../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../openapi/openapi.gen.yaml
 
 package items
 

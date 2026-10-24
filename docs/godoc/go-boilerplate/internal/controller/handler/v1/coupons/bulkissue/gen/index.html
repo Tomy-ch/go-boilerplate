@@ -471,7 +471,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=8612:8646#L172">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9432:9466#L177">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -516,7 +516,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="Conflict409">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=8834:8866#L175">Conflict409</a>
+			<h2 id="Conflict409">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9654:9686#L180">Conflict409</a>
 				<a class="permalink" href="#Conflict409">¶</a>
 				
 				
@@ -561,7 +561,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponBulkIssuePostRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=1564:2707#L45">CouponBulkIssuePostRequest</a>
+			<h2 id="CouponBulkIssuePostRequest">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=1564:2695#L45">CouponBulkIssuePostRequest</a>
 				<a class="permalink" href="#CouponBulkIssuePostRequest">¶</a>
 				
 				
@@ -576,7 +576,7 @@ including any per-operation middleware.
     <span class="comment">// 応答側の CouponDiscount と同じ形ですが、要求として受け取る側は宣言に無いフィールドを拒むため別に持ちます。</span>
     Discount <a href="#CouponDiscountInput">CouponDiscountInput</a> `json:&#34;discount&#34;`
 
-<span id="CouponBulkIssuePostRequest.ExpiresAt"></span>    <span class="comment">// ExpiresAt 発行するクーポンの有効期限。キャンペーンの終了日を名指しする操作なので、日数ではなく絶対時刻で 受け取ります。現在時刻以前を指定した場合は、発行した瞬間に失効するクーポンになるため 422 を返します。</span>
+<span id="CouponBulkIssuePostRequest.ExpiresAt"></span>    <span class="comment">// ExpiresAt 発行するクーポンの有効期限。販促の終了日を名指しする操作なので、日数ではなく絶対時刻で 受け取ります。現在時刻以前を指定した場合は、発行した瞬間に失効するクーポンになるため 422 を返します。</span>
     <span class="comment">//</span>
     <span class="comment">// Example: 2026-12-31T14:59:59Z</span>
     ExpiresAt <a href="../../../../../../../../time/">time</a>.<a href="../../../../../../../../time/#Time">Time</a> `json:&#34;expiresAt&#34;`
@@ -601,7 +601,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponBulkIssueResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=3069:4103#L63">CouponBulkIssueResponse</a>
+			<h2 id="CouponBulkIssueResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=3057:4091#L63">CouponBulkIssueResponse</a>
 				<a class="permalink" href="#CouponBulkIssueResponse">¶</a>
 				
 				
@@ -647,7 +647,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponDiscountInput">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=4431:5145#L87">CouponDiscountInput</a>
+			<h2 id="CouponDiscountInput">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=4419:5965#L87">CouponDiscountInput</a>
 				<a class="permalink" href="#CouponDiscountInput">¶</a>
 				
 				
@@ -662,7 +662,12 @@ including any per-operation middleware.
     <span class="comment">// Example: rate</span>
     Kind <a href="#CouponDiscountInputKind">CouponDiscountInputKind</a> `json:&#34;kind&#34;`
 
-<span id="CouponDiscountInput.Value"></span>    <span class="comment">// Value 種別における値。定額なら差し引く金額、定率なら対象額に掛ける率を、 正確な十進量を保つ decimal 文字列で表します（例 `&#34;0.15&#34;` は 15% 引き）。 ドメインの検証に落ちる値（定率で 0 以下または 1 超など）は 422 を返します。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。</span>
+<span id="CouponDiscountInput.MaxAmount"></span>    <span class="comment">// MaxAmount 定率の値引きが 1 回に引ける額の上限。USD セント単位の整数です。任意で、省略または null なら 上限を設けません。定額（`flat`）に対して指定した場合は、意味を持たない組み合わせとして 422 を 返します。0 以下を指定した場合も 422 です。</span>
+    <span class="comment">//</span>
+    <span class="comment">// Example: 2000</span>
+    MaxAmount *<a href="../../../../../../../../builtin/#int64">int64</a> `json:&#34;maxAmount,omitempty&#34;`
+
+<span id="CouponDiscountInput.Value"></span>    <span class="comment">// Value 種別における値。定額なら差し引く金額、定率なら対象額に掛ける率を、 正確な十進量を保つ decimal 文字列で表します（例 `&#34;0.15&#34;` は 15% 引き）。 定額の金額は商品の price と同じ USD のドル建てで（例 `&#34;5.00&#34;` は 5 ドル引き）、 USD セント単位の整数で表す maxAmount や minPurchaseAmount とは桁が違います。 定額で引く額は対象額が上限です。セント未満の桁も受け付けますが、値引き額を求める時点で セント未満は切り捨てられます（四捨五入ではありません）。 ドメインの検証に落ちる値（定率で 0 以下または 1 超など）は 422 を返します。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。</span>
     <span class="comment">//</span>
     <span class="comment">// Example: 0.15</span>
     Value <a href="../../../../../../../../builtin/#string">string</a> `json:&#34;value&#34;`
@@ -683,7 +688,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponDiscountInputKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=5320:5355#L103">CouponDiscountInputKind</a>
+			<h2 id="CouponDiscountInputKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=6140:6175#L108">CouponDiscountInputKind</a>
 				<a class="permalink" href="#CouponDiscountInputKind">¶</a>
 				
 				
@@ -727,7 +732,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="CouponScopeInput">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=5677:6481#L107">CouponScopeInput</a>
+			</p><h2 id="CouponScopeInput">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=6497:7301#L112">CouponScopeInput</a>
 				<a class="permalink" href="#CouponScopeInput">¶</a>
 				
 				
@@ -764,7 +769,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponScopeInputKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=6740:6772#L125">CouponScopeInputKind</a>
+			<h2 id="CouponScopeInputKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=7560:7592#L130">CouponScopeInputKind</a>
 				<a class="permalink" href="#CouponScopeInputKind">¶</a>
 				
 				
@@ -845,7 +850,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=6962:7364#L128">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=7782:8184#L133">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
@@ -884,7 +889,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponseWithDetails">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=7673:8301#L146">ErrorResponseWithDetails</a>
+			<h2 id="ErrorResponseWithDetails">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=8493:9121#L151">ErrorResponseWithDetails</a>
 				<a class="permalink" href="#ErrorResponseWithDetails">¶</a>
 				
 				
@@ -928,7 +933,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9055:9088#L178">Forbidden403</a>
+			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9875:9908#L183">Forbidden403</a>
 				<a class="permalink" href="#Forbidden403">¶</a>
 				
 				
@@ -973,7 +978,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="IdempotencyKeyRequiredParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=8381:8422#L169">IdempotencyKeyRequiredParam</a>
+			<h2 id="IdempotencyKeyRequiredParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9201:9242#L174">IdempotencyKeyRequiredParam</a>
 				<a class="permalink" href="#IdempotencyKeyRequiredParam">¶</a>
 				
 				
@@ -996,7 +1001,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9287:9330#L181">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=10107:10150#L186">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -1041,7 +1046,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9526:9566#L184">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=10346:10386#L189">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -1086,7 +1091,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="NotFound404">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9754:9786#L187">NotFound404</a>
+			<h2 id="NotFound404">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=10574:10606#L192">NotFound404</a>
 				<a class="permalink" href="#NotFound404">¶</a>
 				
 				
@@ -1488,7 +1493,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PostCouponsBulkIssueJSONRequestBody">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=11708:11777#L211">PostCouponsBulkIssueJSONRequestBody</a>
+			<h2 id="PostCouponsBulkIssueJSONRequestBody">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=14112:14181#L230">PostCouponsBulkIssueJSONRequestBody</a>
 				<a class="permalink" href="#PostCouponsBulkIssueJSONRequestBody">¶</a>
 				
 				
@@ -1511,7 +1516,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PostCouponsBulkIssueParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=10692:11595#L199">PostCouponsBulkIssueParams</a>
+			<h2 id="PostCouponsBulkIssueParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=11512:13999#L204">PostCouponsBulkIssueParams</a>
 				<a class="permalink" href="#PostCouponsBulkIssueParams">¶</a>
 				
 				
@@ -1522,10 +1527,24 @@ either of them for path registration
 <span id="PostCouponsBulkIssueParams.IdempotencyKey"></span>    <span class="comment">// IdempotencyKey 冪等キー。同一 (認証主体, キー) の再送を初回結果のリプレイとして扱う。</span>
     <span class="comment">// このヘッダを宣言する操作は、ハンドラが必ず idempotency.Run 経由で処理する契約（完全性テストで機械検証）。</span>
     <span class="comment">//</span>
-    <span class="comment">// **この操作では必須です。** 他の非冪等操作は再実行しても状態が収束するか（自然キーの upsert）、</span>
-    <span class="comment">// 対象の状態が二度目を弾く（廃番済みの商品は再度廃番にならない）ため任意で足りますが、この操作は</span>
-    <span class="comment">// 配布の記録を持たず、二度目の実行が一度目と同じだけの新しいクーポンを配ります。取り消す経路も無いため、</span>
-    <span class="comment">// 再送を安全にする手段がキーしかありません。</span>
+    <span class="comment">// キーの一意性は認証主体ごとに判定し、全操作で共通です。再送の扱いは次のとおりです。</span>
+    <span class="comment">// - 初回が成功していれば、同じキーと同じ本文の再送には初回の応答をそのまま返します。</span>
+    <span class="comment">// - 同じキーを別の操作や別の本文に使うと 422（code は IDEMPOTENCY_KEY_REUSED）です。</span>
+    <span class="comment">// - 失敗した応答（4xx / 5xx）はキーを消費しません。本文を直して同じキーで再送すれば、新しく実行されます。</span>
+    <span class="comment">// - 初回の処理中に同じキーで再送すると 409（code は IDEMPOTENCY_KEY_IN_PROGRESS）です。時間をおいて再送してください。</span>
+    <span class="comment">// - キーは最初の要求を受け付けてから少なくとも 24 時間保持します。保持期間を過ぎて掃除された後の再送は、新しい実行として扱います。</span>
+    <span class="comment">// - 形式に違反するキーと、キーの欠落は 400 です。</span>
+    <span class="comment">//</span>
+    <span class="comment">// **この操作では必須です。** 必須になる理由は 2 通りあり、どちらかに当たれば必須です。ひとつは、</span>
+    <span class="comment">// 重複が取り消せない金銭的価値の配布になること。クーポンの発行・一括発行・コードによる受け取りが</span>
+    <span class="comment">// これで、配り終えたクーポンを回収する経路は持ちません。もうひとつは、重複そのものは一意制約で</span>
+    <span class="comment">// 弾かれるものの、返る 409 から初回の結果を辿れないこと。キャンペーンの定義がこれで、コードで</span>
+    <span class="comment">// 引く操作が無いため一覧を辿るほかありません。</span>
+    <span class="comment">//</span>
+    <span class="comment">// キーが任意の操作では、重複を許容できます。二度目が弾かれる（同じ主体の二度目の登録は 409 で、</span>
+    <span class="comment">// 初回の結果は GET /v1/users/me から辿れます）、状態が収束する（廃番済みの商品は再度廃番にならず</span>
+    <span class="comment">// 200 を返します）、事後に取り消せる（購入はキャンセルできます）、重複が残っても新たな価値を</span>
+    <span class="comment">// 生まない（問い合わせメッセージの追記）のいずれかです。</span>
     IdempotencyKey <a href="#IdempotencyKeyRequiredParam">IdempotencyKeyRequiredParam</a> `json:&#34;Idempotency-Key&#34;`
 }
 </pre>
@@ -1705,7 +1724,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=9984:10026#L190">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=10804:10846#L195">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -1821,7 +1840,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=10218:10254#L193">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=11038:11074#L198">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				
@@ -1866,7 +1885,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="UnprocessableEntity422">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=10561:10615#L196">UnprocessableEntity422</a>
+			<h2 id="UnprocessableEntity422">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/coupons/bulkissue/gen/type.gen.go.html?s=11381:11435#L201">UnprocessableEntity422</a>
 				<a class="permalink" href="#UnprocessableEntity422">¶</a>
 				
 				

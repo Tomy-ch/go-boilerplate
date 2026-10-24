@@ -1075,7 +1075,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PostCartsMeMergeParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/merge/gen/type.gen.go.html?s=4789:6046#L88">PostCartsMeMergeParams</a>
+			<h2 id="PostCartsMeMergeParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/merge/gen/type.gen.go.html?s=4789:6973#L88">PostCartsMeMergeParams</a>
 				<a class="permalink" href="#PostCartsMeMergeParams">¶</a>
 				
 				
@@ -1095,6 +1095,14 @@ either of them for path registration
 <span id="PostCartsMeMergeParams.IdempotencyKey"></span>    <span class="comment">// IdempotencyKey 冪等キー。非冪等な変更操作（作成系など）で、同一キーによるリトライを重複実行なく</span>
     <span class="comment">// 安全にするための識別子。サーバは同一 (認証主体, キー) の再送を初回結果のリプレイとして扱う。</span>
     <span class="comment">// このヘッダを宣言する操作は、ハンドラが必ず idempotency.Run 経由で処理する契約（完全性テストで機械検証）。</span>
+    <span class="comment">//</span>
+    <span class="comment">// キーの一意性は認証主体ごとに判定し、全操作で共通です。再送の扱いは次のとおりです。</span>
+    <span class="comment">// - 初回が成功していれば、同じキーと同じ本文の再送には初回の応答をそのまま返します。</span>
+    <span class="comment">// - 同じキーを別の操作や別の本文に使うと 422（code は IDEMPOTENCY_KEY_REUSED）です。</span>
+    <span class="comment">// - 失敗した応答（4xx / 5xx）はキーを消費しません。本文を直して同じキーで再送すれば、新しく実行されます。</span>
+    <span class="comment">// - 初回の処理中に同じキーで再送すると 409（code は IDEMPOTENCY_KEY_IN_PROGRESS）です。時間をおいて再送してください。</span>
+    <span class="comment">// - キーは最初の要求を受け付けてから少なくとも 24 時間保持します。保持期間を過ぎて掃除された後の再送は、新しい実行として扱います。</span>
+    <span class="comment">// - 形式に違反するキーは 400 です。</span>
     IdempotencyKey *<a href="#IdempotencyKeyParam">IdempotencyKeyParam</a> `json:&#34;Idempotency-Key,omitempty&#34;`
 }
 </pre>

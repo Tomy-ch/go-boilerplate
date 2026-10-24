@@ -111,7 +111,7 @@
 <span id="L54" class="ln">    54  </span>			t.Parallel()
 <span id="L55" class="ln">    55  </span>
 <span id="L56" class="ln">    56  </span>			entity := paid(t, &#34;bs&#34;)
-<span id="L57" class="ln">    57  </span>			now := time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC)
+<span id="L57" class="ln">    57  </span>			now := time.Date(2026, time.July, 26, 21, 0, 0, 0, testJST)
 <span id="L58" class="ln">    58  </span>			_, err := entity.Ship(now)
 <span id="L59" class="ln">    59  </span>			require.NoError(t, err)
 <span id="L60" class="ln">    60  </span>
@@ -130,7 +130,7 @@
 <span id="L73" class="ln">    73  </span>			assert.Equal(t, &#34;bs-code&#34;, decoded.Code)
 <span id="L74" class="ln">    74  </span>			assert.Equal(t, entity.UserID().String(), decoded.UserID)
 <span id="L75" class="ln">    75  </span>			assert.Equal(t, domainpurchase.StatusShipped.Code(), decoded.StatusCode)
-<span id="L76" class="ln">    76  </span>			assert.Equal(t, now.Format(time.RFC3339Nano), decoded.ShippedAt)
+<span id="L76" class="ln">    76  </span>			assert.Equal(t, &#34;2026-07-26T12:00:00Z&#34;, decoded.ShippedAt)
 <span id="L77" class="ln">    77  </span>		})
 <span id="L78" class="ln">    78  </span>
 <span id="L79" class="ln">    79  </span>		t.Run(&#34;shippedAtがnilの購入はshippedAtが空文字列になる&#34;, func(t *testing.T) {

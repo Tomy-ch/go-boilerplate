@@ -55,8 +55,8 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/purchases/detail/cancel --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml</span>
-<span id="L2" class="ln">     2  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/purchases/detail/cancel --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/purchases/detail/cancel --package=gen --generate=types -o ./gen/type.gen.go ../../../../../../../openapi/openapi.gen.yaml</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/purchases/detail/cancel --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../../../openapi/openapi.gen.yaml</span>
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span><span class="comment">// Package cancel は、PATCH /v1/purchases/{purchaseCode}/cancel エンドポイントに関連するハンドラを提供します。</span>
 <span id="L5" class="ln">     5  </span>package cancel

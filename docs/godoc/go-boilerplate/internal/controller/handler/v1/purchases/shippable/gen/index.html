@@ -386,7 +386,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=3145:3179#L62">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=3214:3248#L62">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -505,7 +505,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=3368:3401#L65">Forbidden403</a>
+			<h2 id="Forbidden403">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=3437:3470#L65">Forbidden403</a>
 				<a class="permalink" href="#Forbidden403">¶</a>
 				
 				
@@ -800,7 +800,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetPurchasesShippableParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=4426:4787#L80">GetPurchasesShippableParams</a>
+			<h2 id="GetPurchasesShippableParams">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=4495:4856#L80">GetPurchasesShippableParams</a>
 				<a class="permalink" href="#GetPurchasesShippableParams">¶</a>
 				
 				
@@ -877,7 +877,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=3600:3643#L68">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=3669:3712#L68">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -922,7 +922,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=3839:3879#L71">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=3908:3948#L71">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -1000,7 +1000,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseShippableItemResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=1839:2400#L34">PurchaseShippableItemResponse</a>
+			<h2 id="PurchaseShippableItemResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=1839:2469#L34">PurchaseShippableItemResponse</a>
 				<a class="permalink" href="#PurchaseShippableItemResponse">¶</a>
 				
 				
@@ -1019,7 +1019,7 @@ either of them for path registration
     <span class="comment">// Example: 2026-07-23T00:00:00Z</span>
     OrderedAt <a href="../../../../../../../../time/">time</a>.<a href="../../../../../../../../time/#Time">Time</a> `json:&#34;orderedAt&#34;`
 
-<span id="PurchaseShippableItemResponse.TotalAmount"></span>    <span class="comment">// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。</span>
+<span id="PurchaseShippableItemResponse.TotalAmount"></span>    <span class="comment">// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。</span>
     <span class="comment">//</span>
     <span class="comment">// Example: 176500</span>
     TotalAmount <a href="../../../../../../../../builtin/#int64">int64</a> `json:&#34;totalAmount&#34;`
@@ -1040,7 +1040,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseShippableResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=2689:2888#L53">PurchaseShippableResponse</a>
+			<h2 id="PurchaseShippableResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=2758:2957#L53">PurchaseShippableResponse</a>
 				<a class="permalink" href="#PurchaseShippableResponse">¶</a>
 				
 				
@@ -1179,7 +1179,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=4077:4119#L74">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=4146:4188#L74">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -1224,7 +1224,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ShippableLimitParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=2925:2955#L59">ShippableLimitParam</a>
+			<h2 id="ShippableLimitParam">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=2994:3024#L59">ShippableLimitParam</a>
 				<a class="permalink" href="#ShippableLimitParam">¶</a>
 				
 				
@@ -1318,7 +1318,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=4311:4347#L77">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/shippable/gen/type.gen.go.html?s=4380:4416#L77">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				

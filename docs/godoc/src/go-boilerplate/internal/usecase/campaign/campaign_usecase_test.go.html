@@ -1,0 +1,729 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>campaign - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../src/go-boilerplate/internal/usecase/campaign">campaign</a>/<span class="text-muted">campaign_usecase_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/usecase/campaign">go-boilerplate/internal/usecase/campaign</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package campaign
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;testing&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L9" class="ln">     9  </span>	domaincampaign &#34;go-boilerplate/internal/domain/campaign&#34;
+<span id="L10" class="ln">    10  </span>	mock_campaign &#34;go-boilerplate/internal/domain/campaign/mock&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/domain/coupon&#34;
+<span id="L12" class="ln">    12  </span>	mock_coupon &#34;go-boilerplate/internal/domain/coupon/mock&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/usecase/boundary/authz&#34;
+<span id="L16" class="ln">    16  </span>	mock_authz &#34;go-boilerplate/internal/usecase/boundary/authz/mock&#34;
+<span id="L17" class="ln">    17  </span>	mock_clock &#34;go-boilerplate/internal/usecase/boundary/clock/mock&#34;
+<span id="L18" class="ln">    18  </span>	mock_tx &#34;go-boilerplate/internal/usecase/boundary/tx/mock&#34;
+<span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/internal/usecase/tools/paging&#34;
+<span id="L20" class="ln">    20  </span>	&#34;go-boilerplate/pkg/decimal&#34;
+<span id="L21" class="ln">    21  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L22" class="ln">    22  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L25" class="ln">    25  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L26" class="ln">    26  </span>	&#34;go.uber.org/mock/gomock&#34;
+<span id="L27" class="ln">    27  </span>)
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>var (
+<span id="L30" class="ln">    30  </span>	testNow             = time.Date(2026, time.October, 10, 0, 0, 0, 0, time.UTC)
+<span id="L31" class="ln">    31  </span>	testStartsAt        = time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
+<span id="L32" class="ln">    32  </span>	testEndsAt          = time.Date(2026, time.November, 1, 0, 0, 0, 0, time.UTC)
+<span id="L33" class="ln">    33  </span>	testCouponExpiresAt = time.Date(2026, time.December, 1, 0, 0, 0, 0, time.UTC)
+<span id="L34" class="ln">    34  </span>)
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span>type testDeps struct {
+<span id="L37" class="ln">    37  </span>	campaignRepo *mock_campaign.MockRepository
+<span id="L38" class="ln">    38  </span>	couponRepo   *mock_coupon.MockRepository
+<span id="L39" class="ln">    39  </span>	clock        *mock_clock.MockClock
+<span id="L40" class="ln">    40  </span>	txm          *mock_tx.MockManager
+<span id="L41" class="ln">    41  </span>	authorizer   *mock_authz.MockAuthorizer
+<span id="L42" class="ln">    42  </span>}
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>func newTestUsecase(t *testing.T) (*usecase, *testDeps) {
+<span id="L45" class="ln">    45  </span>	t.Helper()
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span>	ctrl := gomock.NewController(t)
+<span id="L48" class="ln">    48  </span>	deps := &amp;testDeps{
+<span id="L49" class="ln">    49  </span>		campaignRepo: mock_campaign.NewMockRepository(ctrl),
+<span id="L50" class="ln">    50  </span>		couponRepo:   mock_coupon.NewMockRepository(ctrl),
+<span id="L51" class="ln">    51  </span>		clock:        mock_clock.NewMockClock(ctrl),
+<span id="L52" class="ln">    52  </span>		txm:          mock_tx.NewMockManager(ctrl),
+<span id="L53" class="ln">    53  </span>		authorizer:   mock_authz.NewMockAuthorizer(ctrl),
+<span id="L54" class="ln">    54  </span>	}
+<span id="L55" class="ln">    55  </span>	u := &amp;usecase{
+<span id="L56" class="ln">    56  </span>		tracer:       observability.NewMockUsecaseLayerTracer(t),
+<span id="L57" class="ln">    57  </span>		campaignRepo: deps.campaignRepo,
+<span id="L58" class="ln">    58  </span>		couponRepo:   deps.couponRepo,
+<span id="L59" class="ln">    59  </span>		clock:        deps.clock,
+<span id="L60" class="ln">    60  </span>		txm:          deps.txm,
+<span id="L61" class="ln">    61  </span>		authorizer:   deps.authorizer,
+<span id="L62" class="ln">    62  </span>	}
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	return u, deps
+<span id="L65" class="ln">    65  </span>}
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span>func runInTx(ctx context.Context, fn func(ctx context.Context) error) error {
+<span id="L68" class="ln">    68  </span>	return fn(ctx)
+<span id="L69" class="ln">    69  </span>}
+<span id="L70" class="ln">    70  </span>
+<span id="L71" class="ln">    71  </span>func newTestAuthn(t *testing.T) (*auth.Authn, uuid.UUID) {
+<span id="L72" class="ln">    72  </span>	t.Helper()
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>	userID := uuidtestkit.NewTestFromSalt(t, &#34;campaign_claimer&#34;)
+<span id="L75" class="ln">    75  </span>	a, err := auth.New(&#34;subject-1&#34;, auth.IssuerMock, nil, nil)
+<span id="L76" class="ln">    76  </span>	require.NoError(t, err)
+<span id="L77" class="ln">    77  </span>	resolved, err := a.WithUserID(userID)
+<span id="L78" class="ln">    78  </span>	require.NoError(t, err)
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>	return resolved, userID
+<span id="L81" class="ln">    81  </span>}
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span>func newTestUUID(t *testing.T) uuid.UUID {
+<span id="L84" class="ln">    84  </span>	t.Helper()
+<span id="L85" class="ln">    85  </span>	id, err := uuid.New()
+<span id="L86" class="ln">    86  </span>	require.NoError(t, err)
+<span id="L87" class="ln">    87  </span>
+<span id="L88" class="ln">    88  </span>	return id
+<span id="L89" class="ln">    89  </span>}
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span>func newDecimal(t *testing.T, s string) decimal.Decimal {
+<span id="L92" class="ln">    92  </span>	t.Helper()
+<span id="L93" class="ln">    93  </span>	d, err := decimal.Parse(s)
+<span id="L94" class="ln">    94  </span>	require.NoError(t, err)
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span>	return d
+<span id="L97" class="ln">    97  </span>}
+<span id="L98" class="ln">    98  </span>
+<span id="L99" class="ln">    99  </span>func newDefineParams(t *testing.T) DefineCampaignParams {
+<span id="L100" class="ln">   100  </span>	t.Helper()
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>	return DefineCampaignParams{
+<span id="L103" class="ln">   103  </span>		Code:            &#34;WELCOME-2026&#34;,
+<span id="L104" class="ln">   104  </span>		DiscountKind:    &#34;rate&#34;,
+<span id="L105" class="ln">   105  </span>		DiscountValue:   newDecimal(t, &#34;0.10&#34;),
+<span id="L106" class="ln">   106  </span>		ScopeKind:       &#34;all&#34;,
+<span id="L107" class="ln">   107  </span>		CouponExpiresAt: testCouponExpiresAt,
+<span id="L108" class="ln">   108  </span>		StartsAt:        testStartsAt,
+<span id="L109" class="ln">   109  </span>		EndsAt:          testEndsAt,
+<span id="L110" class="ln">   110  </span>		TotalLimit:      10,
+<span id="L111" class="ln">   111  </span>		PerUserLimit:    2,
+<span id="L112" class="ln">   112  </span>	}
+<span id="L113" class="ln">   113  </span>}
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span><span class="comment">// newTestCampaign は、配布中のキャンペーンを組み立てます。</span>
+<span id="L116" class="ln">   116  </span>func newTestCampaign(t *testing.T, totalLimit, perUserLimit int) *domaincampaign.Campaign {
+<span id="L117" class="ln">   117  </span>	t.Helper()
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>	code, err := domaincampaign.NewCode(&#34;WELCOME-2026&#34;)
+<span id="L120" class="ln">   120  </span>	require.NoError(t, err)
+<span id="L121" class="ln">   121  </span>	template, err := domaincampaign.NewTemplate(domaincampaign.TemplateAttributes{
+<span id="L122" class="ln">   122  </span>		DiscountKindName: &#34;rate&#34;,
+<span id="L123" class="ln">   123  </span>		DiscountValue:    newDecimal(t, &#34;0.10&#34;),
+<span id="L124" class="ln">   124  </span>		ScopeKindName:    &#34;all&#34;,
+<span id="L125" class="ln">   125  </span>		ExpiresAt:        testCouponExpiresAt,
+<span id="L126" class="ln">   126  </span>	})
+<span id="L127" class="ln">   127  </span>	require.NoError(t, err)
+<span id="L128" class="ln">   128  </span>	c, err := domaincampaign.New(uuidtestkit.NewTestFromSalt(t, &#34;campaign&#34;), domaincampaign.Attributes{
+<span id="L129" class="ln">   129  </span>		Code:         code,
+<span id="L130" class="ln">   130  </span>		Template:     template,
+<span id="L131" class="ln">   131  </span>		StartsAt:     testStartsAt,
+<span id="L132" class="ln">   132  </span>		EndsAt:       testEndsAt,
+<span id="L133" class="ln">   133  </span>		TotalLimit:   totalLimit,
+<span id="L134" class="ln">   134  </span>		PerUserLimit: perUserLimit,
+<span id="L135" class="ln">   135  </span>	})
+<span id="L136" class="ln">   136  </span>	require.NoError(t, err)
+<span id="L137" class="ln">   137  </span>
+<span id="L138" class="ln">   138  </span>	return c
+<span id="L139" class="ln">   139  </span>}
+<span id="L140" class="ln">   140  </span>
+<span id="L141" class="ln">   141  </span><span class="comment">// newCampaignFor は、テンプレートだけを差し替えたキャンペーンを組み立てます。</span>
+<span id="L142" class="ln">   142  </span>func newCampaignFor(t *testing.T, tmpl domaincampaign.Template) *domaincampaign.Campaign {
+<span id="L143" class="ln">   143  </span>	t.Helper()
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span>	base := newTestCampaign(t, 10, 2)
+<span id="L146" class="ln">   146  </span>	c, err := domaincampaign.New(base.ID(), domaincampaign.Attributes{
+<span id="L147" class="ln">   147  </span>		Code:         base.Code(),
+<span id="L148" class="ln">   148  </span>		Template:     tmpl,
+<span id="L149" class="ln">   149  </span>		StartsAt:     base.StartsAt(),
+<span id="L150" class="ln">   150  </span>		EndsAt:       base.EndsAt(),
+<span id="L151" class="ln">   151  </span>		TotalLimit:   base.TotalLimit(),
+<span id="L152" class="ln">   152  </span>		PerUserLimit: base.PerUserLimit(),
+<span id="L153" class="ln">   153  </span>	})
+<span id="L154" class="ln">   154  </span>	require.NoError(t, err)
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>	return c
+<span id="L157" class="ln">   157  </span>}
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>func TestNew(t *testing.T) {
+<span id="L160" class="ln">   160  </span>	t.Parallel()
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L163" class="ln">   163  </span>		t.Parallel()
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>		t.Run(&#34;依存を注入したユースケース実装を生成する&#34;, func(t *testing.T) {
+<span id="L166" class="ln">   166  </span>			t.Parallel()
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span>			ctrl := gomock.NewController(t)
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>			got, ok := New(
+<span id="L171" class="ln">   171  </span>				mock_campaign.NewMockRepository(ctrl),
+<span id="L172" class="ln">   172  </span>				mock_coupon.NewMockRepository(ctrl),
+<span id="L173" class="ln">   173  </span>				mock_clock.NewMockClock(ctrl),
+<span id="L174" class="ln">   174  </span>				mock_tx.NewMockManager(ctrl),
+<span id="L175" class="ln">   175  </span>				mock_authz.NewMockAuthorizer(ctrl),
+<span id="L176" class="ln">   176  </span>				observability.NewNoopTracerFactory(t),
+<span id="L177" class="ln">   177  </span>			).(*usecase)
+<span id="L178" class="ln">   178  </span>
+<span id="L179" class="ln">   179  </span>			require.True(t, ok)
+<span id="L180" class="ln">   180  </span>			assert.NotNil(t, got.campaignRepo)
+<span id="L181" class="ln">   181  </span>			assert.NotNil(t, got.couponRepo)
+<span id="L182" class="ln">   182  </span>		})
+<span id="L183" class="ln">   183  </span>	})
+<span id="L184" class="ln">   184  </span>}
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>func Test_usecase_DefineCampaign(t *testing.T) {
+<span id="L187" class="ln">   187  </span>	t.Parallel()
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L190" class="ln">   190  </span>		t.Parallel()
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>		t.Run(&#34;1枚も配っていないキャンペーンを定義する&#34;, func(t *testing.T) {
+<span id="L193" class="ln">   193  </span>			t.Parallel()
+<span id="L194" class="ln">   194  </span>
+<span id="L195" class="ln">   195  </span>			u, deps := newTestUsecase(t)
+<span id="L196" class="ln">   196  </span>			deps.authorizer.EXPECT().
+<span id="L197" class="ln">   197  </span>				Authorize(gomock.Any(), gomock.Any(), authz.ActionCampaignDefine, gomock.Any()).
+<span id="L198" class="ln">   198  </span>				Return(nil)
+<span id="L199" class="ln">   199  </span>			deps.campaignRepo.EXPECT().
+<span id="L200" class="ln">   200  </span>				Create(gomock.Any(), gomock.Any()).
+<span id="L201" class="ln">   201  </span>				DoAndReturn(func(_ any, c *domaincampaign.Campaign) error {
+<span id="L202" class="ln">   202  </span>					assert.Equal(t, &#34;WELCOME-2026&#34;, c.Code().Value())
+<span id="L203" class="ln">   203  </span>					assert.Zero(t, c.IssuedCount())
+<span id="L204" class="ln">   204  </span>
+<span id="L205" class="ln">   205  </span>					return nil
+<span id="L206" class="ln">   206  </span>				})
+<span id="L207" class="ln">   207  </span>
+<span id="L208" class="ln">   208  </span>			got, err := u.DefineCampaign(t.Context(), &amp;auth.Authn{}, newDefineParams(t))
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>			require.NoError(t, err)
+<span id="L211" class="ln">   211  </span>			assert.Equal(t, &#34;WELCOME-2026&#34;, got.Code)
+<span id="L212" class="ln">   212  </span>			assert.Zero(t, got.IssuedCount)
+<span id="L213" class="ln">   213  </span>			assert.Nil(t, got.SuspendedAt)
+<span id="L214" class="ln">   214  </span>		})
+<span id="L215" class="ln">   215  </span>
+<span id="L216" class="ln">   216  </span>		t.Run(&#34;コードは正規化して保存する&#34;, func(t *testing.T) {
+<span id="L217" class="ln">   217  </span>			t.Parallel()
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>			u, deps := newTestUsecase(t)
+<span id="L220" class="ln">   220  </span>			params := newDefineParams(t)
+<span id="L221" class="ln">   221  </span>			params.Code = &#34;  welcome-2026  &#34;
+<span id="L222" class="ln">   222  </span>
+<span id="L223" class="ln">   223  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L224" class="ln">   224  </span>			deps.campaignRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+<span id="L225" class="ln">   225  </span>
+<span id="L226" class="ln">   226  </span>			got, err := u.DefineCampaign(t.Context(), &amp;auth.Authn{}, params)
+<span id="L227" class="ln">   227  </span>
+<span id="L228" class="ln">   228  </span>			require.NoError(t, err)
+<span id="L229" class="ln">   229  </span>			assert.Equal(t, &#34;WELCOME-2026&#34;, got.Code)
+<span id="L230" class="ln">   230  </span>		})
+<span id="L231" class="ln">   231  </span>	})
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L234" class="ln">   234  </span>		t.Parallel()
+<span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>		t.Run(&#34;認可に失敗した場合、コードを検証せずに返す&#34;, func(t *testing.T) {
+<span id="L237" class="ln">   237  </span>			t.Parallel()
+<span id="L238" class="ln">   238  </span>
+<span id="L239" class="ln">   239  </span>			u, deps := newTestUsecase(t)
+<span id="L240" class="ln">   240  </span>			deps.authorizer.EXPECT().
+<span id="L241" class="ln">   241  </span>				Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L242" class="ln">   242  </span>				Return(apperror.ErrPermissionDenied)
+<span id="L243" class="ln">   243  </span>
+<span id="L244" class="ln">   244  </span>			_, err := u.DefineCampaign(t.Context(), &amp;auth.Authn{}, newDefineParams(t))
+<span id="L245" class="ln">   245  </span>
+<span id="L246" class="ln">   246  </span>			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+<span id="L247" class="ln">   247  </span>		})
+<span id="L248" class="ln">   248  </span>
+<span id="L249" class="ln">   249  </span>		t.Run(&#34;コードが規定の形式でない場合、ErrInvalidCodeを返し永続化しない&#34;, func(t *testing.T) {
+<span id="L250" class="ln">   250  </span>			t.Parallel()
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>			u, deps := newTestUsecase(t)
+<span id="L253" class="ln">   253  </span>			params := newDefineParams(t)
+<span id="L254" class="ln">   254  </span>			params.Code = &#34;SHORT&#34;
+<span id="L255" class="ln">   255  </span>
+<span id="L256" class="ln">   256  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>			_, err := u.DefineCampaign(t.Context(), &amp;auth.Authn{}, params)
+<span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>			require.ErrorIs(t, err, domaincampaign.ErrInvalidCode)
+<span id="L261" class="ln">   261  </span>		})
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span>		t.Run(&#34;既知でない値引き種別の場合、受け取りを待たずに定義時点で弾く&#34;, func(t *testing.T) {
+<span id="L264" class="ln">   264  </span>			t.Parallel()
+<span id="L265" class="ln">   265  </span>
+<span id="L266" class="ln">   266  </span>			<span class="comment">// 誰も受け取れないキャンペーンを作れてしまわないことを固定する。</span>
+<span id="L267" class="ln">   267  </span>			u, deps := newTestUsecase(t)
+<span id="L268" class="ln">   268  </span>			params := newDefineParams(t)
+<span id="L269" class="ln">   269  </span>			params.DiscountKind = &#34;unknown&#34;
+<span id="L270" class="ln">   270  </span>
+<span id="L271" class="ln">   271  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span>			_, err := u.DefineCampaign(t.Context(), &amp;auth.Authn{}, params)
+<span id="L274" class="ln">   274  </span>
+<span id="L275" class="ln">   275  </span>			<span class="comment">// 検証エラーの族ではなく、この分岐固有の sentinel まで見る。</span>
+<span id="L276" class="ln">   276  </span>			require.ErrorIs(t, err, coupon.ErrInvalidDiscountKind)
+<span id="L277" class="ln">   277  </span>		})
+<span id="L278" class="ln">   278  </span>
+<span id="L279" class="ln">   279  </span>		t.Run(&#34;配るクーポンの有効期限が配布期間の終了より前の場合、永続化しない&#34;, func(t *testing.T) {
+<span id="L280" class="ln">   280  </span>			t.Parallel()
+<span id="L281" class="ln">   281  </span>
+<span id="L282" class="ln">   282  </span>			u, deps := newTestUsecase(t)
+<span id="L283" class="ln">   283  </span>			params := newDefineParams(t)
+<span id="L284" class="ln">   284  </span>			params.CouponExpiresAt = params.EndsAt
+<span id="L285" class="ln">   285  </span>
+<span id="L286" class="ln">   286  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L287" class="ln">   287  </span>
+<span id="L288" class="ln">   288  </span>			_, err := u.DefineCampaign(t.Context(), &amp;auth.Authn{}, params)
+<span id="L289" class="ln">   289  </span>
+<span id="L290" class="ln">   290  </span>			require.ErrorIs(t, err, domaincampaign.ErrInvalidCouponExpiresAt)
+<span id="L291" class="ln">   291  </span>		})
+<span id="L292" class="ln">   292  </span>
+<span id="L293" class="ln">   293  </span>		t.Run(&#34;コードが既に使われている場合、Conflictを返す&#34;, func(t *testing.T) {
+<span id="L294" class="ln">   294  </span>			t.Parallel()
+<span id="L295" class="ln">   295  </span>
+<span id="L296" class="ln">   296  </span>			u, deps := newTestUsecase(t)
+<span id="L297" class="ln">   297  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L298" class="ln">   298  </span>			deps.campaignRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict)
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>			_, err := u.DefineCampaign(t.Context(), &amp;auth.Authn{}, newDefineParams(t))
+<span id="L301" class="ln">   301  </span>
+<span id="L302" class="ln">   302  </span>			require.ErrorIs(t, err, apperror.ErrConflict)
+<span id="L303" class="ln">   303  </span>		})
+<span id="L304" class="ln">   304  </span>	})
+<span id="L305" class="ln">   305  </span>}
+<span id="L306" class="ln">   306  </span>
+<span id="L307" class="ln">   307  </span>func Test_usecase_ListCampaigns(t *testing.T) {
+<span id="L308" class="ln">   308  </span>	t.Parallel()
+<span id="L309" class="ln">   309  </span>
+<span id="L310" class="ln">   310  </span>	newPage := func(t *testing.T) *paging.Page {
+<span id="L311" class="ln">   311  </span>		t.Helper()
+<span id="L312" class="ln">   312  </span>		p, err := paging.NewPageFrom1Based(nil, nil)
+<span id="L313" class="ln">   313  </span>		require.NoError(t, err)
+<span id="L314" class="ln">   314  </span>
+<span id="L315" class="ln">   315  </span>		return p
+<span id="L316" class="ln">   316  </span>	}
+<span id="L317" class="ln">   317  </span>
+<span id="L318" class="ln">   318  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L319" class="ln">   319  </span>		t.Parallel()
+<span id="L320" class="ln">   320  </span>
+<span id="L321" class="ln">   321  </span>		t.Run(&#34;一覧と総件数を返す&#34;, func(t *testing.T) {
+<span id="L322" class="ln">   322  </span>			t.Parallel()
+<span id="L323" class="ln">   323  </span>
+<span id="L324" class="ln">   324  </span>			u, deps := newTestUsecase(t)
+<span id="L325" class="ln">   325  </span>			deps.authorizer.EXPECT().
+<span id="L326" class="ln">   326  </span>				Authorize(gomock.Any(), gomock.Any(), authz.ActionCampaignList, gomock.Any()).
+<span id="L327" class="ln">   327  </span>				Return(nil)
+<span id="L328" class="ln">   328  </span>			deps.campaignRepo.EXPECT().
+<span id="L329" class="ln">   329  </span>				FindList(gomock.Any(), gomock.Any()).
+<span id="L330" class="ln">   330  </span>				Return(domaincampaign.Campaigns{newTestCampaign(t, 10, 2)}, nil)
+<span id="L331" class="ln">   331  </span>			deps.campaignRepo.EXPECT().CountAll(gomock.Any()).Return(7, nil)
+<span id="L332" class="ln">   332  </span>
+<span id="L333" class="ln">   333  </span>			got, err := u.ListCampaigns(t.Context(), &amp;auth.Authn{}, newPage(t))
+<span id="L334" class="ln">   334  </span>
+<span id="L335" class="ln">   335  </span>			require.NoError(t, err)
+<span id="L336" class="ln">   336  </span>			assert.Len(t, got.Campaigns, 1)
+<span id="L337" class="ln">   337  </span>			assert.Equal(t, 7, got.Total)
+<span id="L338" class="ln">   338  </span>		})
+<span id="L339" class="ln">   339  </span>
+<span id="L340" class="ln">   340  </span>		t.Run(&#34;1件も無い場合は空の一覧と0件を返す&#34;, func(t *testing.T) {
+<span id="L341" class="ln">   341  </span>			t.Parallel()
+<span id="L342" class="ln">   342  </span>
+<span id="L343" class="ln">   343  </span>			u, deps := newTestUsecase(t)
+<span id="L344" class="ln">   344  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L345" class="ln">   345  </span>			deps.campaignRepo.EXPECT().
+<span id="L346" class="ln">   346  </span>				FindList(gomock.Any(), gomock.Any()).
+<span id="L347" class="ln">   347  </span>				Return(domaincampaign.Campaigns{}, nil)
+<span id="L348" class="ln">   348  </span>			deps.campaignRepo.EXPECT().CountAll(gomock.Any()).Return(0, nil)
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>			got, err := u.ListCampaigns(t.Context(), &amp;auth.Authn{}, newPage(t))
+<span id="L351" class="ln">   351  </span>
+<span id="L352" class="ln">   352  </span>			require.NoError(t, err)
+<span id="L353" class="ln">   353  </span>			assert.Empty(t, got.Campaigns)
+<span id="L354" class="ln">   354  </span>			assert.Zero(t, got.Total)
+<span id="L355" class="ln">   355  </span>		})
+<span id="L356" class="ln">   356  </span>	})
+<span id="L357" class="ln">   357  </span>
+<span id="L358" class="ln">   358  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L359" class="ln">   359  </span>		t.Parallel()
+<span id="L360" class="ln">   360  </span>
+<span id="L361" class="ln">   361  </span>		t.Run(&#34;認可に失敗した場合、取得しない&#34;, func(t *testing.T) {
+<span id="L362" class="ln">   362  </span>			t.Parallel()
+<span id="L363" class="ln">   363  </span>
+<span id="L364" class="ln">   364  </span>			u, deps := newTestUsecase(t)
+<span id="L365" class="ln">   365  </span>			deps.authorizer.EXPECT().
+<span id="L366" class="ln">   366  </span>				Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L367" class="ln">   367  </span>				Return(apperror.ErrPermissionDenied)
+<span id="L368" class="ln">   368  </span>
+<span id="L369" class="ln">   369  </span>			_, err := u.ListCampaigns(t.Context(), &amp;auth.Authn{}, newPage(t))
+<span id="L370" class="ln">   370  </span>
+<span id="L371" class="ln">   371  </span>			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+<span id="L372" class="ln">   372  </span>		})
+<span id="L373" class="ln">   373  </span>
+<span id="L374" class="ln">   374  </span>		t.Run(&#34;ページが未指定の場合、ErrInvalidArgumentを返す&#34;, func(t *testing.T) {
+<span id="L375" class="ln">   375  </span>			t.Parallel()
+<span id="L376" class="ln">   376  </span>
+<span id="L377" class="ln">   377  </span>			u, deps := newTestUsecase(t)
+<span id="L378" class="ln">   378  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L379" class="ln">   379  </span>
+<span id="L380" class="ln">   380  </span>			_, err := u.ListCampaigns(t.Context(), &amp;auth.Authn{}, nil)
+<span id="L381" class="ln">   381  </span>
+<span id="L382" class="ln">   382  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L383" class="ln">   383  </span>		})
+<span id="L384" class="ln">   384  </span>	})
+<span id="L385" class="ln">   385  </span>}
+<span id="L386" class="ln">   386  </span>
+<span id="L387" class="ln">   387  </span>func Test_usecase_SuspendCampaign(t *testing.T) {
+<span id="L388" class="ln">   388  </span>	t.Parallel()
+<span id="L389" class="ln">   389  </span>
+<span id="L390" class="ln">   390  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L391" class="ln">   391  </span>		t.Parallel()
+<span id="L392" class="ln">   392  </span>
+<span id="L393" class="ln">   393  </span>		t.Run(&#34;行ロックを取ってから停止する&#34;, func(t *testing.T) {
+<span id="L394" class="ln">   394  </span>			t.Parallel()
+<span id="L395" class="ln">   395  </span>
+<span id="L396" class="ln">   396  </span>			u, deps := newTestUsecase(t)
+<span id="L397" class="ln">   397  </span>			target := newTestCampaign(t, 10, 2)
+<span id="L398" class="ln">   398  </span>
+<span id="L399" class="ln">   399  </span>			deps.authorizer.EXPECT().
+<span id="L400" class="ln">   400  </span>				Authorize(gomock.Any(), gomock.Any(), authz.ActionCampaignSuspend, gomock.Any()).
+<span id="L401" class="ln">   401  </span>				Return(nil)
+<span id="L402" class="ln">   402  </span>			deps.clock.EXPECT().Now().Return(testNow)
+<span id="L403" class="ln">   403  </span>			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+<span id="L404" class="ln">   404  </span>			deps.campaignRepo.EXPECT().LockByID(gomock.Any(), target.ID()).Return(target, nil)
+<span id="L405" class="ln">   405  </span>			deps.campaignRepo.EXPECT().UpdateSuspended(gomock.Any(), target.ID(), testNow).Return(nil)
+<span id="L406" class="ln">   406  </span>
+<span id="L407" class="ln">   407  </span>			got, err := u.SuspendCampaign(t.Context(), &amp;auth.Authn{}, target.ID())
+<span id="L408" class="ln">   408  </span>
+<span id="L409" class="ln">   409  </span>			require.NoError(t, err)
+<span id="L410" class="ln">   410  </span>			require.NotNil(t, got.SuspendedAt)
+<span id="L411" class="ln">   411  </span>			assert.Equal(t, testNow, *got.SuspendedAt)
+<span id="L412" class="ln">   412  </span>		})
+<span id="L413" class="ln">   413  </span>	})
+<span id="L414" class="ln">   414  </span>
+<span id="L415" class="ln">   415  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L416" class="ln">   416  </span>		t.Parallel()
+<span id="L417" class="ln">   417  </span>
+<span id="L418" class="ln">   418  </span>		t.Run(&#34;存在しない場合、NotFoundを返し更新しない&#34;, func(t *testing.T) {
+<span id="L419" class="ln">   419  </span>			t.Parallel()
+<span id="L420" class="ln">   420  </span>
+<span id="L421" class="ln">   421  </span>			u, deps := newTestUsecase(t)
+<span id="L422" class="ln">   422  </span>			id := uuidtestkit.NewTestFromSalt(t, &#34;missing_campaign&#34;)
+<span id="L423" class="ln">   423  </span>
+<span id="L424" class="ln">   424  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L425" class="ln">   425  </span>			deps.clock.EXPECT().Now().Return(testNow)
+<span id="L426" class="ln">   426  </span>			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+<span id="L427" class="ln">   427  </span>			deps.campaignRepo.EXPECT().LockByID(gomock.Any(), id).Return(nil, apperror.ErrNotFound)
+<span id="L428" class="ln">   428  </span>
+<span id="L429" class="ln">   429  </span>			_, err := u.SuspendCampaign(t.Context(), &amp;auth.Authn{}, id)
+<span id="L430" class="ln">   430  </span>
+<span id="L431" class="ln">   431  </span>			require.ErrorIs(t, err, apperror.ErrNotFound)
+<span id="L432" class="ln">   432  </span>		})
+<span id="L433" class="ln">   433  </span>
+<span id="L434" class="ln">   434  </span>		t.Run(&#34;認可に失敗した場合、行ロックを取らない&#34;, func(t *testing.T) {
+<span id="L435" class="ln">   435  </span>			t.Parallel()
+<span id="L436" class="ln">   436  </span>
+<span id="L437" class="ln">   437  </span>			u, deps := newTestUsecase(t)
+<span id="L438" class="ln">   438  </span>			deps.authorizer.EXPECT().
+<span id="L439" class="ln">   439  </span>				Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L440" class="ln">   440  </span>				Return(apperror.ErrPermissionDenied)
+<span id="L441" class="ln">   441  </span>
+<span id="L442" class="ln">   442  </span>			_, err := u.SuspendCampaign(t.Context(), &amp;auth.Authn{}, newTestUUID(t))
+<span id="L443" class="ln">   443  </span>
+<span id="L444" class="ln">   444  </span>			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+<span id="L445" class="ln">   445  </span>		})
+<span id="L446" class="ln">   446  </span>
+<span id="L447" class="ln">   447  </span>		t.Run(&#34;停止の更新が競合した場合、そのまま返す&#34;, func(t *testing.T) {
+<span id="L448" class="ln">   448  </span>			t.Parallel()
+<span id="L449" class="ln">   449  </span>
+<span id="L450" class="ln">   450  </span>			<span class="comment">// 行ロックを取らずに呼ばれた場合に備える永続化側の二重防御が、上位まで伝わることを固定する。</span>
+<span id="L451" class="ln">   451  </span>			u, deps := newTestUsecase(t)
+<span id="L452" class="ln">   452  </span>			target := newTestCampaign(t, 10, 2)
+<span id="L453" class="ln">   453  </span>
+<span id="L454" class="ln">   454  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L455" class="ln">   455  </span>			deps.clock.EXPECT().Now().Return(testNow)
+<span id="L456" class="ln">   456  </span>			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+<span id="L457" class="ln">   457  </span>			deps.campaignRepo.EXPECT().LockByID(gomock.Any(), target.ID()).Return(target, nil)
+<span id="L458" class="ln">   458  </span>			deps.campaignRepo.EXPECT().
+<span id="L459" class="ln">   459  </span>				UpdateSuspended(gomock.Any(), target.ID(), testNow).
+<span id="L460" class="ln">   460  </span>				Return(domaincampaign.ErrAlreadySuspended)
+<span id="L461" class="ln">   461  </span>
+<span id="L462" class="ln">   462  </span>			_, err := u.SuspendCampaign(t.Context(), &amp;auth.Authn{}, target.ID())
+<span id="L463" class="ln">   463  </span>
+<span id="L464" class="ln">   464  </span>			require.ErrorIs(t, err, domaincampaign.ErrAlreadySuspended)
+<span id="L465" class="ln">   465  </span>		})
+<span id="L466" class="ln">   466  </span>
+<span id="L467" class="ln">   467  </span>		t.Run(&#34;既に停止済みの場合、ErrAlreadySuspendedを返し更新しない&#34;, func(t *testing.T) {
+<span id="L468" class="ln">   468  </span>			t.Parallel()
+<span id="L469" class="ln">   469  </span>
+<span id="L470" class="ln">   470  </span>			u, deps := newTestUsecase(t)
+<span id="L471" class="ln">   471  </span>			target := newTestCampaign(t, 10, 2)
+<span id="L472" class="ln">   472  </span>			require.NoError(t, target.Suspend(testNow))
+<span id="L473" class="ln">   473  </span>
+<span id="L474" class="ln">   474  </span>			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+<span id="L475" class="ln">   475  </span>			deps.clock.EXPECT().Now().Return(testNow)
+<span id="L476" class="ln">   476  </span>			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
+<span id="L477" class="ln">   477  </span>			deps.campaignRepo.EXPECT().LockByID(gomock.Any(), target.ID()).Return(target, nil)
+<span id="L478" class="ln">   478  </span>
+<span id="L479" class="ln">   479  </span>			_, err := u.SuspendCampaign(t.Context(), &amp;auth.Authn{}, target.ID())
+<span id="L480" class="ln">   480  </span>
+<span id="L481" class="ln">   481  </span>			require.ErrorIs(t, err, domaincampaign.ErrAlreadySuspended)
+<span id="L482" class="ln">   482  </span>		})
+<span id="L483" class="ln">   483  </span>	})
+<span id="L484" class="ln">   484  </span>}
+<span id="L485" class="ln">   485  </span>
+<span id="L486" class="ln">   486  </span>func Test_toCampaignView(t *testing.T) {
+<span id="L487" class="ln">   487  </span>	t.Parallel()
+<span id="L488" class="ln">   488  </span>
+<span id="L489" class="ln">   489  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L490" class="ln">   490  </span>		t.Parallel()
+<span id="L491" class="ln">   491  </span>
+<span id="L492" class="ln">   492  </span>		t.Run(&#34;条件を持たないキャンペーンを出力へ写す&#34;, func(t *testing.T) {
+<span id="L493" class="ln">   493  </span>			t.Parallel()
+<span id="L494" class="ln">   494  </span>
+<span id="L495" class="ln">   495  </span>			c := newTestCampaign(t, 10, 2)
+<span id="L496" class="ln">   496  </span>
+<span id="L497" class="ln">   497  </span>			got := toCampaignView(c)
+<span id="L498" class="ln">   498  </span>
+<span id="L499" class="ln">   499  </span>			assert.Equal(t, c.ID(), got.ID)
+<span id="L500" class="ln">   500  </span>			assert.Equal(t, &#34;WELCOME-2026&#34;, got.Code)
+<span id="L501" class="ln">   501  </span>			assert.Equal(t, &#34;rate&#34;, got.DiscountKind)
+<span id="L502" class="ln">   502  </span>			assert.Zero(t, got.DiscountValue.Cmp(newDecimal(t, &#34;0.10&#34;)))
+<span id="L503" class="ln">   503  </span>			assert.Equal(t, &#34;all&#34;, got.ScopeKind)
+<span id="L504" class="ln">   504  </span>			assert.Equal(t, testCouponExpiresAt, got.CouponExpiresAt)
+<span id="L505" class="ln">   505  </span>			assert.Equal(t, testStartsAt, got.StartsAt)
+<span id="L506" class="ln">   506  </span>			assert.Equal(t, testEndsAt, got.EndsAt)
+<span id="L507" class="ln">   507  </span>			assert.Equal(t, 10, got.TotalLimit)
+<span id="L508" class="ln">   508  </span>			assert.Equal(t, 2, got.PerUserLimit)
+<span id="L509" class="ln">   509  </span>			assert.Zero(t, got.IssuedCount)
+<span id="L510" class="ln">   510  </span>			assert.Nil(t, got.MaxAmount)
+<span id="L511" class="ln">   511  </span>			assert.Nil(t, got.ScopeTargetID)
+<span id="L512" class="ln">   512  </span>			assert.Nil(t, got.MinPurchaseAmount)
+<span id="L513" class="ln">   513  </span>			assert.Nil(t, got.UsableFrom)
+<span id="L514" class="ln">   514  </span>			assert.Nil(t, got.SuspendedAt)
+<span id="L515" class="ln">   515  </span>		})
+<span id="L516" class="ln">   516  </span>
+<span id="L517" class="ln">   517  </span>		t.Run(&#34;条件と停止日時を持つキャンペーンはそれらも写す&#34;, func(t *testing.T) {
+<span id="L518" class="ln">   518  </span>			t.Parallel()
+<span id="L519" class="ln">   519  </span>
+<span id="L520" class="ln">   520  </span>			maxAmount := int64(2000)
+<span id="L521" class="ln">   521  </span>			minPurchase := int64(5000)
+<span id="L522" class="ln">   522  </span>			usableFrom := testCouponExpiresAt.Add(-24 * time.Hour)
+<span id="L523" class="ln">   523  </span>			targetID := newTestUUID(t)
+<span id="L524" class="ln">   524  </span>			tmpl := newTemplate(t, func(a *domaincampaign.TemplateAttributes) {
+<span id="L525" class="ln">   525  </span>				a.DiscountMaxAmount = &amp;maxAmount
+<span id="L526" class="ln">   526  </span>				a.MinPurchaseAmount = &amp;minPurchase
+<span id="L527" class="ln">   527  </span>				a.UsableFrom = &amp;usableFrom
+<span id="L528" class="ln">   528  </span>				a.ScopeKindName = &#34;category&#34;
+<span id="L529" class="ln">   529  </span>				a.ScopeTargetID = &amp;targetID
+<span id="L530" class="ln">   530  </span>			})
+<span id="L531" class="ln">   531  </span>			base := newTestCampaign(t, 10, 2)
+<span id="L532" class="ln">   532  </span>			c, err := domaincampaign.New(base.ID(), domaincampaign.Attributes{
+<span id="L533" class="ln">   533  </span>				Code:         base.Code(),
+<span id="L534" class="ln">   534  </span>				Template:     tmpl,
+<span id="L535" class="ln">   535  </span>				StartsAt:     base.StartsAt(),
+<span id="L536" class="ln">   536  </span>				EndsAt:       base.EndsAt(),
+<span id="L537" class="ln">   537  </span>				TotalLimit:   base.TotalLimit(),
+<span id="L538" class="ln">   538  </span>				PerUserLimit: base.PerUserLimit(),
+<span id="L539" class="ln">   539  </span>			})
+<span id="L540" class="ln">   540  </span>			require.NoError(t, err)
+<span id="L541" class="ln">   541  </span>			require.NoError(t, c.Suspend(testNow))
+<span id="L542" class="ln">   542  </span>
+<span id="L543" class="ln">   543  </span>			got := toCampaignView(c)
+<span id="L544" class="ln">   544  </span>
+<span id="L545" class="ln">   545  </span>			require.NotNil(t, got.MaxAmount)
+<span id="L546" class="ln">   546  </span>			assert.Equal(t, maxAmount, *got.MaxAmount)
+<span id="L547" class="ln">   547  </span>			require.NotNil(t, got.MinPurchaseAmount)
+<span id="L548" class="ln">   548  </span>			assert.Equal(t, minPurchase, *got.MinPurchaseAmount)
+<span id="L549" class="ln">   549  </span>			require.NotNil(t, got.UsableFrom)
+<span id="L550" class="ln">   550  </span>			assert.Equal(t, usableFrom, *got.UsableFrom)
+<span id="L551" class="ln">   551  </span>			assert.Equal(t, &#34;category&#34;, got.ScopeKind)
+<span id="L552" class="ln">   552  </span>			require.NotNil(t, got.ScopeTargetID)
+<span id="L553" class="ln">   553  </span>			assert.Equal(t, targetID, *got.ScopeTargetID)
+<span id="L554" class="ln">   554  </span>			require.NotNil(t, got.SuspendedAt)
+<span id="L555" class="ln">   555  </span>			assert.Equal(t, testNow, *got.SuspendedAt)
+<span id="L556" class="ln">   556  </span>		})
+<span id="L557" class="ln">   557  </span>	})
+<span id="L558" class="ln">   558  </span>}
+<span id="L559" class="ln">   559  </span>
+<span id="L560" class="ln">   560  </span>func Test_toClaimedCouponView(t *testing.T) {
+<span id="L561" class="ln">   561  </span>	t.Parallel()
+<span id="L562" class="ln">   562  </span>
+<span id="L563" class="ln">   563  </span>	<span class="comment">// newIssuedCoupon は、受け取りで生まれるクーポンを組み立てます。</span>
+<span id="L564" class="ln">   564  </span>	newIssuedCoupon := func(t *testing.T, attrs coupon.Attributes) *coupon.Coupon {
+<span id="L565" class="ln">   565  </span>		t.Helper()
+<span id="L566" class="ln">   566  </span>		c, err := coupon.New(newTestUUID(t), attrs)
+<span id="L567" class="ln">   567  </span>		require.NoError(t, err)
+<span id="L568" class="ln">   568  </span>
+<span id="L569" class="ln">   569  </span>		return c
+<span id="L570" class="ln">   570  </span>	}
+<span id="L571" class="ln">   571  </span>
+<span id="L572" class="ln">   572  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L573" class="ln">   573  </span>		t.Parallel()
+<span id="L574" class="ln">   574  </span>
+<span id="L575" class="ln">   575  </span>		t.Run(&#34;条件を持たないクーポンを出力へ写す&#34;, func(t *testing.T) {
+<span id="L576" class="ln">   576  </span>			t.Parallel()
+<span id="L577" class="ln">   577  </span>
+<span id="L578" class="ln">   578  </span>			c := newCampaignFor(t, newTemplate(t, nil))
+<span id="L579" class="ln">   579  </span>			attrs, err := couponAttributesFor(c, newTestUUID(t), testNow)
+<span id="L580" class="ln">   580  </span>			require.NoError(t, err)
+<span id="L581" class="ln">   581  </span>			issued := newIssuedCoupon(t, attrs)
+<span id="L582" class="ln">   582  </span>
+<span id="L583" class="ln">   583  </span>			got := toClaimedCouponView(issued)
+<span id="L584" class="ln">   584  </span>
+<span id="L585" class="ln">   585  </span>			assert.Equal(t, issued.ID(), got.ID)
+<span id="L586" class="ln">   586  </span>			assert.Equal(t, &#34;rate&#34;, got.DiscountKind)
+<span id="L587" class="ln">   587  </span>			assert.Equal(t, &#34;all&#34;, got.ScopeKind)
+<span id="L588" class="ln">   588  </span>			assert.Equal(t, testCouponExpiresAt, got.ExpiresAt)
+<span id="L589" class="ln">   589  </span>			assert.Equal(t, testNow, got.IssuedAt)
+<span id="L590" class="ln">   590  </span>			assert.Nil(t, got.UsedAt)
+<span id="L591" class="ln">   591  </span>			assert.Nil(t, got.MaxAmount)
+<span id="L592" class="ln">   592  </span>			assert.Nil(t, got.MinPurchaseAmount)
+<span id="L593" class="ln">   593  </span>			assert.Nil(t, got.UsableFrom)
+<span id="L594" class="ln">   594  </span>		})
+<span id="L595" class="ln">   595  </span>
+<span id="L596" class="ln">   596  </span>		t.Run(&#34;条件を持つクーポンはそれらも写す&#34;, func(t *testing.T) {
+<span id="L597" class="ln">   597  </span>			t.Parallel()
+<span id="L598" class="ln">   598  </span>
+<span id="L599" class="ln">   599  </span>			maxAmount := int64(2000)
+<span id="L600" class="ln">   600  </span>			minPurchase := int64(5000)
+<span id="L601" class="ln">   601  </span>			usableFrom := testCouponExpiresAt.Add(-24 * time.Hour)
+<span id="L602" class="ln">   602  </span>			tmpl := newTemplate(t, func(a *domaincampaign.TemplateAttributes) {
+<span id="L603" class="ln">   603  </span>				a.DiscountMaxAmount = &amp;maxAmount
+<span id="L604" class="ln">   604  </span>				a.MinPurchaseAmount = &amp;minPurchase
+<span id="L605" class="ln">   605  </span>				a.UsableFrom = &amp;usableFrom
+<span id="L606" class="ln">   606  </span>			})
+<span id="L607" class="ln">   607  </span>			attrs, err := couponAttributesFor(newCampaignFor(t, tmpl), newTestUUID(t), testNow)
+<span id="L608" class="ln">   608  </span>			require.NoError(t, err)
+<span id="L609" class="ln">   609  </span>
+<span id="L610" class="ln">   610  </span>			got := toClaimedCouponView(newIssuedCoupon(t, attrs))
+<span id="L611" class="ln">   611  </span>
+<span id="L612" class="ln">   612  </span>			require.NotNil(t, got.MaxAmount)
+<span id="L613" class="ln">   613  </span>			assert.Equal(t, maxAmount, *got.MaxAmount)
+<span id="L614" class="ln">   614  </span>			require.NotNil(t, got.MinPurchaseAmount)
+<span id="L615" class="ln">   615  </span>			assert.Equal(t, minPurchase, *got.MinPurchaseAmount)
+<span id="L616" class="ln">   616  </span>			require.NotNil(t, got.UsableFrom)
+<span id="L617" class="ln">   617  </span>			assert.Equal(t, usableFrom, *got.UsableFrom)
+<span id="L618" class="ln">   618  </span>		})
+<span id="L619" class="ln">   619  </span>	})
+<span id="L620" class="ln">   620  </span>}
+<span id="L621" class="ln">   621  </span>
+<span id="L622" class="ln">   622  </span>func Test_requireUserID(t *testing.T) {
+<span id="L623" class="ln">   623  </span>	t.Parallel()
+<span id="L624" class="ln">   624  </span>
+<span id="L625" class="ln">   625  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L626" class="ln">   626  </span>		t.Parallel()
+<span id="L627" class="ln">   627  </span>
+<span id="L628" class="ln">   628  </span>		t.Run(&#34;内部ユーザーIDが解決済みの場合はそれを返す&#34;, func(t *testing.T) {
+<span id="L629" class="ln">   629  </span>			t.Parallel()
+<span id="L630" class="ln">   630  </span>
+<span id="L631" class="ln">   631  </span>			authn, userID := newTestAuthn(t)
+<span id="L632" class="ln">   632  </span>
+<span id="L633" class="ln">   633  </span>			got, err := requireUserID(authn)
+<span id="L634" class="ln">   634  </span>
+<span id="L635" class="ln">   635  </span>			require.NoError(t, err)
+<span id="L636" class="ln">   636  </span>			assert.Equal(t, userID, got)
+<span id="L637" class="ln">   637  </span>		})
+<span id="L638" class="ln">   638  </span>	})
+<span id="L639" class="ln">   639  </span>
+<span id="L640" class="ln">   640  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L641" class="ln">   641  </span>		t.Parallel()
+<span id="L642" class="ln">   642  </span>
+<span id="L643" class="ln">   643  </span>		t.Run(&#34;認証主体が無い場合はErrUnauthenticatedを返す&#34;, func(t *testing.T) {
+<span id="L644" class="ln">   644  </span>			t.Parallel()
+<span id="L645" class="ln">   645  </span>
+<span id="L646" class="ln">   646  </span>			_, err := requireUserID(nil)
+<span id="L647" class="ln">   647  </span>
+<span id="L648" class="ln">   648  </span>			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+<span id="L649" class="ln">   649  </span>		})
+<span id="L650" class="ln">   650  </span>
+<span id="L651" class="ln">   651  </span>		t.Run(&#34;内部ユーザーIDが未解決の場合はエラーを返す&#34;, func(t *testing.T) {
+<span id="L652" class="ln">   652  </span>			t.Parallel()
+<span id="L653" class="ln">   653  </span>
+<span id="L654" class="ln">   654  </span>			unresolved, err := auth.New(&#34;subject-unresolved&#34;, auth.IssuerMock, nil, nil)
+<span id="L655" class="ln">   655  </span>			require.NoError(t, err)
+<span id="L656" class="ln">   656  </span>
+<span id="L657" class="ln">   657  </span>			_, err = requireUserID(unresolved)
+<span id="L658" class="ln">   658  </span>
+<span id="L659" class="ln">   659  </span>			require.Error(t, err)
+<span id="L660" class="ln">   660  </span>		})
+<span id="L661" class="ln">   661  </span>	})
+<span id="L662" class="ln">   662  </span>}
+<span id="L663" class="ln">   663  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/campaign/campaign_usecase_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

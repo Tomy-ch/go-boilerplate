@@ -928,6 +928,11 @@ SERVER_BODY_LIMIT_MB を解釈する echo の body limit ミドルウェアが 1
     <span id="TestingEnvValue">TestingEnvValue</span> = &#34;ci&#34;
 )</pre>
 			
+				<p>WildcardOrigin は、CORS 許可オリジンでオリジンを限定しないことを表す値です。
+production モードでは validateSecurityConfig が拒否します。
+
+				</p><pre>const <span id="WildcardOrigin">WildcardOrigin</span> = &#34;*&#34;</pre>
+			
 		
 		
 			<h2 id="pkg-variables">Variables</h2>
@@ -959,6 +964,12 @@ SERVER_BODY_LIMIT_MB を解釈する echo の body limit ミドルウェアが 1
     <span id="ErrHTTPOnlyAllowedForLocalhost">ErrHTTPOnlyAllowedForLocalhost</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(
         errInvalidConfig,
         &#34;http only localhost is allowed&#34;,
+    )
+    <span class="comment">// ErrWildcardOriginNotProduction は、production モードで CORS 許可オリジンにワイルドカードが</span>
+    <span class="comment">// 指定されたことを示す検証エラーです。</span>
+    <span id="ErrWildcardOriginNotProduction">ErrWildcardOriginNotProduction</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(
+        errInvalidConfig,
+        &#34;wildcard allowed origin is not permitted in production mode&#34;,
     )
     <span class="comment">// ErrFailedToLoadEnvFile は、埋め込み env ファイルの読み込みに失敗したことを示すエラーです。</span>
     <span id="ErrFailedToLoadEnvFile">ErrFailedToLoadEnvFile</span> = <a href="../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(
@@ -1153,7 +1164,7 @@ make が渡す）ため、環境固有の issuer に依存するテストは値�
 		
 			
 			
-			</p><h2 id="ValidateServerShutdown">func <a href="../../../src/go-boilerplate/internal/config/config.go.html?s=10464:10546#L289">ValidateServerShutdown</a>
+			</p><h2 id="ValidateServerShutdown">func <a href="../../../src/go-boilerplate/internal/config/config.go.html?s=10473:10555#L289">ValidateServerShutdown</a>
 				<a class="permalink" href="#ValidateServerShutdown">¶</a>
 				
 				
@@ -1169,7 +1180,7 @@ New() では全プロファイル共通に走らせない。
 		
 			
 			
-			</p><h2 id="ValidateUploadBodyLimit">func <a href="../../../src/go-boilerplate/internal/config/config.go.html?s=11075:11160#L303">ValidateUploadBodyLimit</a>
+			</p><h2 id="ValidateUploadBodyLimit">func <a href="../../../src/go-boilerplate/internal/config/config.go.html?s=11084:11169#L303">ValidateUploadBodyLimit</a>
 				<a class="permalink" href="#ValidateUploadBodyLimit">¶</a>
 				
 				

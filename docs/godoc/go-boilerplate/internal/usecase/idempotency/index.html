@@ -106,6 +106,8 @@
 				<dd><a href="#pkg-constants">Constants</a></dd>
 			
 			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
 			
 				
 				<dd><a href="#Run">func Run[T any](ctx context.Context, deps Deps, successStatus int32, businessFn func(ctx context.Context) (T, error)) (T, bool, error)</a></dd>
@@ -181,10 +183,21 @@
 			
 		
 		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrKeyInProgress は、同じ冪等性キーの初回がまだ処理中であることを表します（409）。
+
+				</p><pre>var <span id="ErrKeyInProgress">ErrKeyInProgress</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrConflict">ErrConflict</a>, &#34;idempotency key is being processed, retry later&#34;)</pre>
+			
+				<p>ErrKeyReused は、同じ冪等性キーが別の要求に使われたことを表します（422）。
+
+				</p><pre>var <span id="ErrKeyReused">ErrKeyReused</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrValidation">ErrValidation</a>, &#34;idempotency key reused with a different request&#34;)</pre>
+			
+		
 		
 			
 			
-			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=2640:2781#L44">Run</a>
+			<h2 id="Run">func <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=3082:3223#L50">Run</a>
 				<a class="permalink" href="#Run">¶</a>
 				
 				
@@ -222,7 +235,7 @@ replay 時は保存済みの応答ボディ（T）のみを復元し、保存済
 		
 			
 			
-			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1718:1921#L28">Deps</a>
+			</p><h2 id="Deps">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=2160:2363#L34">Deps</a>
 				<a class="permalink" href="#Deps">¶</a>
 				
 				
@@ -339,7 +352,7 @@ interface を分離しています。
 		
 			
 			
-			</p><h2 id="Metrics">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=761:1664#L12">Metrics</a>
+			</p><h2 id="Metrics">type <a href="../../../../src/go-boilerplate/internal/usecase/idempotency/run.go.html?s=1203:2106#L18">Metrics</a>
 				<a class="permalink" href="#Metrics">¶</a>
 				
 				

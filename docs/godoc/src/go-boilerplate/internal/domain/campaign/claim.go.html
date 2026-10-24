@@ -1,0 +1,147 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>campaign - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/domain">domain</a>/<a href="../../../../../src/go-boilerplate/internal/domain/campaign">campaign</a>/<span class="text-muted">claim.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/domain/campaign">go-boilerplate/internal/domain/campaign</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package campaign
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;time&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L8" class="ln">     8  </span>)
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span><span class="comment">// Claim は、受け取りが起きた事実を表すドメインエンティティです。誰がどのキャンペーンから</span>
+<span id="L11" class="ln">    11  </span><span class="comment">// いつ受け取り、その結果どのクーポンが生まれたかを 1 件で表します。</span>
+<span id="L12" class="ln">    12  </span><span class="comment">//</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// 1 人あたり上限はこの記録を数えて判定します。発行されたクーポンの側に出自を持たせないのは、</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// クーポン集約が発行事由を根拠に入れないと宣言しているためです</span>
+<span id="L15" class="ln">    15  </span><span class="comment">// （docs/spec/domain/coupon.md の Overview）。</span>
+<span id="L16" class="ln">    16  </span>type Claim struct {
+<span id="L17" class="ln">    17  </span>	id         uuid.UUID
+<span id="L18" class="ln">    18  </span>	campaignID uuid.UUID
+<span id="L19" class="ln">    19  </span>	userID     uuid.UUID
+<span id="L20" class="ln">    20  </span>	couponID   uuid.UUID
+<span id="L21" class="ln">    21  </span>	claimedAt  time.Time
+<span id="L22" class="ln">    22  </span>}
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span><span class="comment">// ClaimAttributes は、受け取り記録の属性一式です。同型の識別子が 3 つ並ぶため構造体で受けます</span>
+<span id="L25" class="ln">    25  </span><span class="comment">// （基準は docs/rules.md の Function Signature Rules）。</span>
+<span id="L26" class="ln">    26  </span>type ClaimAttributes struct {
+<span id="L27" class="ln">    27  </span>	<span class="comment">// CampaignID は、受け取り元のキャンペーンです。</span>
+<span id="L28" class="ln">    28  </span>	CampaignID uuid.UUID
+<span id="L29" class="ln">    29  </span>	<span class="comment">// UserID は、受け取った利用者です。</span>
+<span id="L30" class="ln">    30  </span>	UserID uuid.UUID
+<span id="L31" class="ln">    31  </span>	<span class="comment">// CouponID は、受け取りで発行されたクーポンです。</span>
+<span id="L32" class="ln">    32  </span>	CouponID uuid.UUID
+<span id="L33" class="ln">    33  </span>	<span class="comment">// ClaimedAt は、受け取り日時です。</span>
+<span id="L34" class="ln">    34  </span>	ClaimedAt time.Time
+<span id="L35" class="ln">    35  </span>}
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span><span class="comment">// newClaim は、受け取り記録の検証と生成を行います。</span>
+<span id="L38" class="ln">    38  </span><span class="comment">// いずれかの識別子が未設定、または受け取り日時がゼロ値の場合は検証エラーを返します。</span>
+<span id="L39" class="ln">    39  </span><span class="comment">//</span>
+<span id="L40" class="ln">    40  </span><span class="comment">// 非公開である理由は [Campaign.Claim] を参照。</span>
+<span id="L41" class="ln">    41  </span>func newClaim(id uuid.UUID, attrs ClaimAttributes) (*Claim, error) {
+<span id="L42" class="ln">    42  </span>	if id.IsNil() {
+<span id="L43" class="ln">    43  </span>		return nil, xerrors.Wrap(ErrInvalidID, &#34;id is required&#34;)
+<span id="L44" class="ln">    44  </span>	}
+<span id="L45" class="ln">    45  </span>	if attrs.CampaignID.IsNil() {
+<span id="L46" class="ln">    46  </span>		return nil, xerrors.Wrap(ErrInvalidCampaignID, &#34;campaignID is required&#34;)
+<span id="L47" class="ln">    47  </span>	}
+<span id="L48" class="ln">    48  </span>	if attrs.UserID.IsNil() {
+<span id="L49" class="ln">    49  </span>		return nil, xerrors.Wrap(ErrInvalidUserID, &#34;userID is required&#34;)
+<span id="L50" class="ln">    50  </span>	}
+<span id="L51" class="ln">    51  </span>	if attrs.CouponID.IsNil() {
+<span id="L52" class="ln">    52  </span>		return nil, xerrors.Wrap(ErrInvalidCouponID, &#34;couponID is required&#34;)
+<span id="L53" class="ln">    53  </span>	}
+<span id="L54" class="ln">    54  </span>	if attrs.ClaimedAt.IsZero() {
+<span id="L55" class="ln">    55  </span>		return nil, xerrors.Wrap(ErrInvalidClaimedAt, &#34;claimedAt is required&#34;)
+<span id="L56" class="ln">    56  </span>	}
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span>	return &amp;Claim{
+<span id="L59" class="ln">    59  </span>		id:         id,
+<span id="L60" class="ln">    60  </span>		campaignID: attrs.CampaignID,
+<span id="L61" class="ln">    61  </span>		userID:     attrs.UserID,
+<span id="L62" class="ln">    62  </span>		couponID:   attrs.CouponID,
+<span id="L63" class="ln">    63  </span>		claimedAt:  attrs.ClaimedAt,
+<span id="L64" class="ln">    64  </span>	}, nil
+<span id="L65" class="ln">    65  </span>}
+<span id="L66" class="ln">    66  </span>
+<span id="L67" class="ln">    67  </span><span class="comment">// ID は、受け取り記録 ID を返します。</span>
+<span id="L68" class="ln">    68  </span>func (c *Claim) ID() uuid.UUID { return c.id }
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span><span class="comment">// CampaignID は、受け取り元のキャンペーン ID を返します。</span>
+<span id="L71" class="ln">    71  </span>func (c *Claim) CampaignID() uuid.UUID { return c.campaignID }
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span><span class="comment">// UserID は、受け取った利用者のユーザー ID を返します。</span>
+<span id="L74" class="ln">    74  </span>func (c *Claim) UserID() uuid.UUID { return c.userID }
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span><span class="comment">// CouponID は、受け取りで発行されたクーポンの ID を返します。</span>
+<span id="L77" class="ln">    77  </span>func (c *Claim) CouponID() uuid.UUID { return c.couponID }
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span><span class="comment">// ClaimedAt は、受け取り日時を返します。</span>
+<span id="L80" class="ln">    80  </span>func (c *Claim) ClaimedAt() time.Time { return c.claimedAt }
+<span id="L81" class="ln">    81  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/domain/campaign/claim.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

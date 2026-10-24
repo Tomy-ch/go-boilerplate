@@ -105,6 +105,16 @@
 			
 			
 				
+				<dd><a href="#CampaignClaims">type CampaignClaims</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Campaigns">type Campaigns</a></dd>
+				
+				
+			
+				
 				<dd><a href="#CartItems">type CartItems</a></dd>
 				
 				
@@ -140,6 +150,11 @@
 				
 			
 				
+				<dd><a href="#CountCampaignClaimsByCampaignIDAndUserIDParams">type CountCampaignClaimsByCampaignIDAndUserIDParams</a></dd>
+				
+				
+			
+				
 				<dd><a href="#CountDashboardPurchasesByStatusParams">type CountDashboardPurchasesByStatusParams</a></dd>
 				
 				
@@ -166,6 +181,16 @@
 			
 				
 				<dd><a href="#Coupons">type Coupons</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CreateCampaignClaimParams">type CreateCampaignClaimParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CreateCampaignParams">type CreateCampaignParams</a></dd>
 				
 				
 			
@@ -695,6 +720,16 @@
 				
 			
 				
+				<dd><a href="#LockCampaignByCodeRow">type LockCampaignByCodeRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#LockCampaignByIDRow">type LockCampaignByIDRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#LockCartByIDRow">type LockCartByIDRow</a></dd>
 				
 				
@@ -803,6 +838,12 @@
 					<dd>    <a href="#Queries.CountBlockedStreamsOutbox">func (q *Queries) CountBlockedStreamsOutbox(ctx context.Context, deliveryChannel string) (int64, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.CountCampaignClaimsByCampaignIDAndUserID">func (q *Queries) CountCampaignClaimsByCampaignIDAndUserID(ctx context.Context, arg *CountCampaignClaimsByCampaignIDAndUserIDParams) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.CountCampaigns">func (q *Queries) CountCampaigns(ctx context.Context) (int64, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.CountDashboardPurchasesByStatus">func (q *Queries) CountDashboardPurchasesByStatus(ctx context.Context, arg *CountDashboardPurchasesByStatusParams) ([]*CountDashboardPurchasesByStatusRow, error)</a></dd>
 				
 					
@@ -839,6 +880,12 @@
 					<dd>    <a href="#Queries.CountUsers">func (q *Queries) CountUsers(ctx context.Context) (int64, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.CreateCampaign">func (q *Queries) CreateCampaign(ctx context.Context, arg *CreateCampaignParams) error</a></dd>
+				
+					
+					<dd>    <a href="#Queries.CreateCampaignClaim">func (q *Queries) CreateCampaignClaim(ctx context.Context, arg *CreateCampaignClaimParams) error</a></dd>
+				
+					
 					<dd>    <a href="#Queries.CreateCart">func (q *Queries) CreateCart(ctx context.Context, arg *CreateCartParams) error</a></dd>
 				
 					
@@ -873,6 +920,9 @@
 				
 					
 					<dd>    <a href="#Queries.CurrentStreamSequence">func (q *Queries) CurrentStreamSequence(ctx context.Context, streamID string) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.DeleteCampaignClaimsByUserIDs">func (q *Queries) DeleteCampaignClaimsByUserIDs(ctx context.Context, userIds []uuid.UUID) error</a></dd>
 				
 					
 					<dd>    <a href="#Queries.DeleteCart">func (q *Queries) DeleteCart(ctx context.Context, id uuid.UUID) error</a></dd>
@@ -1091,6 +1141,12 @@
 					<dd>    <a href="#Queries.ListUsersFeedFirst">func (q *Queries) ListUsersFeedFirst(ctx context.Context, limitParam int32) ([]*ListUsersFeedFirstRow, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.LockCampaignByCode">func (q *Queries) LockCampaignByCode(ctx context.Context, code string) (*LockCampaignByCodeRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.LockCampaignByID">func (q *Queries) LockCampaignByID(ctx context.Context, id uuid.UUID) (*LockCampaignByIDRow, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.LockCartByID">func (q *Queries) LockCartByID(ctx context.Context, id uuid.UUID) (*LockCartByIDRow, error)</a></dd>
 				
 					
@@ -1139,6 +1195,9 @@
 					<dd>    <a href="#Queries.SelectBulkIssueRecipients">func (q *Queries) SelectBulkIssueRecipients(ctx context.Context) ([]uuid.UUID, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.SelectCampaigns">func (q *Queries) SelectCampaigns(ctx context.Context, arg *SelectCampaignsParams) ([]*SelectCampaignsRow, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.SelectDiscontinueCouponRecipients">func (q *Queries) SelectDiscontinueCouponRecipients(ctx context.Context, productID uuid.UUID) ([]uuid.UUID, error)</a></dd>
 				
 					
@@ -1164,6 +1223,12 @@
 				
 					
 					<dd>    <a href="#Queries.TouchInquiry">func (q *Queries) TouchInquiry(ctx context.Context, arg *TouchInquiryParams) error</a></dd>
+				
+					
+					<dd>    <a href="#Queries.UpdateCampaignIssuedCount">func (q *Queries) UpdateCampaignIssuedCount(ctx context.Context, id uuid.UUID) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.UpdateCampaignSuspended">func (q *Queries) UpdateCampaignSuspended(ctx context.Context, arg *UpdateCampaignSuspendedParams) (int64, error)</a></dd>
 				
 					
 					<dd>    <a href="#Queries.UpdateCart">func (q *Queries) UpdateCart(ctx context.Context, arg *UpdateCartParams) (int64, error)</a></dd>
@@ -1258,6 +1323,16 @@
 				
 			
 				
+				<dd><a href="#SelectCampaignsParams">type SelectCampaignsParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SelectCampaignsRow">type SelectCampaignsRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#SoftDeleteProductImagesNotInParams">type SoftDeleteProductImagesNotInParams</a></dd>
 				
 				
@@ -1299,6 +1374,11 @@
 			
 				
 				<dd><a href="#TouchInquiryParams">type TouchInquiryParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#UpdateCampaignSuspendedParams">type UpdateCampaignSuspendedParams</a></dd>
 				
 				
 			
@@ -1378,6 +1458,8 @@
 			<p>
 			<span style="font-size:90%">
 			
+				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html">campaign_repository.gen.sql.go</a>
+			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/cart_repository.gen.sql.go.html">cart_repository.gen.sql.go</a>
 			
 				<a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_command_service.gen.sql.go.html">coupon_command_service.gen.sql.go</a>
@@ -1440,7 +1522,107 @@
 		
 			
 			
-			<h2 id="CartItems">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=195:512#L5">CartItems</a>
+			<h2 id="CampaignClaims">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=219:591#L5">CampaignClaims</a>
+				<a class="permalink" href="#CampaignClaims">¶</a>
+				
+				
+			</h2>
+			<p>キャンペーンの受け取り記録
+
+			</p><pre>type CampaignClaims struct {
+<span id="CampaignClaims.ID"></span>    <span class="comment">// ID</span>
+    ID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// 受け取り元のキャンペーンID</span>
+<span id="CampaignClaims.CampaignID"></span>    CampaignID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// 受け取った利用者のユーザーID</span>
+<span id="CampaignClaims.UserID"></span>    UserID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// 受け取りで発行されたクーポンのID</span>
+<span id="CampaignClaims.CouponID"></span>    CouponID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// 受け取り日時</span>
+<span id="CampaignClaims.ClaimedAt"></span>    ClaimedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 作成日時</span>
+<span id="CampaignClaims.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 更新日時</span>
+<span id="CampaignClaims.UpdatedAt"></span>    UpdatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Campaigns">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=615:2116#L23">Campaigns</a>
+				<a class="permalink" href="#Campaigns">¶</a>
+				
+				
+			</h2>
+			<p>キャンペーン
+
+			</p><pre>type Campaigns struct {
+<span id="Campaigns.ID"></span>    <span class="comment">// ID</span>
+    ID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// キャンペーンコード（正規化済み。大文字・前後空白なし）</span>
+<span id="Campaigns.Code"></span>    Code <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 配るクーポンの値引き種別の名前。閉じた集合を所有するのはクーポン側で、キャンペーンは名前を保つ</span>
+<span id="Campaigns.DiscountKind"></span>    DiscountKind <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 配るクーポンの値引きの値（定額なら金額、定率なら率）</span>
+<span id="Campaigns.DiscountValue"></span>    DiscountValue <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+    <span class="comment">// 配るクーポンの値引き上限（上限なしまたは定額のときNULL）</span>
+<span id="Campaigns.DiscountMaxAmount"></span>    DiscountMaxAmount *<a href="../../../../../../builtin/#int64">int64</a>
+    <span class="comment">// 配るクーポンの適用範囲種別の名前。閉じた集合を所有するのはクーポン側で、キャンペーンは名前を保つ</span>
+<span id="Campaigns.ScopeKind"></span>    ScopeKind <a href="../../../../../../builtin/#string">string</a>
+    <span class="comment">// 配るクーポンの適用範囲の対象ID（全体のときNULL）</span>
+<span id="Campaigns.ScopeTargetID"></span>    ScopeTargetID *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// 配るクーポンの最低購入金額（条件なしのときNULL）</span>
+<span id="Campaigns.CouponMinPurchaseAmount"></span>    CouponMinPurchaseAmount *<a href="../../../../../../builtin/#int64">int64</a>
+    <span class="comment">// 配るクーポンの利用開始日時（発行時点から使えるときNULL）</span>
+<span id="Campaigns.CouponUsableFrom"></span>    CouponUsableFrom *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 配るクーポンの有効期限</span>
+<span id="Campaigns.CouponExpiresAt"></span>    CouponExpiresAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 配布期間の開始日時</span>
+<span id="Campaigns.StartsAt"></span>    StartsAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 配布期間の終了日時</span>
+<span id="Campaigns.EndsAt"></span>    EndsAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 総枚数上限</span>
+<span id="Campaigns.TotalLimit"></span>    TotalLimit <a href="../../../../../../builtin/#int32">int32</a>
+    <span class="comment">// 1人あたり上限</span>
+<span id="Campaigns.PerUserLimit"></span>    PerUserLimit <a href="../../../../../../builtin/#int32">int32</a>
+    <span class="comment">// 発行済み枚数。返却では減らない</span>
+<span id="Campaigns.IssuedCount"></span>    IssuedCount <a href="../../../../../../builtin/#int32">int32</a>
+    <span class="comment">// 停止日時（停止していないときNULL）</span>
+<span id="Campaigns.SuspendedAt"></span>    SuspendedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 作成日時</span>
+<span id="Campaigns.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 更新日時</span>
+<span id="Campaigns.UpdatedAt"></span>    UpdatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CartItems">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2137:2454#L63">CartItems</a>
 				<a class="permalink" href="#CartItems">¶</a>
 				
 				
@@ -1481,7 +1663,7 @@
 		
 			
 			
-			<h2 id="Carts">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=527:796#L25">Carts</a>
+			<h2 id="Carts">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2469:2738#L83">Carts</a>
 				<a class="permalink" href="#Carts">¶</a>
 				
 				
@@ -1669,6 +1851,32 @@
 		
 			
 			
+			<h2 id="CountCampaignClaimsByCampaignIDAndUserIDParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=427:533#L13">CountCampaignClaimsByCampaignIDAndUserIDParams</a>
+				<a class="permalink" href="#CountCampaignClaimsByCampaignIDAndUserIDParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type CountCampaignClaimsByCampaignIDAndUserIDParams struct {
+<span id="CountCampaignClaimsByCampaignIDAndUserIDParams.CampaignID"></span>    CampaignID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CountCampaignClaimsByCampaignIDAndUserIDParams.UserID"></span>    UserID     <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
 			<h2 id="CountDashboardPurchasesByStatusParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=670:775#L23">CountDashboardPurchasesByStatusParams</a>
 				<a class="permalink" href="#CountDashboardPurchasesByStatusParams">¶</a>
 				
@@ -1809,7 +2017,7 @@
 		
 			
 			
-			<h2 id="Coupons">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=814:1398#L41">Coupons</a>
+			<h2 id="Coupons">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2756:3671#L99">Coupons</a>
 				<a class="permalink" href="#Coupons">¶</a>
 				
 				
@@ -1839,6 +2047,80 @@
 <span id="Coupons.CreatedAt"></span>    CreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
     <span class="comment">// 更新日時</span>
 <span id="Coupons.UpdatedAt"></span>    UpdatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+    <span class="comment">// 使うために必要な購入額の下限（条件なしのときNULL）</span>
+<span id="Coupons.MinPurchaseAmount"></span>    MinPurchaseAmount *<a href="../../../../../../builtin/#int64">int64</a>
+    <span class="comment">// 定率の値引きが1回に引ける額の上限（上限なしまたは定額のときNULL）</span>
+<span id="Coupons.DiscountMaxAmount"></span>    DiscountMaxAmount *<a href="../../../../../../builtin/#int64">int64</a>
+    <span class="comment">// 使えるようになる日時（発行時点から使えるときNULL）</span>
+<span id="Coupons.UsableFrom"></span>    UsableFrom *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CreateCampaignClaimParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=3911:4062#L178">CreateCampaignClaimParams</a>
+				<a class="permalink" href="#CreateCampaignClaimParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type CreateCampaignClaimParams struct {
+<span id="CreateCampaignClaimParams.ID"></span>    ID         <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCampaignClaimParams.CampaignID"></span>    CampaignID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCampaignClaimParams.UserID"></span>    UserID     <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCampaignClaimParams.CouponID"></span>    CouponID   <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCampaignClaimParams.ClaimedAt"></span>    ClaimedAt  <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CreateCampaignParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=2091:2633#L86">CreateCampaignParams</a>
+				<a class="permalink" href="#CreateCampaignParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type CreateCampaignParams struct {
+<span id="CreateCampaignParams.ID"></span>    ID                      <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCampaignParams.Code"></span>    Code                    <a href="../../../../../../builtin/#string">string</a>
+<span id="CreateCampaignParams.DiscountKind"></span>    DiscountKind            <a href="../../../../../../builtin/#string">string</a>
+<span id="CreateCampaignParams.DiscountValue"></span>    DiscountValue           <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="CreateCampaignParams.DiscountMaxAmount"></span>    DiscountMaxAmount       *<a href="../../../../../../builtin/#int64">int64</a>
+<span id="CreateCampaignParams.ScopeKind"></span>    ScopeKind               <a href="../../../../../../builtin/#string">string</a>
+<span id="CreateCampaignParams.ScopeTargetID"></span>    ScopeTargetID           *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCampaignParams.CouponMinPurchaseAmount"></span>    CouponMinPurchaseAmount *<a href="../../../../../../builtin/#int64">int64</a>
+<span id="CreateCampaignParams.CouponUsableFrom"></span>    CouponUsableFrom        *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CreateCampaignParams.CouponExpiresAt"></span>    CouponExpiresAt         <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CreateCampaignParams.StartsAt"></span>    StartsAt                <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CreateCampaignParams.EndsAt"></span>    EndsAt                  <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CreateCampaignParams.TotalLimit"></span>    TotalLimit              <a href="../../../../../../builtin/#int32">int32</a>
+<span id="CreateCampaignParams.PerUserLimit"></span>    PerUserLimit            <a href="../../../../../../builtin/#int32">int32</a>
+<span id="CreateCampaignParams.IssuedCount"></span>    IssuedCount             <a href="../../../../../../builtin/#int32">int32</a>
 }
 </pre>
 
@@ -1914,21 +2196,24 @@
 		
 			
 			
-			<h2 id="CreateCouponParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=502:735#L29">CreateCouponParams</a>
+			<h2 id="CreateCouponParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=595:942#L35">CreateCouponParams</a>
 				<a class="permalink" href="#CreateCouponParams">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type CreateCouponParams struct {
-<span id="CreateCouponParams.ID"></span>    ID            <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="CreateCouponParams.UserID"></span>    UserID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="CreateCouponParams.DiscountKind"></span>    DiscountKind  <a href="../../../../../../builtin/#int16">int16</a>
-<span id="CreateCouponParams.DiscountValue"></span>    DiscountValue <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
-<span id="CreateCouponParams.ScopeKind"></span>    ScopeKind     <a href="../../../../../../builtin/#int16">int16</a>
-<span id="CreateCouponParams.ScopeTargetID"></span>    ScopeTargetID *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="CreateCouponParams.ExpiresAt"></span>    ExpiresAt     <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="CreateCouponParams.IssuedAt"></span>    IssuedAt      <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CreateCouponParams.ID"></span>    ID                <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCouponParams.UserID"></span>    UserID            <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCouponParams.DiscountKind"></span>    DiscountKind      <a href="../../../../../../builtin/#int16">int16</a>
+<span id="CreateCouponParams.DiscountValue"></span>    DiscountValue     <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="CreateCouponParams.DiscountMaxAmount"></span>    DiscountMaxAmount *<a href="../../../../../../builtin/#int64">int64</a>
+<span id="CreateCouponParams.ScopeKind"></span>    ScopeKind         <a href="../../../../../../builtin/#int16">int16</a>
+<span id="CreateCouponParams.ScopeTargetID"></span>    ScopeTargetID     *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CreateCouponParams.MinPurchaseAmount"></span>    MinPurchaseAmount *<a href="../../../../../../builtin/#int64">int64</a>
+<span id="CreateCouponParams.UsableFrom"></span>    UsableFrom        *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CreateCouponParams.ExpiresAt"></span>    ExpiresAt         <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CreateCouponParams.IssuedAt"></span>    IssuedAt          <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
 }
 </pre>
 
@@ -2983,7 +3268,7 @@
 		
 			
 			
-			<h2 id="GetUserByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7868:7911#L312">GetUserByIDRow</a>
+			<h2 id="GetUserByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=8815:8858#L339">GetUserByIDRow</a>
 				<a class="permalink" href="#GetUserByIDRow">¶</a>
 				
 				
@@ -3008,7 +3293,7 @@
 		
 			
 			
-			<h2 id="GetUserRolesByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=8955:9035#L355">GetUserRolesByUserIDRow</a>
+			<h2 id="GetUserRolesByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9902:9982#L382">GetUserRolesByUserIDRow</a>
 				<a class="permalink" href="#GetUserRolesByUserIDRow">¶</a>
 				
 				
@@ -3035,7 +3320,7 @@
 		
 			
 			
-			<h2 id="IdempotencyKeys">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=1419:2158#L67">IdempotencyKeys</a>
+			<h2 id="IdempotencyKeys">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=3692:4431#L131">IdempotencyKeys</a>
 				<a class="permalink" href="#IdempotencyKeys">¶</a>
 				
 				
@@ -3084,7 +3369,7 @@
 		
 			
 			
-			<h2 id="Inquiries">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2179:2416#L95">Inquiries</a>
+			<h2 id="Inquiries">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4452:4689#L159">Inquiries</a>
 				<a class="permalink" href="#Inquiries">¶</a>
 				
 				
@@ -3117,7 +3402,7 @@
 		
 			
 			
-			<h2 id="InquiryMessages">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2452:2813#L107">InquiryMessages</a>
+			<h2 id="InquiryMessages">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4725:5086#L171">InquiryMessages</a>
 				<a class="permalink" href="#InquiryMessages">¶</a>
 				
 				
@@ -3309,7 +3594,7 @@
 		
 			
 			
-			<h2 id="ListActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=10271:10346#L400">ListActiveUsersParams</a>
+			<h2 id="ListActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11218:11293#L427">ListActiveUsersParams</a>
 				<a class="permalink" href="#ListActiveUsersParams">¶</a>
 				
 				
@@ -3335,7 +3620,7 @@
 		
 			
 			
-			<h2 id="ListActiveUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=10348:10395#L405">ListActiveUsersRow</a>
+			<h2 id="ListActiveUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11295:11342#L432">ListActiveUsersRow</a>
 				<a class="permalink" href="#ListActiveUsersRow">¶</a>
 				
 				
@@ -3763,7 +4048,7 @@
 		
 			
 			
-			<h2 id="ListCouponsByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=1672:1727#L83">ListCouponsByUserIDRow</a>
+			<h2 id="ListCouponsByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=2119:2174#L101">ListCouponsByUserIDRow</a>
 				<a class="permalink" href="#ListCouponsByUserIDRow">¶</a>
 				
 				
@@ -3788,7 +4073,7 @@
 		
 			
 			
-			<h2 id="ListDeletedUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11838:11914#L459">ListDeletedUsersParams</a>
+			<h2 id="ListDeletedUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12785:12861#L486">ListDeletedUsersParams</a>
 				<a class="permalink" href="#ListDeletedUsersParams">¶</a>
 				
 				
@@ -3814,7 +4099,7 @@
 		
 			
 			
-			<h2 id="ListDeletedUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11916:11964#L464">ListDeletedUsersRow</a>
+			<h2 id="ListDeletedUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12863:12911#L491">ListDeletedUsersRow</a>
 				<a class="permalink" href="#ListDeletedUsersRow">¶</a>
 				
 				
@@ -4645,7 +4930,7 @@
 		
 			
 			
-			<h2 id="ListPurgeCandidateUserIDsAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=13292:13407#L520">ListPurgeCandidateUserIDsAfterParams</a>
+			<h2 id="ListPurgeCandidateUserIDsAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=14239:14354#L547">ListPurgeCandidateUserIDsAfterParams</a>
 				<a class="permalink" href="#ListPurgeCandidateUserIDsAfterParams">¶</a>
 				
 				
@@ -4672,7 +4957,7 @@
 		
 			
 			
-			<h2 id="ListPurgeCandidateUserIDsFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=14537:14630#L565">ListPurgeCandidateUserIDsFirstParams</a>
+			<h2 id="ListPurgeCandidateUserIDsFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=15484:15577#L592">ListPurgeCandidateUserIDsFirstParams</a>
 				<a class="permalink" href="#ListPurgeCandidateUserIDsFirstParams">¶</a>
 				
 				
@@ -4750,7 +5035,7 @@
 		
 			
 			
-			<h2 id="ListUsersFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=17411:17525#L668">ListUsersFeedAfterParams</a>
+			<h2 id="ListUsersFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=18358:18472#L695">ListUsersFeedAfterParams</a>
 				<a class="permalink" href="#ListUsersFeedAfterParams">¶</a>
 				
 				
@@ -4777,7 +5062,7 @@
 		
 			
 			
-			<h2 id="ListUsersFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=17527:17577#L674">ListUsersFeedAfterRow</a>
+			<h2 id="ListUsersFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=18474:18524#L701">ListUsersFeedAfterRow</a>
 				<a class="permalink" href="#ListUsersFeedAfterRow">¶</a>
 				
 				
@@ -4802,7 +5087,7 @@
 		
 			
 			
-			<h2 id="ListUsersFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=19238:19288#L732">ListUsersFeedFirstRow</a>
+			<h2 id="ListUsersFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=20185:20235#L759">ListUsersFeedFirstRow</a>
 				<a class="permalink" href="#ListUsersFeedFirstRow">¶</a>
 				
 				
@@ -4827,7 +5112,7 @@
 		
 			
 			
-			<h2 id="ListUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=15788:15857#L606">ListUsersParams</a>
+			<h2 id="ListUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=16735:16804#L633">ListUsersParams</a>
 				<a class="permalink" href="#ListUsersParams">¶</a>
 				
 				
@@ -4853,7 +5138,7 @@
 		
 			
 			
-			<h2 id="ListUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=15859:15900#L611">ListUsersRow</a>
+			<h2 id="ListUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=16806:16847#L638">ListUsersRow</a>
 				<a class="permalink" href="#ListUsersRow">¶</a>
 				
 				
@@ -4861,6 +5146,56 @@
 			
 			<pre>type ListUsersRow struct {
 <span id="ListUsersRow.Users"></span>    Users <a href="#Users">Users</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="LockCampaignByCodeRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=4990:5048#L220">LockCampaignByCodeRow</a>
+				<a class="permalink" href="#LockCampaignByCodeRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type LockCampaignByCodeRow struct {
+<span id="LockCampaignByCodeRow.Campaigns"></span>    Campaigns <a href="#Campaigns">Campaigns</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="LockCampaignByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=6988:7044#L266">LockCampaignByIDRow</a>
+				<a class="permalink" href="#LockCampaignByIDRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type LockCampaignByIDRow struct {
+<span id="LockCampaignByIDRow.Campaigns"></span>    Campaigns <a href="#Campaigns">Campaigns</a>
 }
 </pre>
 
@@ -4928,7 +5263,7 @@
 		
 			
 			
-			<h2 id="LockCouponByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=3331:3381#L135">LockCouponByIDRow</a>
+			<h2 id="LockCouponByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=3992:4042#L156">LockCouponByIDRow</a>
 				<a class="permalink" href="#LockCouponByIDRow">¶</a>
 				
 				
@@ -4979,7 +5314,7 @@
 		
 			
 			
-			<h2 id="LockUserByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=20737:20781#L786">LockUserByIDRow</a>
+			<h2 id="LockUserByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=21684:21728#L813">LockUserByIDRow</a>
 				<a class="permalink" href="#LockUserByIDRow">¶</a>
 				
 				
@@ -5004,7 +5339,7 @@
 		
 			
 			
-			<h2 id="LockUserShareByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=22212:22261#L829">LockUserShareByIDRow</a>
+			<h2 id="LockUserShareByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=23159:23208#L856">LockUserShareByIDRow</a>
 				<a class="permalink" href="#LockUserShareByIDRow">¶</a>
 				
 				
@@ -5056,7 +5391,7 @@
 		
 			
 			
-			<h2 id="Outbox">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=2900:4134#L125">Outbox</a>
+			<h2 id="Outbox">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=5173:6407#L189">Outbox</a>
 				<a class="permalink" href="#Outbox">¶</a>
 				
 				
@@ -5113,7 +5448,7 @@
 		
 			
 			
-			<h2 id="Prefectures">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4152:4373#L161">Prefectures</a>
+			<h2 id="Prefectures">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=6425:6646#L225">Prefectures</a>
 				<a class="permalink" href="#Prefectures">¶</a>
 				
 				
@@ -5150,7 +5485,7 @@
 		
 			
 			
-			<h2 id="ProductCategories">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4397:4603#L177">ProductCategories</a>
+			<h2 id="ProductCategories">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=6670:6876#L241">ProductCategories</a>
 				<a class="permalink" href="#ProductCategories">¶</a>
 				
 				
@@ -5187,7 +5522,7 @@
 		
 			
 			
-			<h2 id="ProductImages">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4621:4888#L193">ProductImages</a>
+			<h2 id="ProductImages">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=6894:7161#L257">ProductImages</a>
 				<a class="permalink" href="#ProductImages">¶</a>
 				
 				
@@ -5226,7 +5561,7 @@
 		
 			
 			
-			<h2 id="ProductStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=4915:5119#L211">ProductStatuses</a>
+			<h2 id="ProductStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=7188:7392#L275">ProductStatuses</a>
 				<a class="permalink" href="#ProductStatuses">¶</a>
 				
 				
@@ -5263,7 +5598,7 @@
 		
 			
 			
-			<h2 id="Products">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=5131:5659#L227">Products</a>
+			<h2 id="Products">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=7404:7932#L291">Products</a>
 				<a class="permalink" href="#Products">¶</a>
 				
 				
@@ -5314,7 +5649,7 @@
 		
 			
 			
-			<h2 id="PurchaseDetails">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=5677:5939#L257">PurchaseDetails</a>
+			<h2 id="PurchaseDetails">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=7950:8212#L321">PurchaseDetails</a>
 				<a class="permalink" href="#PurchaseDetails">¶</a>
 				
 				
@@ -5353,7 +5688,7 @@
 		
 			
 			
-			<h2 id="PurchaseStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=5966:6171#L275">PurchaseStatuses</a>
+			<h2 id="PurchaseStatuses">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=8239:8444#L339">PurchaseStatuses</a>
 				<a class="permalink" href="#PurchaseStatuses">¶</a>
 				
 				
@@ -5390,7 +5725,7 @@
 		
 			
 			
-			<h2 id="Purchases">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=6183:6878#L291">Purchases</a>
+			<h2 id="Purchases">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=8456:9151#L355">Purchases</a>
 				<a class="permalink" href="#Purchases">¶</a>
 				
 				
@@ -5690,6 +6025,42 @@ WHERE heads.status = &#39;dead&#39;
 				
 			
 				
+				<h3 id="Queries.CountCampaignClaimsByCampaignIDAndUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=903:1050#L26">CountCampaignClaimsByCampaignIDAndUserID</a>
+					<a class="permalink" href="#Queries.CountCampaignClaimsByCampaignIDAndUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) CountCampaignClaimsByCampaignIDAndUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#CountCampaignClaimsByCampaignIDAndUserIDParams">CountCampaignClaimsByCampaignIDAndUserIDParams</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/campaign/count_campaign_claims.sql ===
+1 人あたり上限の判定が引く。キャンペーン行の排他ロックを取ったあとで呼ぶこと
+（ADR-0036 (ordered-pessimistic-row-locks) の決定 2）。
+</p><pre>SELECT COUNT(*)
+FROM campaign_claims AS cc
+WHERE cc.campaign_id = $1
+    AND cc.user_id = $2
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.CountCampaigns">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=1414:1482#L42">CountCampaigns</a>
+					<a class="permalink" href="#Queries.CountCampaigns">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) CountCampaigns(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>キャンペーンの総件数を返す。ページングが引く。
+</p><pre>SELECT COUNT(*)
+FROM campaigns
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.CountDashboardPurchasesByStatus">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=1831:1992#L55">CountDashboardPurchasesByStatus</a>
 					<a class="permalink" href="#Queries.CountDashboardPurchasesByStatus">¶</a>
 					
@@ -5961,6 +6332,82 @@ FROM users
 				
 			
 				
+				<h3 id="Queries.CreateCampaign">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=3254:3340#L140">CreateCampaign</a>
+					<a class="permalink" href="#Queries.CreateCampaign">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) CreateCampaign(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#CreateCampaignParams">CreateCampaignParams</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>=== source: database/dml/repository/campaign/insert_campaign.sql ===
+</p><pre>INSERT INTO campaigns (
+    id,
+    code,
+    discount_kind,
+    discount_value,
+    discount_max_amount,
+    scope_kind,
+    scope_target_id,
+    coupon_min_purchase_amount,
+    coupon_usable_from,
+    coupon_expires_at,
+    starts_at,
+    ends_at,
+    total_limit,
+    per_user_limit,
+    issued_count
+) VALUES
+(
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    $15
+)
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.CreateCampaignClaim">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=4337:4433#L202">CreateCampaignClaim</a>
+					<a class="permalink" href="#Queries.CreateCampaignClaim">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) CreateCampaignClaim(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#CreateCampaignClaimParams">CreateCampaignClaimParams</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>=== source: database/dml/repository/campaign/insert_campaign_claim.sql ===
+</p><pre>INSERT INTO campaign_claims (
+    id,
+    campaign_id,
+    user_id,
+    coupon_id,
+    claimed_at
+) VALUES
+(
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
+)
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.CreateCart">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/cart_repository.gen.sql.go.html?s=868:946#L43">CreateCart</a>
 					<a class="permalink" href="#Queries.CreateCart">¶</a>
 					
@@ -6018,7 +6465,7 @@ FROM users
 				
 			
 				
-				<h3 id="Queries.CreateCoupon">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=1093:1175#L62">CreateCoupon</a>
+				<h3 id="Queries.CreateCoupon">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=1411:1493#L77">CreateCoupon</a>
 					<a class="permalink" href="#Queries.CreateCoupon">¶</a>
 					
 					
@@ -6030,8 +6477,11 @@ FROM users
     user_id,
     discount_kind,
     discount_value,
+    discount_max_amount,
     scope_kind,
     scope_target_id,
+    min_purchase_amount,
+    usable_from,
     expires_at,
     issued_at
 ) VALUES
@@ -6043,7 +6493,10 @@ FROM users
     $5,
     $6,
     $7,
-    $8
+    $8,
+    $9,
+    $10,
+    $11
 )
 </pre>
 
@@ -6339,6 +6792,29 @@ WHERE stream_id = $1
 				
 			
 				
+				<h3 id="Queries.DeleteCampaignClaimsByUserIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=5099:5194#L230">DeleteCampaignClaimsByUserIDs</a>
+					<a class="permalink" href="#Queries.DeleteCampaignClaimsByUserIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) DeleteCampaignClaimsByUserIDs(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userIds []<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../../../builtin/#error">error</a></pre>
+				<p>coupons より先に呼ぶこと。受け取り記録は利用者とクーポンの両方を参照するため、
+残したまま DeleteCouponsByUserIDs を呼ぶと FK 違反になる。
+論理削除条件の理由は DeleteUserIdentitiesByUserIDs を参照。
+</p><pre>DELETE FROM campaign_claims
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY($1::UUID[])
+            AND u.deleted_at IS NOT NULL
+    )
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.DeleteCart">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/cart_repository.gen.sql.go.html?s=4809:4878#L189">DeleteCart</a>
 					<a class="permalink" href="#Queries.DeleteCart">¶</a>
 					
@@ -6374,7 +6850,7 @@ WHERE cart_items.cart_id = $1
 				
 			
 				
-				<h3 id="Queries.DeleteCouponsByUserIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=4980:5068#L229">DeleteCouponsByUserIDs</a>
+				<h3 id="Queries.DeleteCouponsByUserIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=5891:5979#L255">DeleteCouponsByUserIDs</a>
 					<a class="permalink" href="#Queries.DeleteCouponsByUserIDs">¶</a>
 					
 					
@@ -6467,15 +6943,16 @@ WHERE id IN (
 				
 			
 				
-				<h3 id="Queries.DeleteUserIdentitiesByUserIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=6018:6113#L256">DeleteUserIdentitiesByUserIDs</a>
+				<h3 id="Queries.DeleteUserIdentitiesByUserIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=6965:7060#L283">DeleteUserIdentitiesByUserIDs</a>
 					<a class="permalink" href="#Queries.DeleteUserIdentitiesByUserIDs">¶</a>
 					
 					
 				</h3>
 				<pre>func (q *<a href="#Queries">Queries</a>) DeleteUserIdentitiesByUserIDs(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userIds []<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../../../builtin/#error">error</a></pre>
 				<p>=== source: database/dml/repository/user/delete_purged_users.sql ===
-users より先に呼ぶこと（FK 違反を避ける）。同じ順序制約は本ファイルの DeleteUserRolesByUserIDs /
-DeleteCouponsByUserIDs も持つ。論理削除済みに限る条件は DeleteUsersByIDs の WHERE と揃えること
+users より先に呼ぶこと（FK 違反を避ける）。同じ順序制約は本ファイルの
+DeleteUserRolesByUserIDs / DeleteCouponsByUserIDs / DeleteCampaignClaimsByUserIDs も持つ。
+論理削除済みに限る条件は DeleteUsersByIDs の WHERE と揃えること
 — ずれると、削除されないユーザーの従属行だけが失われる。
 </p><pre>DELETE FROM user_identities
 WHERE user_id IN (
@@ -6491,7 +6968,7 @@ WHERE user_id IN (
 				
 			
 				
-				<h3 id="Queries.DeleteUserRolesByUserIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=6730:6820#L280">DeleteUserRolesByUserIDs</a>
+				<h3 id="Queries.DeleteUserRolesByUserIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7677:7767#L307">DeleteUserRolesByUserIDs</a>
 					<a class="permalink" href="#Queries.DeleteUserRolesByUserIDs">¶</a>
 					
 					
@@ -6512,7 +6989,7 @@ WHERE user_id IN (
 				
 			
 				
-				<h3 id="Queries.DeleteUsersByIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=7363:7450#L297">DeleteUsersByIDs</a>
+				<h3 id="Queries.DeleteUsersByIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=8310:8397#L324">DeleteUsersByIDs</a>
 					<a class="permalink" href="#Queries.DeleteUsersByIDs">¶</a>
 					
 					
@@ -7022,7 +7499,7 @@ ORDER BY ps.sort_key ASC
 				
 			
 				
-				<h3 id="Queries.GetUserByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=8235:8333#L322">GetUserByID</a>
+				<h3 id="Queries.GetUserByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9182:9280#L349">GetUserByID</a>
 					<a class="permalink" href="#Queries.GetUserByID">¶</a>
 					
 					
@@ -7040,7 +7517,7 @@ WHERE u.id = $1
 				
 			
 				
-				<h3 id="Queries.GetUserRolesByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=9420:9538#L372">GetUserRolesByUserID</a>
+				<h3 id="Queries.GetUserRolesByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=10367:10485#L399">GetUserRolesByUserID</a>
 					<a class="permalink" href="#Queries.GetUserRolesByUserID">¶</a>
 					
 					
@@ -7210,7 +7687,7 @@ coupon_id は未適用なら NULL。discount_amount との対応（NULL ⇔ 0）
 				
 			
 				
-				<h3 id="Queries.ListActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=10699:10812#L416">ListActiveUsers</a>
+				<h3 id="Queries.ListActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=11646:11759#L443">ListActiveUsers</a>
 					<a class="permalink" href="#Queries.ListActiveUsers">¶</a>
 					
 					
@@ -7633,7 +8110,7 @@ ORDER BY ci.added_at, ci.id
 				
 			
 				
-				<h3 id="Queries.ListCouponsByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=2309:2420#L96">ListCouponsByUserID</a>
+				<h3 id="Queries.ListCouponsByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=2817:2928#L114">ListCouponsByUserID</a>
 					<a class="permalink" href="#Queries.ListCouponsByUserID">¶</a>
 					
 					
@@ -7643,7 +8120,7 @@ ORDER BY ci.added_at, ci.id
 指定利用者が保有するクーポンを発行日時の新しい順（同時刻は ID 降順）で返す。
 使用済み・失効済みで絞らない理由は docs/spec/domain/coupon.md の
 Repository Methods &gt; FindByUserID を参照。
-</p><pre>SELECT c.id, c.user_id, c.discount_kind, c.discount_value, c.scope_kind, c.scope_target_id, c.expires_at, c.used_at, c.issued_at, c.created_at, c.updated_at
+</p><pre>SELECT c.id, c.user_id, c.discount_kind, c.discount_value, c.scope_kind, c.scope_target_id, c.expires_at, c.used_at, c.issued_at, c.created_at, c.updated_at, c.min_purchase_amount, c.discount_max_amount, c.usable_from
 FROM coupons AS c
 WHERE c.user_id = $1
 ORDER BY c.issued_at DESC, c.id DESC
@@ -7654,7 +8131,7 @@ ORDER BY c.issued_at DESC, c.id DESC
 				
 			
 				
-				<h3 id="Queries.ListDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=12273:12389#L475">ListDeletedUsers</a>
+				<h3 id="Queries.ListDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=13220:13336#L502">ListDeletedUsers</a>
 					<a class="permalink" href="#Queries.ListDeletedUsers">¶</a>
 					
 					
@@ -8412,7 +8889,7 @@ ORDER BY page.ordered_at DESC, page.id DESC
 				
 			
 				
-				<h3 id="Queries.ListPurgeCandidateUserIDsAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=13817:13950#L536">ListPurgeCandidateUserIDsAfter</a>
+				<h3 id="Queries.ListPurgeCandidateUserIDsAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=14764:14897#L563">ListPurgeCandidateUserIDsAfter</a>
 					<a class="permalink" href="#Queries.ListPurgeCandidateUserIDsAfter">¶</a>
 					
 					
@@ -8434,7 +8911,7 @@ LIMIT $3
 				
 			
 				
-				<h3 id="Queries.ListPurgeCandidateUserIDsFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=14984:15117#L579">ListPurgeCandidateUserIDsFirst</a>
+				<h3 id="Queries.ListPurgeCandidateUserIDsFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=15931:16064#L606">ListPurgeCandidateUserIDsFirst</a>
 					<a class="permalink" href="#Queries.ListPurgeCandidateUserIDsFirst">¶</a>
 					
 					
@@ -8502,7 +8979,7 @@ WHERE user_id = ANY($1::UUID[])
 				
 			
 				
-				<h3 id="Queries.ListUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=16220:16315#L621">ListUsers</a>
+				<h3 id="Queries.ListUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=17167:17262#L648">ListUsers</a>
 					<a class="permalink" href="#Queries.ListUsers">¶</a>
 					
 					
@@ -8520,7 +8997,7 @@ LIMIT $2 OFFSET $1
 				
 			
 				
-				<h3 id="Queries.ListUsersFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=18064:18186#L689">ListUsersFeedAfter</a>
+				<h3 id="Queries.ListUsersFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=19011:19133#L716">ListUsersFeedAfter</a>
 					<a class="permalink" href="#Queries.ListUsersFeedAfter">¶</a>
 					
 					
@@ -8543,7 +9020,7 @@ LIMIT $3
 				
 			
 				
-				<h3 id="Queries.ListUsersFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=19644:19753#L743">ListUsersFeedFirst</a>
+				<h3 id="Queries.ListUsersFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=20591:20700#L770">ListUsersFeedFirst</a>
 					<a class="permalink" href="#Queries.ListUsersFeedFirst">¶</a>
 					
 					
@@ -8555,6 +9032,47 @@ FROM users AS u
 WHERE u.deleted_at IS NULL
 ORDER BY u.created_at DESC, u.id DESC
 LIMIT $1
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.LockCampaignByCode">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=5847:5949#L233">LockCampaignByCode</a>
+					<a class="permalink" href="#Queries.LockCampaignByCode">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) LockCampaignByCode(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, code <a href="../../../../../../builtin/#string">string</a>) (*<a href="#LockCampaignByCodeRow">LockCampaignByCodeRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/campaign/lock_campaign_by_code.sql ===
+正規化済みコードからキャンペーンを 1 件、悲観ロック（FOR UPDATE）して取得する。不存在は 0 行（NotFound）。
+配布期間・停止・上限では絞らない（ADR-0036 (ordered-pessimistic-row-locks) の決定 5）。
+ロックを条件の評価より前に取る理由は同 ADR の決定 2 を参照。
+</p><pre>SELECT c.id, c.code, c.discount_kind, c.discount_value, c.discount_max_amount, c.scope_kind, c.scope_target_id, c.coupon_min_purchase_amount, c.coupon_usable_from, c.coupon_expires_at, c.starts_at, c.ends_at, c.total_limit, c.per_user_limit, c.issued_count, c.suspended_at, c.created_at, c.updated_at
+FROM campaigns AS c
+WHERE c.code = $1
+FOR UPDATE
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.LockCampaignByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=7714:7813#L278">LockCampaignByID</a>
+					<a class="permalink" href="#Queries.LockCampaignByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) LockCampaignByID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, id <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#LockCampaignByIDRow">LockCampaignByIDRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/campaign/lock_campaign_by_id.sql ===
+ID からキャンペーンを 1 件、悲観ロック（FOR UPDATE）して取得する。不存在は 0 行（NotFound）。
+停止のために使う。絞り込みを置かない理由は LockCampaignByCode を参照。
+</p><pre>SELECT c.id, c.code, c.discount_kind, c.discount_value, c.discount_max_amount, c.scope_kind, c.scope_target_id, c.coupon_min_purchase_amount, c.coupon_usable_from, c.coupon_expires_at, c.starts_at, c.ends_at, c.total_limit, c.per_user_limit, c.issued_count, c.suspended_at, c.created_at, c.updated_at
+FROM campaigns AS c
+WHERE c.id = $1
+FOR UPDATE
 </pre>
 
 				
@@ -8606,7 +9124,7 @@ FOR UPDATE
 				
 			
 				
-				<h3 id="Queries.LockCouponByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=4100:4195#L150">LockCouponByID</a>
+				<h3 id="Queries.LockCouponByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=4822:4917#L171">LockCouponByID</a>
 					<a class="permalink" href="#Queries.LockCouponByID">¶</a>
 					
 					
@@ -8618,7 +9136,7 @@ ID からクーポンを 1 件、悲観ロック（FOR UPDATE）して取得す�
 Repository Methods &gt; LockByID を参照。
 取得位置の不変条件は docs/spec/usecase/purchase.md の CreatePurchase / CancelPurchase を参照
 （ADR-0036 (ordered-pessimistic-row-locks)）。
-</p><pre>SELECT c.id, c.user_id, c.discount_kind, c.discount_value, c.scope_kind, c.scope_target_id, c.expires_at, c.used_at, c.issued_at, c.created_at, c.updated_at
+</p><pre>SELECT c.id, c.user_id, c.discount_kind, c.discount_value, c.scope_kind, c.scope_target_id, c.expires_at, c.used_at, c.issued_at, c.created_at, c.updated_at, c.min_purchase_amount, c.discount_max_amount, c.usable_from
 FROM coupons AS c
 WHERE c.id = $1
 FOR UPDATE
@@ -8653,7 +9171,7 @@ FOR UPDATE OF p
 				
 			
 				
-				<h3 id="Queries.LockUserByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=21424:21524#L800">LockUserByID</a>
+				<h3 id="Queries.LockUserByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=22371:22471#L827">LockUserByID</a>
 					<a class="permalink" href="#Queries.LockUserByID">¶</a>
 					
 					
@@ -8675,7 +9193,7 @@ FOR UPDATE
 				
 			
 				
-				<h3 id="Queries.LockUserShareByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=22972:23082#L843">LockUserShareByID</a>
+				<h3 id="Queries.LockUserShareByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=23919:24029#L870">LockUserShareByID</a>
 					<a class="permalink" href="#Queries.LockUserShareByID">¶</a>
 					
 					
@@ -8828,7 +9346,7 @@ WHERE ui.issuer = $1
 				
 			
 				
-				<h3 id="Queries.SearchActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=24381:24500#L892">SearchActiveUsers</a>
+				<h3 id="Queries.SearchActiveUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=25328:25447#L919">SearchActiveUsers</a>
 					<a class="permalink" href="#Queries.SearchActiveUsers">¶</a>
 					
 					
@@ -8848,7 +9366,7 @@ LIMIT $3 OFFSET $2
 				
 			
 				
-				<h3 id="Queries.SearchDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=26115:26237#L954">SearchDeletedUsers</a>
+				<h3 id="Queries.SearchDeletedUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=27062:27184#L981">SearchDeletedUsers</a>
 					<a class="permalink" href="#Queries.SearchDeletedUsers">¶</a>
 					
 					
@@ -8868,7 +9386,7 @@ LIMIT $3 OFFSET $2
 				
 			
 				
-				<h3 id="Queries.SearchUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=27812:27913#L1014">SearchUsers</a>
+				<h3 id="Queries.SearchUsers">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=28759:28860#L1041">SearchUsers</a>
 					<a class="permalink" href="#Queries.SearchUsers">¶</a>
 					
 					
@@ -8900,6 +9418,25 @@ LIMIT $3 OFFSET $2
 </p><pre>SELECT u.id::UUID AS user_id
 FROM users AS u
 WHERE u.deleted_at IS NULL
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.SelectCampaigns">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=9563:9676#L327">SelectCampaigns</a>
+					<a class="permalink" href="#Queries.SelectCampaigns">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) SelectCampaigns(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#SelectCampaignsParams">SelectCampaignsParams</a>) ([]*<a href="#SelectCampaignsRow">SelectCampaignsRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/campaign/select_campaigns.sql ===
+キャンペーンを配布期間の開始が新しい順で返す。admin の一覧が引く。
+</p><pre>SELECT c.id, c.code, c.discount_kind, c.discount_value, c.discount_max_amount, c.scope_kind, c.scope_target_id, c.coupon_min_purchase_amount, c.coupon_usable_from, c.coupon_expires_at, c.starts_at, c.ends_at, c.total_limit, c.per_user_limit, c.issued_count, c.suspended_at, c.created_at, c.updated_at
+FROM campaigns AS c
+ORDER BY c.starts_at DESC, c.id DESC
+LIMIT $2 OFFSET $1
 </pre>
 
 				
@@ -9164,6 +9701,53 @@ WHERE id = $2
 				
 			
 				
+				<h3 id="Queries.UpdateCampaignIssuedCount">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=11479:11572#L387">UpdateCampaignIssuedCount</a>
+					<a class="permalink" href="#Queries.UpdateCampaignIssuedCount">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) UpdateCampaignIssuedCount(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, id <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/campaign/update_campaign_issued_count.sql ===
+発行済み枚数を 1 増やす。更新件数を返す。
+WHERE の issued_count &lt; total_limit は、行ロックを取らずに呼ばれた場合に備える二重防御
+（該当行なしは呼び出し側が競合として扱う）。上限の判定そのものはドメインが行う
+（ADR-0036 (ordered-pessimistic-row-locks) の決定 5）。
+</p><pre>UPDATE campaigns
+SET
+    issued_count = campaigns.issued_count + 1,
+    updated_at = NOW()
+WHERE campaigns.id = $1
+    AND campaigns.issued_count &lt; campaigns.total_limit
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.UpdateCampaignSuspended">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=12554:12667#L420">UpdateCampaignSuspended</a>
+					<a class="permalink" href="#Queries.UpdateCampaignSuspended">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) UpdateCampaignSuspended(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#UpdateCampaignSuspendedParams">UpdateCampaignSuspendedParams</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/campaign/update_campaign_suspended.sql ===
+キャンペーンを停止する。更新件数を返す。
+WHERE の suspended_at IS NULL は、行ロックを取らずに呼ばれた場合に備える二重防御
+（該当行なしは呼び出し側が競合として扱う）。停止は取り消せないため遷移は一方向である。
+</p><pre>UPDATE campaigns
+SET
+    suspended_at = $1,
+    updated_at = NOW()
+WHERE campaigns.id = $2
+    AND campaigns.suspended_at IS NULL
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.UpdateCart">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/cart_repository.gen.sql.go.html?s=14229:14316#L477">UpdateCart</a>
 					<a class="permalink" href="#Queries.UpdateCart">¶</a>
 					
@@ -9187,7 +9771,7 @@ WHERE carts.id = $4
 				
 			
 				
-				<h3 id="Queries.UpdateCouponUnused">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=5327:5413#L190">UpdateCouponUnused</a>
+				<h3 id="Queries.UpdateCouponUnused">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=6138:6224#L214">UpdateCouponUnused</a>
 					<a class="permalink" href="#Queries.UpdateCouponUnused">¶</a>
 					
 					
@@ -9211,7 +9795,7 @@ WHERE coupons.id = $1
 				
 			
 				
-				<h3 id="Queries.UpdateCouponUsed">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=6339:6438#L224">UpdateCouponUsed</a>
+				<h3 id="Queries.UpdateCouponUsed">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=7150:7249#L248">UpdateCouponUsed</a>
 					<a class="permalink" href="#Queries.UpdateCouponUsed">¶</a>
 					
 					
@@ -9400,7 +9984,7 @@ WHERE purchases.id = $3
 				
 			
 				
-				<h3 id="Queries.UpdateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=29625:29712#L1099">UpdateUser</a>
+				<h3 id="Queries.UpdateUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=30572:30659#L1126">UpdateUser</a>
 					<a class="permalink" href="#Queries.UpdateUser">¶</a>
 					
 					
@@ -9479,7 +10063,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="RealtimeStreamSequences">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=6959:7113#L329">RealtimeStreamSequences</a>
+			<h2 id="RealtimeStreamSequences">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=9232:9386#L393">RealtimeStreamSequences</a>
 				<a class="permalink" href="#RealtimeStreamSequences">¶</a>
 				
 				
@@ -9560,7 +10144,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="Roles">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=7128:7322#L337">Roles</a>
+			<h2 id="Roles">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=9401:9595#L401">Roles</a>
 				<a class="permalink" href="#Roles">¶</a>
 				
 				
@@ -9597,7 +10181,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SchemaMigrations">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=7324:7385#L352">SchemaMigrations</a>
+			<h2 id="SchemaMigrations">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=9597:9658#L416">SchemaMigrations</a>
 				<a class="permalink" href="#SchemaMigrations">¶</a>
 				
 				
@@ -9623,7 +10207,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SearchActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=23872:23977#L874">SearchActiveUsersParams</a>
+			<h2 id="SearchActiveUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=24819:24924#L901">SearchActiveUsersParams</a>
 				<a class="permalink" href="#SearchActiveUsersParams">¶</a>
 				
 				
@@ -9650,7 +10234,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SearchActiveUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=23979:24028#L880">SearchActiveUsersRow</a>
+			<h2 id="SearchActiveUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=24926:24975#L907">SearchActiveUsersRow</a>
 				<a class="permalink" href="#SearchActiveUsersRow">¶</a>
 				
 				
@@ -9675,7 +10259,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SearchDeletedUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=25599:25705#L936">SearchDeletedUsersParams</a>
+			<h2 id="SearchDeletedUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=26546:26652#L963">SearchDeletedUsersParams</a>
 				<a class="permalink" href="#SearchDeletedUsersParams">¶</a>
 				
 				
@@ -9702,7 +10286,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SearchDeletedUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=25707:25757#L942">SearchDeletedUsersRow</a>
+			<h2 id="SearchDeletedUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=26654:26704#L969">SearchDeletedUsersRow</a>
 				<a class="permalink" href="#SearchDeletedUsersRow">¶</a>
 				
 				
@@ -9727,7 +10311,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SearchUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=27292:27391#L997">SearchUsersParams</a>
+			<h2 id="SearchUsersParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=28239:28338#L1024">SearchUsersParams</a>
 				<a class="permalink" href="#SearchUsersParams">¶</a>
 				
 				
@@ -9754,7 +10338,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SearchUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=27393:27436#L1003">SearchUsersRow</a>
+			<h2 id="SearchUsersRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=28340:28383#L1030">SearchUsersRow</a>
 				<a class="permalink" href="#SearchUsersRow">¶</a>
 				
 				
@@ -9762,6 +10346,57 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 			
 			<pre>type SearchUsersRow struct {
 <span id="SearchUsersRow.Users"></span>    Users <a href="#Users">Users</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SelectCampaignsParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=8874:8939#L311">SelectCampaignsParams</a>
+				<a class="permalink" href="#SelectCampaignsParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type SelectCampaignsParams struct {
+<span id="SelectCampaignsParams.Offset"></span>    Offset <a href="../../../../../../builtin/#int32">int32</a>
+<span id="SelectCampaignsParams.Limit"></span>    Limit  <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SelectCampaignsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=8941:8996#L316">SelectCampaignsRow</a>
+				<a class="permalink" href="#SelectCampaignsRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type SelectCampaignsRow struct {
+<span id="SelectCampaignsRow.Campaigns"></span>    Campaigns <a href="#Campaigns">Campaigns</a>
 }
 </pre>
 
@@ -10021,6 +10656,32 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
+			<h2 id="UpdateCampaignSuspendedParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/campaign_repository.gen.sql.go.html?s=11920:12012#L404">UpdateCampaignSuspendedParams</a>
+				<a class="permalink" href="#UpdateCampaignSuspendedParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type UpdateCampaignSuspendedParams struct {
+<span id="UpdateCampaignSuspendedParams.SuspendedAt"></span>    SuspendedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="UpdateCampaignSuspendedParams.ID"></span>    ID          <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
 			<h2 id="UpdateCartParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/cart_repository.gen.sql.go.html?s=13616:13743#L459">UpdateCartParams</a>
 				<a class="permalink" href="#UpdateCartParams">¶</a>
 				
@@ -10049,7 +10710,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="UpdateCouponUsedParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=5724:5799#L207">UpdateCouponUsedParams</a>
+			<h2 id="UpdateCouponUsedParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go.html?s=6535:6610#L231">UpdateCouponUsedParams</a>
 				<a class="permalink" href="#UpdateCouponUsedParams">¶</a>
 				
 				
@@ -10245,7 +10906,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="UpdateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=28941:29239#L1067">UpdateUserParams</a>
+			<h2 id="UpdateUserParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go.html?s=29888:30186#L1094">UpdateUserParams</a>
 				<a class="permalink" href="#UpdateUserParams">¶</a>
 				
 				
@@ -10311,7 +10972,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="UserIdentities">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=7405:7675#L358">UserIdentities</a>
+			<h2 id="UserIdentities">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=9678:9948#L422">UserIdentities</a>
 				<a class="permalink" href="#UserIdentities">¶</a>
 				
 				
@@ -10348,7 +11009,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="UserRoles">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=7699:7868#L374">UserRoles</a>
+			<h2 id="UserRoles">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=9972:10141#L438">UserRoles</a>
 				<a class="permalink" href="#UserRoles">¶</a>
 				
 				
@@ -10381,7 +11042,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="Users">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=7883:8387#L386">Users</a>
+			<h2 id="Users">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/models.gen.go.html?s=10156:10660#L450">Users</a>
 				<a class="permalink" href="#Users">¶</a>
 				
 				
