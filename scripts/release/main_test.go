@@ -470,23 +470,18 @@ func Test_runner_runAll(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可
 func Test_hostRunner(t *testing.T) {
-	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("run はホストのコマンドを実行する", func(t *testing.T) {
 			require.NoError(t, hostRunner().run(step{name: "git", args: []string{"--version"}}))
 		})
 
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("output はホストのコマンドの標準出力を返す", func(t *testing.T) {
 			got, err := hostRunner().output("echo", "v1.0.0")
 			require.NoError(t, err)
 			assert.Equal(t, "v1.0.0\n", got)
 		})
 
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("remoteBranchExists はホストの git で origin のブランチを見る", func(t *testing.T) {
 			t.Chdir(newRepo(t))
 
@@ -597,11 +592,8 @@ func Test_resolveNext(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可
 func Test_runTag(t *testing.T) {
-	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("production へ合わせ、ノートを確かめてからタグ・push・Release の順に進む", func(t *testing.T) {
 			writeNote(t)
 			f := taggableRunner()
@@ -621,9 +613,7 @@ func Test_runTag(t *testing.T) {
 		})
 	})
 
-	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("異常系", func(t *testing.T) {
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("解釈できないフラグでは手順を 1 つも実行しない", func(t *testing.T) {
 			writeNote(t)
 			f := taggableRunner()
@@ -634,7 +624,6 @@ func Test_runTag(t *testing.T) {
 			assert.Empty(t, f.calls)
 		})
 
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("未知の粒度では production へ切り替える前に中止する", func(t *testing.T) {
 			writeNote(t)
 			f := taggableRunner()
@@ -643,7 +632,6 @@ func Test_runTag(t *testing.T) {
 			assert.NotContains(t, f.calls, "git switch production")
 		})
 
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("production へ合わせられなければノートを見ずにタグを打たない", func(t *testing.T) {
 			writeNote(t)
 			f := taggableRunner()
@@ -654,7 +642,6 @@ func Test_runTag(t *testing.T) {
 		})
 
 		// ノートはタグと Release の本文になるので、無いまま進むと本文の無いリリースが残る。
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("production にノートが無ければ production へ合わせた後で中止する", func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			f := taggableRunner()
@@ -666,7 +653,6 @@ func Test_runTag(t *testing.T) {
 			assert.NotContains(t, f.calls, releaseCreateCall)
 		})
 
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("タグを作れなければ push も Release 作成も行わない", func(t *testing.T) {
 			writeNote(t)
 			f := taggableRunner()
@@ -678,7 +664,6 @@ func Test_runTag(t *testing.T) {
 		})
 
 		// push できていないタグで Release を作ると、参照先の無いリリースが GitHub に残る。
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("タグを push できなければ Release を作らない", func(t *testing.T) {
 			writeNote(t)
 			f := taggableRunner()

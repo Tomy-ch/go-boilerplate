@@ -760,7 +760,6 @@ func Test_checkNamespaces(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir を使うため並列化できない
 func Test_treeAt(t *testing.T) {
 	// committed は 1 コミット済みのリポジトリを作り、その作業ツリーのパスを返します。
 	committed := func(t *testing.T, files map[string]string) string {
@@ -810,7 +809,6 @@ func Test_treeAt(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir を使うため並列化できない
 func Test_diffAgainst(t *testing.T) {
 	// committed は 1 コミット済みのリポジトリを作り、その ref 名を返します。
 	committed := func(t *testing.T, files map[string]string) string {

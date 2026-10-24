@@ -175,7 +175,7 @@ func engineRunAcksOnSuccess(t *testing.T) {
 	w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
 
 	cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool { return len(f.AckedIDs()) == 1 }, eventually, tick)
 	assert.Empty(t, f.NackedIDs())
@@ -195,7 +195,7 @@ func engineRunExtendCalledPeriodically(t *testing.T) {
 	set.ExtendInterval = 5 * time.Millisecond
 
 	cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-	defer func() { close(release); cancel(); _ = <-done }()
+	defer func() { close(release); cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
 }
@@ -230,7 +230,7 @@ func engineRunDuplicateDeliveryReachesHandler(t *testing.T) {
 	})}
 
 	cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool {
 		mu.Lock()
@@ -249,7 +249,7 @@ func engineRunPermanentGoesToFailureHandler(t *testing.T) {
 	})}
 
 	cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool {
 		return len(f.Failed()) == 1 && len(f.AckedIDs()) == 1
@@ -292,7 +292,7 @@ func engineRunPanicIsolated(t *testing.T) {
 	})}
 
 	cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool { return slices.Contains(f.AckedIDs(), "good") }, eventually, tick)
 	require.Eventually(t, func() bool { return slices.Contains(f.NackedIDs(), "bad") }, eventually, tick)
@@ -311,7 +311,7 @@ func engineRunReceiveCountWarnLog(t *testing.T) {
 	w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
 
 	cancel, done := startEngine(t, set, logger, w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool {
 		return observed.FilterMessage("receive count threshold reached").Len() >= 1
@@ -345,7 +345,7 @@ func engineRunConcurrencyBounded(t *testing.T) {
 	set.BatchSize = 8
 
 	cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-	defer func() { close(release); cancel(); _ = <-done }()
+	defer func() { close(release); cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool { return cur.Load() == 2 }, eventually, tick)
 	assert.LessOrEqual(t, maxObserved.Load(), int32(2))
@@ -369,7 +369,7 @@ func engineRunMaxInFlightBounded(t *testing.T) {
 	set.BatchSize = 5
 
 	cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-	defer func() { close(release); cancel(); _ = <-done }()
+	defer func() { close(release); cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool { return f.InflightLen() == 3 }, eventually, tick)
 	assert.LessOrEqual(t, f.InflightLen(), 3)
@@ -395,7 +395,7 @@ func engineRunPartitionKeySerialized(t *testing.T) {
 	})}
 
 	cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool {
 		mu.Lock()
@@ -431,7 +431,7 @@ func engineRunCircuitOpenAndRecover(t *testing.T) {
 	set.CircuitOpenBackoffMax = time.Second
 
 	cancel, done := startEngine(t, set, logging.NewTestLogger(t), w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	// B4-1: 連続 2 失敗で Open へ遷移する。MaxInFlight=1 のため poll loop は失敗確定
 	// （onFailure で trip）まで次の Receive に進めず、Open 遷移後は cooldown 待機に入る。
@@ -460,7 +460,7 @@ func engineRunFailureLogStructuredFields(t *testing.T) {
 	})}
 
 	cancel, done := startEngine(t, baseSettings(), logger, w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool {
 		for _, e := range observed.FilterMessage("retryable failure, nacked").All() {
@@ -517,7 +517,7 @@ func engineRunReceiveFailureContinuesPoll(t *testing.T) {
 	w := testWorker{name: "w", cons: f, handler: handlerFunc(func(context.Context, bw.Message) error { return nil })}
 
 	cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool { return len(f.AckedIDs()) == 1 }, eventually, tick)
 }
@@ -532,7 +532,7 @@ func engineRunRetryableNacked(t *testing.T) {
 	})}
 
 	cancel, done := startEngine(t, baseSettings(), logging.NewTestLogger(t), w)
-	defer func() { cancel(); _ = <-done }()
+	defer func() { cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool { return len(f.NackedIDs()) >= 1 }, eventually, tick)
 	assert.Empty(t, f.AckedIDs())
@@ -598,7 +598,7 @@ func engineRunExtendErrorHeartbeatContinues(t *testing.T) {
 	// test 終了と競合しない t 非依存の logger を使う（このテストはログを検証しない）。
 	logger, _ := logging.NewObservedTestLogger(t)
 	cancel, done := startEngine(t, set, logger, w)
-	defer func() { closeRelease(); cancel(); _ = <-done }()
+	defer func() { closeRelease(); cancel(); assert.NoError(t, <-done) }()
 
 	require.Eventually(t, func() bool { return f.ExtendCount("a") >= 2 }, eventually, tick)
 	closeRelease()
@@ -686,7 +686,8 @@ func TestEngine_drain(t *testing.T) {
 			close(release)
 
 			select {
-			case <-done:
+			case err := <-done:
+				assert.NoError(t, err)
 			case <-time.After(eventually):
 				t.Fatal("drain が完了しなかった")
 			}
