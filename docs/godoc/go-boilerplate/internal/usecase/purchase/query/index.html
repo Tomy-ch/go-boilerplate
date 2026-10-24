@@ -393,7 +393,7 @@ UnitPrice は購入時点の単価スナップショット（価格スケール�
 		
 			
 			
-			<h2 id="PurchaseFeedReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_feed_query_service.go.html?s=2963:4158#L38">PurchaseFeedReadModel</a>
+			<h2 id="PurchaseFeedReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_feed_query_service.go.html?s=2963:4173#L38">PurchaseFeedReadModel</a>
 				<a class="permalink" href="#PurchaseFeedReadModel">¶</a>
 				
 				
@@ -404,7 +404,7 @@ UnitPrice は購入時点の単価スナップショット（価格スケール�
 			</p><pre>type PurchaseFeedReadModel struct {
 <span id="PurchaseFeedReadModel.Code"></span>    <span class="comment">// Code は、購入コード（利用者へ注文番号として見せる一意の識別子）です。</span>
     Code <a href="../../../../../builtin/#string">string</a>
-<span id="PurchaseFeedReadModel.TotalAmount"></span>    <span class="comment">// TotalAmount は、合計金額（小計 + 税額 + 送料）です。USD セント単位の整数です。</span>
+<span id="PurchaseFeedReadModel.TotalAmount"></span>    <span class="comment">// TotalAmount は、合計金額（小計 - 値引き額 + 税額 + 送料）です。USD セント単位の整数です。</span>
     TotalAmount <a href="../../../../../builtin/#int">int</a>
 <span id="PurchaseFeedReadModel.StatusID"></span>    <span class="comment">// StatusID は、購入ステータス ID（購入ステータスマスタで解決済み）です。</span>
     StatusID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>

@@ -321,210 +321,287 @@
 <span id="L264" class="ln">   264  </span>			assert.False(t, called)
 <span id="L265" class="ln">   265  </span>		})
 <span id="L266" class="ln">   266  </span>
-<span id="L267" class="ln">   267  </span>		t.Run(&#34;指紋生成に失敗するリクエストは500で後段を呼ばない(fail-closed)&#34;, func(t *testing.T) {
+<span id="L267" class="ln">   267  </span>		t.Run(&#34;後段が返した冪等性キー処理中のエラーに専用コードを付けて返す&#34;, func(t *testing.T) {
 <span id="L268" class="ln">   268  </span>			t.Parallel()
-<span id="L269" class="ln">   269  </span>			called := false
-<span id="L270" class="ln">   270  </span>			next := NextFunc(func(*echo.Context, any) (any, error) {
-<span id="L271" class="ln">   271  </span>				called = true
-<span id="L272" class="ln">   272  </span>				return sentinel, nil
-<span id="L273" class="ln">   273  </span>			})
-<span id="L274" class="ln">   274  </span>			ec := newEcho(t, &#34;key-1&#34;, true, testSubject)
+<span id="L269" class="ln">   269  </span>			next := NextFunc(func(*echo.Context, any) (any, error) {
+<span id="L270" class="ln">   270  </span>				return nil, idempotencyuc.ErrKeyInProgress
+<span id="L271" class="ln">   271  </span>			})
+<span id="L272" class="ln">   272  </span>			ec := newEcho(t, &#34;key-abc&#34;, true, testSubject)
+<span id="L273" class="ln">   273  </span>
+<span id="L274" class="ln">   274  </span>			_, err := Middleware()(next, testOperationID)(ec, spyRequest{Name: &#34;alice&#34;})
 <span id="L275" class="ln">   275  </span>
-<span id="L276" class="ln">   276  </span>			<span class="comment">// chan は json.Marshal できず、弱い指紋を作らずエラーになる。</span>
-<span id="L277" class="ln">   277  </span>			_, err := Middleware()(next, &#34;PostUsers&#34;)(ec, make(chan int))
-<span id="L278" class="ln">   278  </span>
-<span id="L279" class="ln">   279  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L280" class="ln">   280  </span>			assert.False(t, called)
-<span id="L281" class="ln">   281  </span>		})
-<span id="L282" class="ln">   282  </span>	})
-<span id="L283" class="ln">   283  </span>}
-<span id="L284" class="ln">   284  </span>
-<span id="L285" class="ln">   285  </span>func Test_validateKey(t *testing.T) {
-<span id="L286" class="ln">   286  </span>	t.Parallel()
-<span id="L287" class="ln">   287  </span>
-<span id="L288" class="ln">   288  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L289" class="ln">   289  </span>		t.Parallel()
-<span id="L290" class="ln">   290  </span>		t.Run(&#34;印字可能ASCIIは通る&#34;, func(t *testing.T) {
-<span id="L291" class="ln">   291  </span>			t.Parallel()
-<span id="L292" class="ln">   292  </span>			require.NoError(t, validateKey(&#34;Idem-Key_123.~&#34;))
-<span id="L293" class="ln">   293  </span>		})
-<span id="L294" class="ln">   294  </span>
-<span id="L295" class="ln">   295  </span>		t.Run(&#34;255文字ちょうどは通る&#34;, func(t *testing.T) {
-<span id="L296" class="ln">   296  </span>			t.Parallel()
-<span id="L297" class="ln">   297  </span>			<span class="comment">// 上限 maxKeyLength=255 ちょうどは通過する（256 文字の異常系と対の境界）。</span>
-<span id="L298" class="ln">   298  </span>			require.NoError(t, validateKey(strings.Repeat(&#34;a&#34;, 255)))
-<span id="L299" class="ln">   299  </span>		})
-<span id="L300" class="ln">   300  </span>	})
-<span id="L301" class="ln">   301  </span>
-<span id="L302" class="ln">   302  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L303" class="ln">   303  </span>		t.Parallel()
-<span id="L304" class="ln">   304  </span>
-<span id="L305" class="ln">   305  </span>		t.Run(&#34;長すぎ&#34;, func(t *testing.T) {
+<span id="L276" class="ln">   276  </span>			require.ErrorIs(t, err, apperror.ErrConflict)
+<span id="L277" class="ln">   277  </span>			meta, ok := apperror.MetaFrom(err)
+<span id="L278" class="ln">   278  </span>			require.True(t, ok)
+<span id="L279" class="ln">   279  </span>			assert.Equal(t, &#34;IDEMPOTENCY_KEY_IN_PROGRESS&#34;, meta.Code())
+<span id="L280" class="ln">   280  </span>		})
+<span id="L281" class="ln">   281  </span>
+<span id="L282" class="ln">   282  </span>		t.Run(&#34;指紋生成に失敗するリクエストは500で後段を呼ばない(fail-closed)&#34;, func(t *testing.T) {
+<span id="L283" class="ln">   283  </span>			t.Parallel()
+<span id="L284" class="ln">   284  </span>			called := false
+<span id="L285" class="ln">   285  </span>			next := NextFunc(func(*echo.Context, any) (any, error) {
+<span id="L286" class="ln">   286  </span>				called = true
+<span id="L287" class="ln">   287  </span>				return sentinel, nil
+<span id="L288" class="ln">   288  </span>			})
+<span id="L289" class="ln">   289  </span>			ec := newEcho(t, &#34;key-1&#34;, true, testSubject)
+<span id="L290" class="ln">   290  </span>
+<span id="L291" class="ln">   291  </span>			<span class="comment">// chan は json.Marshal できず、弱い指紋を作らずエラーになる。</span>
+<span id="L292" class="ln">   292  </span>			_, err := Middleware()(next, &#34;PostUsers&#34;)(ec, make(chan int))
+<span id="L293" class="ln">   293  </span>
+<span id="L294" class="ln">   294  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L295" class="ln">   295  </span>			assert.False(t, called)
+<span id="L296" class="ln">   296  </span>		})
+<span id="L297" class="ln">   297  </span>	})
+<span id="L298" class="ln">   298  </span>}
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>func Test_validateKey(t *testing.T) {
+<span id="L301" class="ln">   301  </span>	t.Parallel()
+<span id="L302" class="ln">   302  </span>
+<span id="L303" class="ln">   303  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L304" class="ln">   304  </span>		t.Parallel()
+<span id="L305" class="ln">   305  </span>		t.Run(&#34;印字可能ASCIIは通る&#34;, func(t *testing.T) {
 <span id="L306" class="ln">   306  </span>			t.Parallel()
-<span id="L307" class="ln">   307  </span>			require.ErrorIs(t, validateKey(strings.Repeat(&#34;x&#34;, 256)), apperror.ErrInvalidArgument)
+<span id="L307" class="ln">   307  </span>			require.NoError(t, validateKey(&#34;Idem-Key_123.~&#34;))
 <span id="L308" class="ln">   308  </span>		})
 <span id="L309" class="ln">   309  </span>
-<span id="L310" class="ln">   310  </span>		t.Run(&#34;空白(0x20)&#34;, func(t *testing.T) {
+<span id="L310" class="ln">   310  </span>		t.Run(&#34;255文字ちょうどは通る&#34;, func(t *testing.T) {
 <span id="L311" class="ln">   311  </span>			t.Parallel()
-<span id="L312" class="ln">   312  </span>			require.ErrorIs(t, validateKey(&#34;a b&#34;), apperror.ErrInvalidArgument)
-<span id="L313" class="ln">   313  </span>		})
-<span id="L314" class="ln">   314  </span>
-<span id="L315" class="ln">   315  </span>		t.Run(&#34;制御文字(0x1f)&#34;, func(t *testing.T) {
-<span id="L316" class="ln">   316  </span>			t.Parallel()
-<span id="L317" class="ln">   317  </span>			require.ErrorIs(t, validateKey(&#34;a\x1fb&#34;), apperror.ErrInvalidArgument)
-<span id="L318" class="ln">   318  </span>		})
+<span id="L312" class="ln">   312  </span>			<span class="comment">// 上限 maxKeyLength=255 ちょうどは通過する（256 文字の異常系と対の境界）。</span>
+<span id="L313" class="ln">   313  </span>			require.NoError(t, validateKey(strings.Repeat(&#34;a&#34;, 255)))
+<span id="L314" class="ln">   314  </span>		})
+<span id="L315" class="ln">   315  </span>	})
+<span id="L316" class="ln">   316  </span>
+<span id="L317" class="ln">   317  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L318" class="ln">   318  </span>		t.Parallel()
 <span id="L319" class="ln">   319  </span>
-<span id="L320" class="ln">   320  </span>		t.Run(&#34;DEL(0x7f)&#34;, func(t *testing.T) {
+<span id="L320" class="ln">   320  </span>		t.Run(&#34;長すぎ&#34;, func(t *testing.T) {
 <span id="L321" class="ln">   321  </span>			t.Parallel()
-<span id="L322" class="ln">   322  </span>			require.ErrorIs(t, validateKey(&#34;a\x7fb&#34;), apperror.ErrInvalidArgument)
+<span id="L322" class="ln">   322  </span>			require.ErrorIs(t, validateKey(strings.Repeat(&#34;x&#34;, 256)), apperror.ErrInvalidArgument)
 <span id="L323" class="ln">   323  </span>		})
 <span id="L324" class="ln">   324  </span>
-<span id="L325" class="ln">   325  </span>		t.Run(&#34;マルチバイト&#34;, func(t *testing.T) {
+<span id="L325" class="ln">   325  </span>		t.Run(&#34;空白(0x20)&#34;, func(t *testing.T) {
 <span id="L326" class="ln">   326  </span>			t.Parallel()
-<span id="L327" class="ln">   327  </span>			require.ErrorIs(t, validateKey(&#34;あ&#34;), apperror.ErrInvalidArgument)
+<span id="L327" class="ln">   327  </span>			require.ErrorIs(t, validateKey(&#34;a b&#34;), apperror.ErrInvalidArgument)
 <span id="L328" class="ln">   328  </span>		})
-<span id="L329" class="ln">   329  </span>	})
-<span id="L330" class="ln">   330  </span>}
-<span id="L331" class="ln">   331  </span>
-<span id="L332" class="ln">   332  </span>func mustFingerprint(t *testing.T, method, path string, request any) []byte {
-<span id="L333" class="ln">   333  </span>	t.Helper()
-<span id="L334" class="ln">   334  </span>	fp, err := fingerprint(method, path, request)
-<span id="L335" class="ln">   335  </span>	require.NoError(t, err)
-<span id="L336" class="ln">   336  </span>	return fp
-<span id="L337" class="ln">   337  </span>}
-<span id="L338" class="ln">   338  </span>
-<span id="L339" class="ln">   339  </span>func Test_fingerprint(t *testing.T) {
-<span id="L340" class="ln">   340  </span>	t.Parallel()
-<span id="L341" class="ln">   341  </span>
-<span id="L342" class="ln">   342  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L343" class="ln">   343  </span>		t.Parallel()
-<span id="L344" class="ln">   344  </span>		base := mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: &#34;alice&#34;})
-<span id="L345" class="ln">   345  </span>
-<span id="L346" class="ln">   346  </span>		t.Run(&#34;SHA-256の32バイトを返す&#34;, func(t *testing.T) {
-<span id="L347" class="ln">   347  </span>			t.Parallel()
-<span id="L348" class="ln">   348  </span>			assert.Len(t, base, fingerprintLen)
-<span id="L349" class="ln">   349  </span>		})
-<span id="L350" class="ln">   350  </span>
-<span id="L351" class="ln">   351  </span>		t.Run(&#34;同一入力は同一指紋(決定的)&#34;, func(t *testing.T) {
-<span id="L352" class="ln">   352  </span>			t.Parallel()
-<span id="L353" class="ln">   353  </span>			assert.Equal(t, base, mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: &#34;alice&#34;}))
-<span id="L354" class="ln">   354  </span>		})
-<span id="L355" class="ln">   355  </span>
-<span id="L356" class="ln">   356  </span>		t.Run(&#34;リクエストボディが異なれば指紋も異なる&#34;, func(t *testing.T) {
-<span id="L357" class="ln">   357  </span>			t.Parallel()
-<span id="L358" class="ln">   358  </span>			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: &#34;bob&#34;}))
-<span id="L359" class="ln">   359  </span>		})
+<span id="L329" class="ln">   329  </span>
+<span id="L330" class="ln">   330  </span>		t.Run(&#34;制御文字(0x1f)&#34;, func(t *testing.T) {
+<span id="L331" class="ln">   331  </span>			t.Parallel()
+<span id="L332" class="ln">   332  </span>			require.ErrorIs(t, validateKey(&#34;a\x1fb&#34;), apperror.ErrInvalidArgument)
+<span id="L333" class="ln">   333  </span>		})
+<span id="L334" class="ln">   334  </span>
+<span id="L335" class="ln">   335  </span>		t.Run(&#34;DEL(0x7f)&#34;, func(t *testing.T) {
+<span id="L336" class="ln">   336  </span>			t.Parallel()
+<span id="L337" class="ln">   337  </span>			require.ErrorIs(t, validateKey(&#34;a\x7fb&#34;), apperror.ErrInvalidArgument)
+<span id="L338" class="ln">   338  </span>		})
+<span id="L339" class="ln">   339  </span>
+<span id="L340" class="ln">   340  </span>		t.Run(&#34;マルチバイト&#34;, func(t *testing.T) {
+<span id="L341" class="ln">   341  </span>			t.Parallel()
+<span id="L342" class="ln">   342  </span>			require.ErrorIs(t, validateKey(&#34;あ&#34;), apperror.ErrInvalidArgument)
+<span id="L343" class="ln">   343  </span>		})
+<span id="L344" class="ln">   344  </span>	})
+<span id="L345" class="ln">   345  </span>}
+<span id="L346" class="ln">   346  </span>
+<span id="L347" class="ln">   347  </span>func mustFingerprint(t *testing.T, method, path string, request any) []byte {
+<span id="L348" class="ln">   348  </span>	t.Helper()
+<span id="L349" class="ln">   349  </span>	fp, err := fingerprint(method, path, request)
+<span id="L350" class="ln">   350  </span>	require.NoError(t, err)
+<span id="L351" class="ln">   351  </span>	return fp
+<span id="L352" class="ln">   352  </span>}
+<span id="L353" class="ln">   353  </span>
+<span id="L354" class="ln">   354  </span>func Test_fingerprint(t *testing.T) {
+<span id="L355" class="ln">   355  </span>	t.Parallel()
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L358" class="ln">   358  </span>		t.Parallel()
+<span id="L359" class="ln">   359  </span>		base := mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: &#34;alice&#34;})
 <span id="L360" class="ln">   360  </span>
-<span id="L361" class="ln">   361  </span>		t.Run(&#34;methodが異なれば指紋も異なる&#34;, func(t *testing.T) {
+<span id="L361" class="ln">   361  </span>		t.Run(&#34;SHA-256の32バイトを返す&#34;, func(t *testing.T) {
 <span id="L362" class="ln">   362  </span>			t.Parallel()
-<span id="L363" class="ln">   363  </span>			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPut, testPath, spyRequest{Name: &#34;alice&#34;}))
+<span id="L363" class="ln">   363  </span>			assert.Len(t, base, fingerprintLen)
 <span id="L364" class="ln">   364  </span>		})
 <span id="L365" class="ln">   365  </span>
-<span id="L366" class="ln">   366  </span>		t.Run(&#34;pathが異なれば指紋も異なる&#34;, func(t *testing.T) {
+<span id="L366" class="ln">   366  </span>		t.Run(&#34;同一入力は同一指紋(決定的)&#34;, func(t *testing.T) {
 <span id="L367" class="ln">   367  </span>			t.Parallel()
-<span id="L368" class="ln">   368  </span>			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPost, &#34;/v1/orders&#34;, spyRequest{Name: &#34;alice&#34;}))
+<span id="L368" class="ln">   368  </span>			assert.Equal(t, base, mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: &#34;alice&#34;}))
 <span id="L369" class="ln">   369  </span>		})
-<span id="L370" class="ln">   370  </span>	})
-<span id="L371" class="ln">   371  </span>
-<span id="L372" class="ln">   372  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L373" class="ln">   373  </span>		t.Parallel()
-<span id="L374" class="ln">   374  </span>
-<span id="L375" class="ln">   375  </span>		t.Run(&#34;marshal不能な値はエラーを返す(fail-closed)&#34;, func(t *testing.T) {
-<span id="L376" class="ln">   376  </span>			t.Parallel()
-<span id="L377" class="ln">   377  </span>			_, err := fingerprint(http.MethodPost, testPath, make(chan int))
-<span id="L378" class="ln">   378  </span>			require.Error(t, err)
+<span id="L370" class="ln">   370  </span>
+<span id="L371" class="ln">   371  </span>		t.Run(&#34;リクエストボディが異なれば指紋も異なる&#34;, func(t *testing.T) {
+<span id="L372" class="ln">   372  </span>			t.Parallel()
+<span id="L373" class="ln">   373  </span>			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPost, testPath, spyRequest{Name: &#34;bob&#34;}))
+<span id="L374" class="ln">   374  </span>		})
+<span id="L375" class="ln">   375  </span>
+<span id="L376" class="ln">   376  </span>		t.Run(&#34;methodが異なれば指紋も異なる&#34;, func(t *testing.T) {
+<span id="L377" class="ln">   377  </span>			t.Parallel()
+<span id="L378" class="ln">   378  </span>			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPut, testPath, spyRequest{Name: &#34;alice&#34;}))
 <span id="L379" class="ln">   379  </span>		})
-<span id="L380" class="ln">   380  </span>	})
-<span id="L381" class="ln">   381  </span>}
-<span id="L382" class="ln">   382  </span>
-<span id="L383" class="ln">   383  </span>func TestMiddleware(t *testing.T) {
-<span id="L384" class="ln">   384  </span>	t.Parallel()
-<span id="L385" class="ln">   385  </span>
-<span id="L386" class="ln">   386  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L387" class="ln">   387  </span>		t.Parallel()
-<span id="L388" class="ln">   388  </span>
-<span id="L389" class="ln">   389  </span>		t.Run(&#34;捕捉した next と operationID を handle へ渡す&#34;, func(t *testing.T) {
-<span id="L390" class="ln">   390  </span>			t.Parallel()
-<span id="L391" class="ln">   391  </span>			called := false
-<span id="L392" class="ln">   392  </span>			next := NextFunc(func(*echo.Context, any) (any, error) {
-<span id="L393" class="ln">   393  </span>				called = true
-<span id="L394" class="ln">   394  </span>				return sentinel, nil
-<span id="L395" class="ln">   395  </span>			})
-<span id="L396" class="ln">   396  </span>			ec := newEcho(t, &#34;key-mw&#34;, true, testSubject)
+<span id="L380" class="ln">   380  </span>
+<span id="L381" class="ln">   381  </span>		t.Run(&#34;pathが異なれば指紋も異なる&#34;, func(t *testing.T) {
+<span id="L382" class="ln">   382  </span>			t.Parallel()
+<span id="L383" class="ln">   383  </span>			assert.NotEqual(t, base, mustFingerprint(t, http.MethodPost, &#34;/v1/orders&#34;, spyRequest{Name: &#34;alice&#34;}))
+<span id="L384" class="ln">   384  </span>		})
+<span id="L385" class="ln">   385  </span>	})
+<span id="L386" class="ln">   386  </span>
+<span id="L387" class="ln">   387  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L388" class="ln">   388  </span>		t.Parallel()
+<span id="L389" class="ln">   389  </span>
+<span id="L390" class="ln">   390  </span>		t.Run(&#34;marshal不能な値はエラーを返す(fail-closed)&#34;, func(t *testing.T) {
+<span id="L391" class="ln">   391  </span>			t.Parallel()
+<span id="L392" class="ln">   392  </span>			_, err := fingerprint(http.MethodPost, testPath, make(chan int))
+<span id="L393" class="ln">   393  </span>			require.Error(t, err)
+<span id="L394" class="ln">   394  </span>		})
+<span id="L395" class="ln">   395  </span>	})
+<span id="L396" class="ln">   396  </span>}
 <span id="L397" class="ln">   397  </span>
-<span id="L398" class="ln">   398  </span>			res, err := Middleware()(next, testOperationID)(ec, spyRequest{Name: &#34;alice&#34;})
-<span id="L399" class="ln">   399  </span>			require.NoError(t, err)
-<span id="L400" class="ln">   400  </span>			assert.True(t, called)
-<span id="L401" class="ln">   401  </span>			assert.Equal(t, sentinel, res)
-<span id="L402" class="ln">   402  </span>
-<span id="L403" class="ln">   403  </span>			<span class="comment">// operationID は ctx に stash された Request 経由でしか観測できないため、Run に渡して</span>
-<span id="L404" class="ln">   404  </span>			<span class="comment">// o11y カウンタへ届いたラベルを見る。</span>
-<span id="L405" class="ln">   405  </span>			ctrl := gomock.NewController(t)
-<span id="L406" class="ln">   406  </span>			store := mock_idempotency.NewMockStore(ctrl)
-<span id="L407" class="ln">   407  </span>			txm := mock_tx.NewMockManager(ctrl)
-<span id="L408" class="ln">   408  </span>			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
-<span id="L409" class="ln">   409  </span>			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
-<span id="L410" class="ln">   410  </span>			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
-<span id="L411" class="ln">   411  </span>				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
-<span id="L412" class="ln">   412  </span>			)
-<span id="L413" class="ln">   413  </span>			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
-<span id="L414" class="ln">   414  </span>			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
-<span id="L415" class="ln">   415  </span>
-<span id="L416" class="ln">   416  </span>			var gotOperationID string
-<span id="L417" class="ln">   417  </span>			metrics.EXPECT().IncMiss(gomock.Any(), gomock.Any()).Do(
-<span id="L418" class="ln">   418  </span>				func(_ context.Context, operationID string) { gotOperationID = operationID },
-<span id="L419" class="ln">   419  </span>			)
-<span id="L420" class="ln">   420  </span>
-<span id="L421" class="ln">   421  </span>			deps := idempotencyuc.Deps{Txm: txm, Store: store, Clock: clk, Metrics: metrics}
-<span id="L422" class="ln">   422  </span>			_, _, runErr := idempotencyuc.Run(ec.Request().Context(), deps, 201,
-<span id="L423" class="ln">   423  </span>				func(context.Context) (string, error) { return &#34;ok&#34;, nil })
-<span id="L424" class="ln">   424  </span>			require.NoError(t, runErr)
-<span id="L425" class="ln">   425  </span>
-<span id="L426" class="ln">   426  </span>			assert.Equal(t, testOperationID, gotOperationID)
-<span id="L427" class="ln">   427  </span>		})
-<span id="L428" class="ln">   428  </span>
-<span id="L429" class="ln">   429  </span>		t.Run(&#34;同一factoryから生成したwrapperはそれぞれの後段を呼び分ける&#34;, func(t *testing.T) {
-<span id="L430" class="ln">   430  </span>			t.Parallel()
-<span id="L431" class="ln">   431  </span>
-<span id="L432" class="ln">   432  </span>			mw := Middleware()
-<span id="L433" class="ln">   433  </span>			firstCalled, secondCalled := false, false
-<span id="L434" class="ln">   434  </span>			first := mw(NextFunc(func(*echo.Context, any) (any, error) {
-<span id="L435" class="ln">   435  </span>				firstCalled = true
-<span id="L436" class="ln">   436  </span>				return &#34;FIRST&#34;, nil
-<span id="L437" class="ln">   437  </span>			}), &#34;PostResources&#34;)
-<span id="L438" class="ln">   438  </span>			second := mw(NextFunc(func(*echo.Context, any) (any, error) {
-<span id="L439" class="ln">   439  </span>				secondCalled = true
-<span id="L440" class="ln">   440  </span>				return &#34;SECOND&#34;, nil
-<span id="L441" class="ln">   441  </span>			}), &#34;PutResources&#34;)
-<span id="L442" class="ln">   442  </span>
-<span id="L443" class="ln">   443  </span>			gotFirst, err := first(newEcho(t, &#34;key-1&#34;, true, testSubject), spyRequest{})
-<span id="L444" class="ln">   444  </span>			require.NoError(t, err)
-<span id="L445" class="ln">   445  </span>			gotSecond, err := second(newEcho(t, &#34;key-2&#34;, true, testSubject), spyRequest{})
-<span id="L446" class="ln">   446  </span>			require.NoError(t, err)
-<span id="L447" class="ln">   447  </span>
-<span id="L448" class="ln">   448  </span>			assert.Equal(t, &#34;FIRST&#34;, gotFirst)
-<span id="L449" class="ln">   449  </span>			assert.Equal(t, &#34;SECOND&#34;, gotSecond)
-<span id="L450" class="ln">   450  </span>			assert.True(t, firstCalled)
-<span id="L451" class="ln">   451  </span>			assert.True(t, secondCalled)
-<span id="L452" class="ln">   452  </span>		})
-<span id="L453" class="ln">   453  </span>	})
-<span id="L454" class="ln">   454  </span>
-<span id="L455" class="ln">   455  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L456" class="ln">   456  </span>		t.Parallel()
+<span id="L398" class="ln">   398  </span>func TestMiddleware(t *testing.T) {
+<span id="L399" class="ln">   399  </span>	t.Parallel()
+<span id="L400" class="ln">   400  </span>
+<span id="L401" class="ln">   401  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L402" class="ln">   402  </span>		t.Parallel()
+<span id="L403" class="ln">   403  </span>
+<span id="L404" class="ln">   404  </span>		t.Run(&#34;捕捉した next と operationID を handle へ渡す&#34;, func(t *testing.T) {
+<span id="L405" class="ln">   405  </span>			t.Parallel()
+<span id="L406" class="ln">   406  </span>			called := false
+<span id="L407" class="ln">   407  </span>			next := NextFunc(func(*echo.Context, any) (any, error) {
+<span id="L408" class="ln">   408  </span>				called = true
+<span id="L409" class="ln">   409  </span>				return sentinel, nil
+<span id="L410" class="ln">   410  </span>			})
+<span id="L411" class="ln">   411  </span>			ec := newEcho(t, &#34;key-mw&#34;, true, testSubject)
+<span id="L412" class="ln">   412  </span>
+<span id="L413" class="ln">   413  </span>			res, err := Middleware()(next, testOperationID)(ec, spyRequest{Name: &#34;alice&#34;})
+<span id="L414" class="ln">   414  </span>			require.NoError(t, err)
+<span id="L415" class="ln">   415  </span>			assert.True(t, called)
+<span id="L416" class="ln">   416  </span>			assert.Equal(t, sentinel, res)
+<span id="L417" class="ln">   417  </span>
+<span id="L418" class="ln">   418  </span>			<span class="comment">// operationID は ctx に stash された Request 経由でしか観測できないため、Run に渡して</span>
+<span id="L419" class="ln">   419  </span>			<span class="comment">// o11y カウンタへ届いたラベルを見る。</span>
+<span id="L420" class="ln">   420  </span>			ctrl := gomock.NewController(t)
+<span id="L421" class="ln">   421  </span>			store := mock_idempotency.NewMockStore(ctrl)
+<span id="L422" class="ln">   422  </span>			txm := mock_tx.NewMockManager(ctrl)
+<span id="L423" class="ln">   423  </span>			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
+<span id="L424" class="ln">   424  </span>			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
+<span id="L425" class="ln">   425  </span>			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L426" class="ln">   426  </span>				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+<span id="L427" class="ln">   427  </span>			)
+<span id="L428" class="ln">   428  </span>			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
+<span id="L429" class="ln">   429  </span>			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
+<span id="L430" class="ln">   430  </span>
+<span id="L431" class="ln">   431  </span>			var gotOperationID string
+<span id="L432" class="ln">   432  </span>			metrics.EXPECT().IncMiss(gomock.Any(), gomock.Any()).Do(
+<span id="L433" class="ln">   433  </span>				func(_ context.Context, operationID string) { gotOperationID = operationID },
+<span id="L434" class="ln">   434  </span>			)
+<span id="L435" class="ln">   435  </span>
+<span id="L436" class="ln">   436  </span>			deps := idempotencyuc.Deps{Txm: txm, Store: store, Clock: clk, Metrics: metrics}
+<span id="L437" class="ln">   437  </span>			_, _, runErr := idempotencyuc.Run(ec.Request().Context(), deps, 201,
+<span id="L438" class="ln">   438  </span>				func(context.Context) (string, error) { return &#34;ok&#34;, nil })
+<span id="L439" class="ln">   439  </span>			require.NoError(t, runErr)
+<span id="L440" class="ln">   440  </span>
+<span id="L441" class="ln">   441  </span>			assert.Equal(t, testOperationID, gotOperationID)
+<span id="L442" class="ln">   442  </span>		})
+<span id="L443" class="ln">   443  </span>
+<span id="L444" class="ln">   444  </span>		t.Run(&#34;同一factoryから生成したwrapperはそれぞれの後段を呼び分ける&#34;, func(t *testing.T) {
+<span id="L445" class="ln">   445  </span>			t.Parallel()
+<span id="L446" class="ln">   446  </span>
+<span id="L447" class="ln">   447  </span>			mw := Middleware()
+<span id="L448" class="ln">   448  </span>			firstCalled, secondCalled := false, false
+<span id="L449" class="ln">   449  </span>			first := mw(NextFunc(func(*echo.Context, any) (any, error) {
+<span id="L450" class="ln">   450  </span>				firstCalled = true
+<span id="L451" class="ln">   451  </span>				return &#34;FIRST&#34;, nil
+<span id="L452" class="ln">   452  </span>			}), &#34;PostResources&#34;)
+<span id="L453" class="ln">   453  </span>			second := mw(NextFunc(func(*echo.Context, any) (any, error) {
+<span id="L454" class="ln">   454  </span>				secondCalled = true
+<span id="L455" class="ln">   455  </span>				return &#34;SECOND&#34;, nil
+<span id="L456" class="ln">   456  </span>			}), &#34;PutResources&#34;)
 <span id="L457" class="ln">   457  </span>
-<span id="L458" class="ln">   458  </span>		t.Run(&#34;後段が返したerrorをそのまま透過する&#34;, func(t *testing.T) {
-<span id="L459" class="ln">   459  </span>			t.Parallel()
-<span id="L460" class="ln">   460  </span>
-<span id="L461" class="ln">   461  </span>			boom := xerrors.New(&#34;handler boom&#34;)
-<span id="L462" class="ln">   462  </span>			next := NextFunc(func(*echo.Context, any) (any, error) { return nil, boom })
-<span id="L463" class="ln">   463  </span>
-<span id="L464" class="ln">   464  </span>			_, err := Middleware()(next, &#34;PostResources&#34;)(newEcho(t, &#34;key-1&#34;, true, testSubject), spyRequest{})
-<span id="L465" class="ln">   465  </span>
-<span id="L466" class="ln">   466  </span>			require.ErrorIs(t, err, boom)
+<span id="L458" class="ln">   458  </span>			gotFirst, err := first(newEcho(t, &#34;key-1&#34;, true, testSubject), spyRequest{})
+<span id="L459" class="ln">   459  </span>			require.NoError(t, err)
+<span id="L460" class="ln">   460  </span>			gotSecond, err := second(newEcho(t, &#34;key-2&#34;, true, testSubject), spyRequest{})
+<span id="L461" class="ln">   461  </span>			require.NoError(t, err)
+<span id="L462" class="ln">   462  </span>
+<span id="L463" class="ln">   463  </span>			assert.Equal(t, &#34;FIRST&#34;, gotFirst)
+<span id="L464" class="ln">   464  </span>			assert.Equal(t, &#34;SECOND&#34;, gotSecond)
+<span id="L465" class="ln">   465  </span>			assert.True(t, firstCalled)
+<span id="L466" class="ln">   466  </span>			assert.True(t, secondCalled)
 <span id="L467" class="ln">   467  </span>		})
 <span id="L468" class="ln">   468  </span>	})
-<span id="L469" class="ln">   469  </span>}
-<span id="L470" class="ln">   470  </span>
+<span id="L469" class="ln">   469  </span>
+<span id="L470" class="ln">   470  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L471" class="ln">   471  </span>		t.Parallel()
+<span id="L472" class="ln">   472  </span>
+<span id="L473" class="ln">   473  </span>		t.Run(&#34;後段が返したerrorをそのまま透過する&#34;, func(t *testing.T) {
+<span id="L474" class="ln">   474  </span>			t.Parallel()
+<span id="L475" class="ln">   475  </span>
+<span id="L476" class="ln">   476  </span>			boom := xerrors.New(&#34;handler boom&#34;)
+<span id="L477" class="ln">   477  </span>			next := NextFunc(func(*echo.Context, any) (any, error) { return nil, boom })
+<span id="L478" class="ln">   478  </span>
+<span id="L479" class="ln">   479  </span>			_, err := Middleware()(next, &#34;PostResources&#34;)(newEcho(t, &#34;key-1&#34;, true, testSubject), spyRequest{})
+<span id="L480" class="ln">   480  </span>
+<span id="L481" class="ln">   481  </span>			require.ErrorIs(t, err, boom)
+<span id="L482" class="ln">   482  </span>		})
+<span id="L483" class="ln">   483  </span>	})
+<span id="L484" class="ln">   484  </span>}
+<span id="L485" class="ln">   485  </span>
+<span id="L486" class="ln">   486  </span>func Test_withErrorMeta(t *testing.T) {
+<span id="L487" class="ln">   487  </span>	t.Parallel()
+<span id="L488" class="ln">   488  </span>
+<span id="L489" class="ln">   489  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L490" class="ln">   490  </span>		t.Parallel()
+<span id="L491" class="ln">   491  </span>
+<span id="L492" class="ln">   492  </span>		t.Run(&#34;キーの使い回しは422のままIDEMPOTENCY_KEY_REUSEDと専用文言を付ける&#34;, func(t *testing.T) {
+<span id="L493" class="ln">   493  </span>			t.Parallel()
+<span id="L494" class="ln">   494  </span>
+<span id="L495" class="ln">   495  </span>			err := withErrorMeta(xerrors.Wrap(idempotencyuc.ErrKeyReused, &#34;wrapped&#34;))
+<span id="L496" class="ln">   496  </span>
+<span id="L497" class="ln">   497  </span>			require.ErrorIs(t, err, apperror.ErrValidation)
+<span id="L498" class="ln">   498  </span>			meta, ok := apperror.MetaFrom(err)
+<span id="L499" class="ln">   499  </span>			require.True(t, ok)
+<span id="L500" class="ln">   500  </span>			assert.Equal(t, &#34;IDEMPOTENCY_KEY_REUSED&#34;, meta.Code())
+<span id="L501" class="ln">   501  </span>			assert.Equal(t, &#34;この Idempotency-Key は別の要求に使われています。新しいキーで送り直してください。&#34;, meta.Message())
+<span id="L502" class="ln">   502  </span>		})
+<span id="L503" class="ln">   503  </span>
+<span id="L504" class="ln">   504  </span>		t.Run(&#34;処理中は409のままIDEMPOTENCY_KEY_IN_PROGRESSと専用文言を付ける&#34;, func(t *testing.T) {
+<span id="L505" class="ln">   505  </span>			t.Parallel()
+<span id="L506" class="ln">   506  </span>
+<span id="L507" class="ln">   507  </span>			err := withErrorMeta(xerrors.Wrap(idempotencyuc.ErrKeyInProgress, &#34;wrapped&#34;))
+<span id="L508" class="ln">   508  </span>
+<span id="L509" class="ln">   509  </span>			require.ErrorIs(t, err, apperror.ErrConflict)
+<span id="L510" class="ln">   510  </span>			meta, ok := apperror.MetaFrom(err)
+<span id="L511" class="ln">   511  </span>			require.True(t, ok)
+<span id="L512" class="ln">   512  </span>			assert.Equal(t, &#34;IDEMPOTENCY_KEY_IN_PROGRESS&#34;, meta.Code())
+<span id="L513" class="ln">   513  </span>			assert.Equal(t, &#34;同じ Idempotency-Key の要求を処理中です。しばらく待ってから再送してください。&#34;, meta.Message())
+<span id="L514" class="ln">   514  </span>		})
+<span id="L515" class="ln">   515  </span>
+<span id="L516" class="ln">   516  </span>		t.Run(&#34;業務由来の409には何も付けずそのまま返す&#34;, func(t *testing.T) {
+<span id="L517" class="ln">   517  </span>			t.Parallel()
+<span id="L518" class="ln">   518  </span>
+<span id="L519" class="ln">   519  </span>			businessErr := xerrors.Wrap(apperror.ErrConflict, &#34;business conflict&#34;)
+<span id="L520" class="ln">   520  </span>
+<span id="L521" class="ln">   521  </span>			err := withErrorMeta(businessErr)
+<span id="L522" class="ln">   522  </span>
+<span id="L523" class="ln">   523  </span>			assert.Equal(t, businessErr, err)
+<span id="L524" class="ln">   524  </span>			_, ok := apperror.MetaFrom(err)
+<span id="L525" class="ln">   525  </span>			assert.False(t, ok)
+<span id="L526" class="ln">   526  </span>		})
+<span id="L527" class="ln">   527  </span>
+<span id="L528" class="ln">   528  </span>		t.Run(&#34;業務由来の422には何も付けずそのまま返す&#34;, func(t *testing.T) {
+<span id="L529" class="ln">   529  </span>			t.Parallel()
+<span id="L530" class="ln">   530  </span>
+<span id="L531" class="ln">   531  </span>			businessErr := xerrors.Wrap(apperror.ErrValidation, &#34;business validation&#34;)
+<span id="L532" class="ln">   532  </span>
+<span id="L533" class="ln">   533  </span>			err := withErrorMeta(businessErr)
+<span id="L534" class="ln">   534  </span>
+<span id="L535" class="ln">   535  </span>			assert.Equal(t, businessErr, err)
+<span id="L536" class="ln">   536  </span>			_, ok := apperror.MetaFrom(err)
+<span id="L537" class="ln">   537  </span>			assert.False(t, ok)
+<span id="L538" class="ln">   538  </span>		})
+<span id="L539" class="ln">   539  </span>
+<span id="L540" class="ln">   540  </span>		t.Run(&#34;nilはnilのまま返す&#34;, func(t *testing.T) {
+<span id="L541" class="ln">   541  </span>			t.Parallel()
+<span id="L542" class="ln">   542  </span>
+<span id="L543" class="ln">   543  </span>			require.NoError(t, withErrorMeta(nil))
+<span id="L544" class="ln">   544  </span>		})
+<span id="L545" class="ln">   545  </span>	})
+<span id="L546" class="ln">   546  </span>}
+<span id="L547" class="ln">   547  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/idempotency/idempotency_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -633,237 +633,578 @@
 <span id="L576" class="ln">   576  </span>			require.NoError(t, err)
 <span id="L577" class="ln">   577  </span>			assert.Equal(t, 1, got)
 <span id="L578" class="ln">   578  </span>		})
-<span id="L579" class="ln">   579  </span>	})
-<span id="L580" class="ln">   580  </span>
-<span id="L581" class="ln">   581  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L582" class="ln">   582  </span>		t.Parallel()
-<span id="L583" class="ln">   583  </span>
-<span id="L584" class="ln">   584  </span>		t.Run(&#34;値引き額が決済スケールの整数に収まらない場合、ErrInvalidDiscountValueを返す&#34;, func(t *testing.T) {
-<span id="L585" class="ln">   585  </span>			t.Parallel()
-<span id="L586" class="ln">   586  </span>
-<span id="L587" class="ln">   587  </span>			<span class="comment">// Line.Subtotal は観測値であって検証を持たないため、決済スケールへ落とすと</span>
-<span id="L588" class="ln">   588  </span>			<span class="comment">// int64 を超える小計がドメインへ届き得る。</span>
-<span id="L589" class="ln">   589  </span>			c := newScopedCoupon(t, rate(t, &#34;1&#34;), NewAllScope())
-<span id="L590" class="ln">   590  </span>			line, _ := newTestLine(t, &#34;100000000000000000000&#34;)
-<span id="L591" class="ln">   591  </span>
-<span id="L592" class="ln">   592  </span>			got, err := c.DiscountFor([]Line{line})
+<span id="L579" class="ln">   579  </span>
+<span id="L580" class="ln">   580  </span>		t.Run(&#34;値引き上限を超える場合は上限まで引く&#34;, func(t *testing.T) {
+<span id="L581" class="ln">   581  </span>			t.Parallel()
+<span id="L582" class="ln">   582  </span>
+<span id="L583" class="ln">   583  </span>			capped, err := rate(t, &#34;0.10&#34;).WithMaxAmount(200)
+<span id="L584" class="ln">   584  </span>			require.NoError(t, err)
+<span id="L585" class="ln">   585  </span>			c := newScopedCoupon(t, capped, NewAllScope())
+<span id="L586" class="ln">   586  </span>			line, _ := newTestLine(t, &#34;50.00&#34;)
+<span id="L587" class="ln">   587  </span>
+<span id="L588" class="ln">   588  </span>			got, err := c.DiscountFor([]Line{line})
+<span id="L589" class="ln">   589  </span>
+<span id="L590" class="ln">   590  </span>			require.NoError(t, err)
+<span id="L591" class="ln">   591  </span>			assert.Equal(t, 200, got)
+<span id="L592" class="ln">   592  </span>		})
 <span id="L593" class="ln">   593  </span>
-<span id="L594" class="ln">   594  </span>			require.ErrorIs(t, err, ErrInvalidDiscountValue)
-<span id="L595" class="ln">   595  </span>			assert.Zero(t, got)
-<span id="L596" class="ln">   596  </span>		})
-<span id="L597" class="ln">   597  </span>	})
-<span id="L598" class="ln">   598  </span>}
-<span id="L599" class="ln">   599  </span>
-<span id="L600" class="ln">   600  </span>func TestCoupon_Redeem(t *testing.T) {
-<span id="L601" class="ln">   601  </span>	t.Parallel()
-<span id="L602" class="ln">   602  </span>
-<span id="L603" class="ln">   603  </span>	usableAt := testExpiresAt.Add(-time.Hour)
-<span id="L604" class="ln">   604  </span>
-<span id="L605" class="ln">   605  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L606" class="ln">   606  </span>		t.Parallel()
+<span id="L594" class="ln">   594  </span>		t.Run(&#34;値引き上限に満たない場合は上限に届かない額をそのまま引く&#34;, func(t *testing.T) {
+<span id="L595" class="ln">   595  </span>			t.Parallel()
+<span id="L596" class="ln">   596  </span>
+<span id="L597" class="ln">   597  </span>			capped, err := rate(t, &#34;0.10&#34;).WithMaxAmount(2000)
+<span id="L598" class="ln">   598  </span>			require.NoError(t, err)
+<span id="L599" class="ln">   599  </span>			c := newScopedCoupon(t, capped, NewAllScope())
+<span id="L600" class="ln">   600  </span>			line, _ := newTestLine(t, &#34;50.00&#34;)
+<span id="L601" class="ln">   601  </span>
+<span id="L602" class="ln">   602  </span>			got, err := c.DiscountFor([]Line{line})
+<span id="L603" class="ln">   603  </span>
+<span id="L604" class="ln">   604  </span>			require.NoError(t, err)
+<span id="L605" class="ln">   605  </span>			assert.Equal(t, 500, got)
+<span id="L606" class="ln">   606  </span>		})
 <span id="L607" class="ln">   607  </span>
-<span id="L608" class="ln">   608  </span>		t.Run(&#34;未使用かつ有効期限内なら使用日時を刻む&#34;, func(t *testing.T) {
+<span id="L608" class="ln">   608  </span>		t.Run(&#34;最低購入金額ちょうどの場合は値引きする&#34;, func(t *testing.T) {
 <span id="L609" class="ln">   609  </span>			t.Parallel()
 <span id="L610" class="ln">   610  </span>
-<span id="L611" class="ln">   611  </span>			c := newTestCoupon(t)
-<span id="L612" class="ln">   612  </span>
-<span id="L613" class="ln">   613  </span>			require.NoError(t, c.Redeem(usableAt))
-<span id="L614" class="ln">   614  </span>
-<span id="L615" class="ln">   615  </span>			assert.True(t, c.IsUsed())
-<span id="L616" class="ln">   616  </span>			require.NotNil(t, c.UsedAt())
-<span id="L617" class="ln">   617  </span>			assert.Equal(t, usableAt, *c.UsedAt())
-<span id="L618" class="ln">   618  </span>		})
-<span id="L619" class="ln">   619  </span>	})
+<span id="L611" class="ln">   611  </span>			minAmount := int64(5000)
+<span id="L612" class="ln">   612  </span>			attrs := validCouponArgs(t)
+<span id="L613" class="ln">   613  </span>			attrs.Scope = NewAllScope()
+<span id="L614" class="ln">   614  </span>			attrs.MinPurchaseAmount = &amp;minAmount
+<span id="L615" class="ln">   615  </span>			c, err := New(newTestUUID(t), attrs)
+<span id="L616" class="ln">   616  </span>			require.NoError(t, err)
+<span id="L617" class="ln">   617  </span>			line, _ := newTestLine(t, &#34;50.00&#34;)
+<span id="L618" class="ln">   618  </span>
+<span id="L619" class="ln">   619  </span>			got, err := c.DiscountFor([]Line{line})
 <span id="L620" class="ln">   620  </span>
-<span id="L621" class="ln">   621  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L622" class="ln">   622  </span>		t.Parallel()
-<span id="L623" class="ln">   623  </span>
-<span id="L624" class="ln">   624  </span>		t.Run(&#34;使用済みの場合はErrAlreadyUsedを返し状態を変えない&#34;, func(t *testing.T) {
-<span id="L625" class="ln">   625  </span>			t.Parallel()
-<span id="L626" class="ln">   626  </span>
-<span id="L627" class="ln">   627  </span>			c := newTestCoupon(t)
-<span id="L628" class="ln">   628  </span>			require.NoError(t, c.Redeem(usableAt))
-<span id="L629" class="ln">   629  </span>
-<span id="L630" class="ln">   630  </span>			err := c.Redeem(usableAt.Add(time.Minute))
-<span id="L631" class="ln">   631  </span>
-<span id="L632" class="ln">   632  </span>			require.ErrorIs(t, err, ErrAlreadyUsed)
-<span id="L633" class="ln">   633  </span>			require.NotNil(t, c.UsedAt())
-<span id="L634" class="ln">   634  </span>			assert.Equal(t, usableAt, *c.UsedAt())
-<span id="L635" class="ln">   635  </span>		})
-<span id="L636" class="ln">   636  </span>
-<span id="L637" class="ln">   637  </span>		t.Run(&#34;有効期限ちょうどの場合はErrExpiredを返す&#34;, func(t *testing.T) {
-<span id="L638" class="ln">   638  </span>			t.Parallel()
-<span id="L639" class="ln">   639  </span>
-<span id="L640" class="ln">   640  </span>			c := newTestCoupon(t)
+<span id="L621" class="ln">   621  </span>			require.NoError(t, err)
+<span id="L622" class="ln">   622  </span>			assert.Equal(t, 500, got)
+<span id="L623" class="ln">   623  </span>		})
+<span id="L624" class="ln">   624  </span>
+<span id="L625" class="ln">   625  </span>		t.Run(&#34;値引き上限ちょうどの場合はその額を引く&#34;, func(t *testing.T) {
+<span id="L626" class="ln">   626  </span>			t.Parallel()
+<span id="L627" class="ln">   627  </span>
+<span id="L628" class="ln">   628  </span>			capped, err := rate(t, &#34;0.10&#34;).WithMaxAmount(500)
+<span id="L629" class="ln">   629  </span>			require.NoError(t, err)
+<span id="L630" class="ln">   630  </span>			c := newScopedCoupon(t, capped, NewAllScope())
+<span id="L631" class="ln">   631  </span>			line, _ := newTestLine(t, &#34;50.00&#34;)
+<span id="L632" class="ln">   632  </span>
+<span id="L633" class="ln">   633  </span>			got, err := c.DiscountFor([]Line{line})
+<span id="L634" class="ln">   634  </span>
+<span id="L635" class="ln">   635  </span>			require.NoError(t, err)
+<span id="L636" class="ln">   636  </span>			assert.Equal(t, 500, got)
+<span id="L637" class="ln">   637  </span>		})
+<span id="L638" class="ln">   638  </span>
+<span id="L639" class="ln">   639  </span>		t.Run(&#34;最低購入金額を満たさない場合は0を返す&#34;, func(t *testing.T) {
+<span id="L640" class="ln">   640  </span>			t.Parallel()
 <span id="L641" class="ln">   641  </span>
-<span id="L642" class="ln">   642  </span>			err := c.Redeem(testExpiresAt)
-<span id="L643" class="ln">   643  </span>
-<span id="L644" class="ln">   644  </span>			require.ErrorIs(t, err, ErrExpired)
-<span id="L645" class="ln">   645  </span>			assert.False(t, c.IsUsed())
-<span id="L646" class="ln">   646  </span>		})
-<span id="L647" class="ln">   647  </span>
-<span id="L648" class="ln">   648  </span>		t.Run(&#34;有効期限を過ぎている場合はErrExpiredを返す&#34;, func(t *testing.T) {
-<span id="L649" class="ln">   649  </span>			t.Parallel()
-<span id="L650" class="ln">   650  </span>
-<span id="L651" class="ln">   651  </span>			c := newTestCoupon(t)
-<span id="L652" class="ln">   652  </span>
-<span id="L653" class="ln">   653  </span>			err := c.Redeem(testExpiresAt.Add(time.Hour))
-<span id="L654" class="ln">   654  </span>
-<span id="L655" class="ln">   655  </span>			require.ErrorIs(t, err, ErrExpired)
-<span id="L656" class="ln">   656  </span>			assert.False(t, c.IsUsed())
-<span id="L657" class="ln">   657  </span>		})
+<span id="L642" class="ln">   642  </span>			minAmount := int64(5000)
+<span id="L643" class="ln">   643  </span>			attrs := validCouponArgs(t)
+<span id="L644" class="ln">   644  </span>			attrs.Scope = NewAllScope()
+<span id="L645" class="ln">   645  </span>			attrs.MinPurchaseAmount = &amp;minAmount
+<span id="L646" class="ln">   646  </span>			c, err := New(newTestUUID(t), attrs)
+<span id="L647" class="ln">   647  </span>			require.NoError(t, err)
+<span id="L648" class="ln">   648  </span>			line, _ := newTestLine(t, &#34;49.99&#34;)
+<span id="L649" class="ln">   649  </span>
+<span id="L650" class="ln">   650  </span>			got, err := c.DiscountFor([]Line{line})
+<span id="L651" class="ln">   651  </span>
+<span id="L652" class="ln">   652  </span>			require.NoError(t, err)
+<span id="L653" class="ln">   653  </span>			assert.Zero(t, got)
+<span id="L654" class="ln">   654  </span>		})
+<span id="L655" class="ln">   655  </span>
+<span id="L656" class="ln">   656  </span>		t.Run(&#34;最低購入金額は適用範囲が絞る前の購入全体の小計で判定する&#34;, func(t *testing.T) {
+<span id="L657" class="ln">   657  </span>			t.Parallel()
 <span id="L658" class="ln">   658  </span>
-<span id="L659" class="ln">   659  </span>		t.Run(&#34;使用済みかつ失効している場合は使用済みを先に返す&#34;, func(t *testing.T) {
-<span id="L660" class="ln">   660  </span>			t.Parallel()
-<span id="L661" class="ln">   661  </span>
-<span id="L662" class="ln">   662  </span>			c := newTestCoupon(t)
-<span id="L663" class="ln">   663  </span>			require.NoError(t, c.Redeem(usableAt))
-<span id="L664" class="ln">   664  </span>
-<span id="L665" class="ln">   665  </span>			err := c.Redeem(testExpiresAt.Add(time.Hour))
-<span id="L666" class="ln">   666  </span>
-<span id="L667" class="ln">   667  </span>			require.ErrorIs(t, err, ErrAlreadyUsed)
-<span id="L668" class="ln">   668  </span>		})
-<span id="L669" class="ln">   669  </span>	})
-<span id="L670" class="ln">   670  </span>}
-<span id="L671" class="ln">   671  </span>
-<span id="L672" class="ln">   672  </span>func TestCoupon_Restore(t *testing.T) {
-<span id="L673" class="ln">   673  </span>	t.Parallel()
-<span id="L674" class="ln">   674  </span>
-<span id="L675" class="ln">   675  </span>	usableAt := testExpiresAt.Add(-time.Hour)
-<span id="L676" class="ln">   676  </span>
-<span id="L677" class="ln">   677  </span>	redeemed := func(t *testing.T) *Coupon {
-<span id="L678" class="ln">   678  </span>		t.Helper()
-<span id="L679" class="ln">   679  </span>		c := newTestCoupon(t)
-<span id="L680" class="ln">   680  </span>		require.NoError(t, c.Redeem(usableAt))
-<span id="L681" class="ln">   681  </span>
-<span id="L682" class="ln">   682  </span>		return c
-<span id="L683" class="ln">   683  </span>	}
-<span id="L684" class="ln">   684  </span>
-<span id="L685" class="ln">   685  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L686" class="ln">   686  </span>		t.Parallel()
-<span id="L687" class="ln">   687  </span>
-<span id="L688" class="ln">   688  </span>		t.Run(&#34;使用済みかつ有効期限内なら未使用へ戻す&#34;, func(t *testing.T) {
-<span id="L689" class="ln">   689  </span>			t.Parallel()
+<span id="L659" class="ln">   659  </span>			<span class="comment">// 対象は 20.00 だけだが、購入全体は 60.00 なので下限 50.00 を満たす。</span>
+<span id="L660" class="ln">   660  </span>			minAmount := int64(5000)
+<span id="L661" class="ln">   661  </span>			attrs := validCouponArgs(t)
+<span id="L662" class="ln">   662  </span>			target, targetAttrs := newTestLine(t, &#34;20.00&#34;)
+<span id="L663" class="ln">   663  </span>			other, _ := newTestLine(t, &#34;40.00&#34;)
+<span id="L664" class="ln">   664  </span>			scope, err := NewCategoryScope(targetAttrs.CategoryID)
+<span id="L665" class="ln">   665  </span>			require.NoError(t, err)
+<span id="L666" class="ln">   666  </span>			attrs.Scope = scope
+<span id="L667" class="ln">   667  </span>			attrs.MinPurchaseAmount = &amp;minAmount
+<span id="L668" class="ln">   668  </span>			c, err := New(newTestUUID(t), attrs)
+<span id="L669" class="ln">   669  </span>			require.NoError(t, err)
+<span id="L670" class="ln">   670  </span>
+<span id="L671" class="ln">   671  </span>			got, err := c.DiscountFor([]Line{target, other})
+<span id="L672" class="ln">   672  </span>
+<span id="L673" class="ln">   673  </span>			require.NoError(t, err)
+<span id="L674" class="ln">   674  </span>			assert.Equal(t, 200, got)
+<span id="L675" class="ln">   675  </span>		})
+<span id="L676" class="ln">   676  </span>	})
+<span id="L677" class="ln">   677  </span>
+<span id="L678" class="ln">   678  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L679" class="ln">   679  </span>		t.Parallel()
+<span id="L680" class="ln">   680  </span>
+<span id="L681" class="ln">   681  </span>		t.Run(&#34;値引き額が決済スケールの整数に収まらない場合、ErrInvalidDiscountValueを返す&#34;, func(t *testing.T) {
+<span id="L682" class="ln">   682  </span>			t.Parallel()
+<span id="L683" class="ln">   683  </span>
+<span id="L684" class="ln">   684  </span>			<span class="comment">// Line.Subtotal は観測値であって検証を持たないため、決済スケールへ落とすと</span>
+<span id="L685" class="ln">   685  </span>			<span class="comment">// int64 を超える小計がドメインへ届き得る。</span>
+<span id="L686" class="ln">   686  </span>			c := newScopedCoupon(t, rate(t, &#34;1&#34;), NewAllScope())
+<span id="L687" class="ln">   687  </span>			line, _ := newTestLine(t, &#34;100000000000000000000&#34;)
+<span id="L688" class="ln">   688  </span>
+<span id="L689" class="ln">   689  </span>			got, err := c.DiscountFor([]Line{line})
 <span id="L690" class="ln">   690  </span>
-<span id="L691" class="ln">   691  </span>			c := redeemed(t)
-<span id="L692" class="ln">   692  </span>
-<span id="L693" class="ln">   693  </span>			restored, err := c.Restore(usableAt.Add(time.Minute))
-<span id="L694" class="ln">   694  </span>
-<span id="L695" class="ln">   695  </span>			require.NoError(t, err)
-<span id="L696" class="ln">   696  </span>			assert.True(t, restored)
-<span id="L697" class="ln">   697  </span>			assert.False(t, c.IsUsed())
-<span id="L698" class="ln">   698  </span>			assert.Nil(t, c.UsedAt())
-<span id="L699" class="ln">   699  </span>		})
-<span id="L700" class="ln">   700  </span>
-<span id="L701" class="ln">   701  </span>		t.Run(&#34;戻したクーポンは再び引き換えられる&#34;, func(t *testing.T) {
-<span id="L702" class="ln">   702  </span>			t.Parallel()
-<span id="L703" class="ln">   703  </span>
-<span id="L704" class="ln">   704  </span>			c := redeemed(t)
-<span id="L705" class="ln">   705  </span>			_, err := c.Restore(usableAt.Add(time.Minute))
-<span id="L706" class="ln">   706  </span>			require.NoError(t, err)
+<span id="L691" class="ln">   691  </span>			require.ErrorIs(t, err, ErrInvalidDiscountValue)
+<span id="L692" class="ln">   692  </span>			assert.Zero(t, got)
+<span id="L693" class="ln">   693  </span>		})
+<span id="L694" class="ln">   694  </span>	})
+<span id="L695" class="ln">   695  </span>}
+<span id="L696" class="ln">   696  </span>
+<span id="L697" class="ln">   697  </span>func TestCoupon_Redeem(t *testing.T) {
+<span id="L698" class="ln">   698  </span>	t.Parallel()
+<span id="L699" class="ln">   699  </span>
+<span id="L700" class="ln">   700  </span>	usableAt := testExpiresAt.Add(-time.Hour)
+<span id="L701" class="ln">   701  </span>
+<span id="L702" class="ln">   702  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L703" class="ln">   703  </span>		t.Parallel()
+<span id="L704" class="ln">   704  </span>
+<span id="L705" class="ln">   705  </span>		t.Run(&#34;未使用かつ有効期限内なら使用日時を刻む&#34;, func(t *testing.T) {
+<span id="L706" class="ln">   706  </span>			t.Parallel()
 <span id="L707" class="ln">   707  </span>
-<span id="L708" class="ln">   708  </span>			require.NoError(t, c.Redeem(usableAt.Add(2*time.Minute)))
-<span id="L709" class="ln">   709  </span>			assert.True(t, c.IsUsed())
-<span id="L710" class="ln">   710  </span>		})
+<span id="L708" class="ln">   708  </span>			c := newTestCoupon(t)
+<span id="L709" class="ln">   709  </span>
+<span id="L710" class="ln">   710  </span>			require.NoError(t, c.Redeem(usableAt))
 <span id="L711" class="ln">   711  </span>
-<span id="L712" class="ln">   712  </span>		t.Run(&#34;有効期限ちょうどの場合は戻さず使用日時を保つ&#34;, func(t *testing.T) {
-<span id="L713" class="ln">   713  </span>			t.Parallel()
-<span id="L714" class="ln">   714  </span>
-<span id="L715" class="ln">   715  </span>			c := redeemed(t)
+<span id="L712" class="ln">   712  </span>			assert.True(t, c.IsUsed())
+<span id="L713" class="ln">   713  </span>			require.NotNil(t, c.UsedAt())
+<span id="L714" class="ln">   714  </span>			assert.Equal(t, usableAt, *c.UsedAt())
+<span id="L715" class="ln">   715  </span>		})
 <span id="L716" class="ln">   716  </span>
-<span id="L717" class="ln">   717  </span>			restored, err := c.Restore(testExpiresAt)
-<span id="L718" class="ln">   718  </span>
-<span id="L719" class="ln">   719  </span>			require.NoError(t, err)
-<span id="L720" class="ln">   720  </span>			assert.False(t, restored)
-<span id="L721" class="ln">   721  </span>			require.NotNil(t, c.UsedAt())
-<span id="L722" class="ln">   722  </span>			assert.Equal(t, usableAt, *c.UsedAt())
-<span id="L723" class="ln">   723  </span>		})
-<span id="L724" class="ln">   724  </span>
-<span id="L725" class="ln">   725  </span>		t.Run(&#34;有効期限を過ぎている場合は戻さず使用日時を保つ&#34;, func(t *testing.T) {
-<span id="L726" class="ln">   726  </span>			t.Parallel()
-<span id="L727" class="ln">   727  </span>
-<span id="L728" class="ln">   728  </span>			c := redeemed(t)
-<span id="L729" class="ln">   729  </span>
-<span id="L730" class="ln">   730  </span>			restored, err := c.Restore(testExpiresAt.Add(time.Hour))
+<span id="L717" class="ln">   717  </span>		t.Run(&#34;利用開始日時ちょうどなら使用日時を刻む&#34;, func(t *testing.T) {
+<span id="L718" class="ln">   718  </span>			t.Parallel()
+<span id="L719" class="ln">   719  </span>
+<span id="L720" class="ln">   720  </span>			<span class="comment">// 拒否側（1ns 前）だけでなく受理側も Redeem 経由で押さえ、比較の向きを両側から固定する。</span>
+<span id="L721" class="ln">   721  </span>			from := testIssuedAt.Add(24 * time.Hour)
+<span id="L722" class="ln">   722  </span>			c := newConditionedCoupon(t, nil, &amp;from)
+<span id="L723" class="ln">   723  </span>
+<span id="L724" class="ln">   724  </span>			require.NoError(t, c.Redeem(from))
+<span id="L725" class="ln">   725  </span>
+<span id="L726" class="ln">   726  </span>			assert.True(t, c.IsUsed())
+<span id="L727" class="ln">   727  </span>			require.NotNil(t, c.UsedAt())
+<span id="L728" class="ln">   728  </span>			assert.Equal(t, from, *c.UsedAt())
+<span id="L729" class="ln">   729  </span>		})
+<span id="L730" class="ln">   730  </span>	})
 <span id="L731" class="ln">   731  </span>
-<span id="L732" class="ln">   732  </span>			require.NoError(t, err)
-<span id="L733" class="ln">   733  </span>			assert.False(t, restored)
-<span id="L734" class="ln">   734  </span>			require.NotNil(t, c.UsedAt())
-<span id="L735" class="ln">   735  </span>			assert.Equal(t, usableAt, *c.UsedAt())
-<span id="L736" class="ln">   736  </span>		})
-<span id="L737" class="ln">   737  </span>	})
-<span id="L738" class="ln">   738  </span>
-<span id="L739" class="ln">   739  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L740" class="ln">   740  </span>		t.Parallel()
-<span id="L741" class="ln">   741  </span>
-<span id="L742" class="ln">   742  </span>		t.Run(&#34;未使用の場合はErrNotUsedを返し状態を変えない&#34;, func(t *testing.T) {
-<span id="L743" class="ln">   743  </span>			t.Parallel()
-<span id="L744" class="ln">   744  </span>
-<span id="L745" class="ln">   745  </span>			c := newTestCoupon(t)
-<span id="L746" class="ln">   746  </span>
-<span id="L747" class="ln">   747  </span>			restored, err := c.Restore(usableAt)
-<span id="L748" class="ln">   748  </span>
-<span id="L749" class="ln">   749  </span>			require.ErrorIs(t, err, ErrNotUsed)
-<span id="L750" class="ln">   750  </span>			assert.False(t, restored)
-<span id="L751" class="ln">   751  </span>			assert.False(t, c.IsUsed())
-<span id="L752" class="ln">   752  </span>		})
+<span id="L732" class="ln">   732  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L733" class="ln">   733  </span>		t.Parallel()
+<span id="L734" class="ln">   734  </span>
+<span id="L735" class="ln">   735  </span>		t.Run(&#34;使用済みの場合はErrAlreadyUsedを返し状態を変えない&#34;, func(t *testing.T) {
+<span id="L736" class="ln">   736  </span>			t.Parallel()
+<span id="L737" class="ln">   737  </span>
+<span id="L738" class="ln">   738  </span>			c := newTestCoupon(t)
+<span id="L739" class="ln">   739  </span>			require.NoError(t, c.Redeem(usableAt))
+<span id="L740" class="ln">   740  </span>
+<span id="L741" class="ln">   741  </span>			err := c.Redeem(usableAt.Add(time.Minute))
+<span id="L742" class="ln">   742  </span>
+<span id="L743" class="ln">   743  </span>			require.ErrorIs(t, err, ErrAlreadyUsed)
+<span id="L744" class="ln">   744  </span>			require.NotNil(t, c.UsedAt())
+<span id="L745" class="ln">   745  </span>			assert.Equal(t, usableAt, *c.UsedAt())
+<span id="L746" class="ln">   746  </span>		})
+<span id="L747" class="ln">   747  </span>
+<span id="L748" class="ln">   748  </span>		t.Run(&#34;利用開始日時より前の場合はErrNotYetUsableを返し状態を変えない&#34;, func(t *testing.T) {
+<span id="L749" class="ln">   749  </span>			t.Parallel()
+<span id="L750" class="ln">   750  </span>
+<span id="L751" class="ln">   751  </span>			from := testIssuedAt.Add(24 * time.Hour)
+<span id="L752" class="ln">   752  </span>			c := newConditionedCoupon(t, nil, &amp;from)
 <span id="L753" class="ln">   753  </span>
-<span id="L754" class="ln">   754  </span>		t.Run(&#34;未使用かつ失効している場合も未使用を先に返す&#34;, func(t *testing.T) {
-<span id="L755" class="ln">   755  </span>			t.Parallel()
-<span id="L756" class="ln">   756  </span>
-<span id="L757" class="ln">   757  </span>			c := newTestCoupon(t)
-<span id="L758" class="ln">   758  </span>
-<span id="L759" class="ln">   759  </span>			_, err := c.Restore(testExpiresAt.Add(time.Hour))
-<span id="L760" class="ln">   760  </span>
-<span id="L761" class="ln">   761  </span>			require.ErrorIs(t, err, ErrNotUsed)
-<span id="L762" class="ln">   762  </span>		})
-<span id="L763" class="ln">   763  </span>	})
-<span id="L764" class="ln">   764  </span>}
-<span id="L765" class="ln">   765  </span>
-<span id="L766" class="ln">   766  </span>func Test_validateValidity(t *testing.T) {
-<span id="L767" class="ln">   767  </span>	t.Parallel()
-<span id="L768" class="ln">   768  </span>
-<span id="L769" class="ln">   769  </span>	issuedAt := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
+<span id="L754" class="ln">   754  </span>			err := c.Redeem(from.Add(-time.Nanosecond))
+<span id="L755" class="ln">   755  </span>
+<span id="L756" class="ln">   756  </span>			require.ErrorIs(t, err, ErrNotYetUsable)
+<span id="L757" class="ln">   757  </span>			assert.False(t, c.IsUsed())
+<span id="L758" class="ln">   758  </span>		})
+<span id="L759" class="ln">   759  </span>
+<span id="L760" class="ln">   760  </span>		t.Run(&#34;有効期限ちょうどの場合はErrExpiredを返す&#34;, func(t *testing.T) {
+<span id="L761" class="ln">   761  </span>			t.Parallel()
+<span id="L762" class="ln">   762  </span>
+<span id="L763" class="ln">   763  </span>			c := newTestCoupon(t)
+<span id="L764" class="ln">   764  </span>
+<span id="L765" class="ln">   765  </span>			err := c.Redeem(testExpiresAt)
+<span id="L766" class="ln">   766  </span>
+<span id="L767" class="ln">   767  </span>			require.ErrorIs(t, err, ErrExpired)
+<span id="L768" class="ln">   768  </span>			assert.False(t, c.IsUsed())
+<span id="L769" class="ln">   769  </span>		})
 <span id="L770" class="ln">   770  </span>
-<span id="L771" class="ln">   771  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L772" class="ln">   772  </span>		t.Parallel()
+<span id="L771" class="ln">   771  </span>		t.Run(&#34;有効期限を過ぎている場合はErrExpiredを返す&#34;, func(t *testing.T) {
+<span id="L772" class="ln">   772  </span>			t.Parallel()
 <span id="L773" class="ln">   773  </span>
-<span id="L774" class="ln">   774  </span>		t.Run(&#34;有効期限が発行日時より後なら通す&#34;, func(t *testing.T) {
-<span id="L775" class="ln">   775  </span>			t.Parallel()
-<span id="L776" class="ln">   776  </span>
-<span id="L777" class="ln">   777  </span>			require.NoError(t, validateValidity(issuedAt, issuedAt.Add(time.Nanosecond)))
-<span id="L778" class="ln">   778  </span>		})
-<span id="L779" class="ln">   779  </span>	})
-<span id="L780" class="ln">   780  </span>
-<span id="L781" class="ln">   781  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L782" class="ln">   782  </span>		t.Parallel()
-<span id="L783" class="ln">   783  </span>
-<span id="L784" class="ln">   784  </span>		t.Run(&#34;発行日時がゼロ値なら検証エラーになる&#34;, func(t *testing.T) {
-<span id="L785" class="ln">   785  </span>			t.Parallel()
-<span id="L786" class="ln">   786  </span>
-<span id="L787" class="ln">   787  </span>			require.ErrorIs(t, validateValidity(time.Time{}, issuedAt.Add(time.Hour)), ErrInvalidIssuedAt)
-<span id="L788" class="ln">   788  </span>		})
+<span id="L774" class="ln">   774  </span>			c := newTestCoupon(t)
+<span id="L775" class="ln">   775  </span>
+<span id="L776" class="ln">   776  </span>			err := c.Redeem(testExpiresAt.Add(time.Hour))
+<span id="L777" class="ln">   777  </span>
+<span id="L778" class="ln">   778  </span>			require.ErrorIs(t, err, ErrExpired)
+<span id="L779" class="ln">   779  </span>			assert.False(t, c.IsUsed())
+<span id="L780" class="ln">   780  </span>		})
+<span id="L781" class="ln">   781  </span>
+<span id="L782" class="ln">   782  </span>		t.Run(&#34;使用済みかつ失効している場合は使用済みを先に返す&#34;, func(t *testing.T) {
+<span id="L783" class="ln">   783  </span>			t.Parallel()
+<span id="L784" class="ln">   784  </span>
+<span id="L785" class="ln">   785  </span>			c := newTestCoupon(t)
+<span id="L786" class="ln">   786  </span>			require.NoError(t, c.Redeem(usableAt))
+<span id="L787" class="ln">   787  </span>
+<span id="L788" class="ln">   788  </span>			err := c.Redeem(testExpiresAt.Add(time.Hour))
 <span id="L789" class="ln">   789  </span>
-<span id="L790" class="ln">   790  </span>		t.Run(&#34;有効期限がゼロ値なら検証エラーになる&#34;, func(t *testing.T) {
-<span id="L791" class="ln">   791  </span>			t.Parallel()
-<span id="L792" class="ln">   792  </span>
-<span id="L793" class="ln">   793  </span>			require.ErrorIs(t, validateValidity(issuedAt, time.Time{}), ErrInvalidExpiresAt)
-<span id="L794" class="ln">   794  </span>		})
-<span id="L795" class="ln">   795  </span>
-<span id="L796" class="ln">   796  </span>		t.Run(&#34;有効期限が発行日時と同時刻なら検証エラーになる&#34;, func(t *testing.T) {
-<span id="L797" class="ln">   797  </span>			t.Parallel()
-<span id="L798" class="ln">   798  </span>
-<span id="L799" class="ln">   799  </span>			require.ErrorIs(t, validateValidity(issuedAt, issuedAt), ErrInvalidExpiresAt)
-<span id="L800" class="ln">   800  </span>		})
-<span id="L801" class="ln">   801  </span>
-<span id="L802" class="ln">   802  </span>		t.Run(&#34;有効期限が発行日時より前なら検証エラーになる&#34;, func(t *testing.T) {
-<span id="L803" class="ln">   803  </span>			t.Parallel()
+<span id="L790" class="ln">   790  </span>			require.ErrorIs(t, err, ErrAlreadyUsed)
+<span id="L791" class="ln">   791  </span>		})
+<span id="L792" class="ln">   792  </span>	})
+<span id="L793" class="ln">   793  </span>}
+<span id="L794" class="ln">   794  </span>
+<span id="L795" class="ln">   795  </span>func TestCoupon_Restore(t *testing.T) {
+<span id="L796" class="ln">   796  </span>	t.Parallel()
+<span id="L797" class="ln">   797  </span>
+<span id="L798" class="ln">   798  </span>	usableAt := testExpiresAt.Add(-time.Hour)
+<span id="L799" class="ln">   799  </span>
+<span id="L800" class="ln">   800  </span>	redeemed := func(t *testing.T) *Coupon {
+<span id="L801" class="ln">   801  </span>		t.Helper()
+<span id="L802" class="ln">   802  </span>		c := newTestCoupon(t)
+<span id="L803" class="ln">   803  </span>		require.NoError(t, c.Redeem(usableAt))
 <span id="L804" class="ln">   804  </span>
-<span id="L805" class="ln">   805  </span>			require.ErrorIs(t, validateValidity(issuedAt, issuedAt.Add(-time.Hour)), ErrInvalidExpiresAt)
-<span id="L806" class="ln">   806  </span>		})
-<span id="L807" class="ln">   807  </span>	})
-<span id="L808" class="ln">   808  </span>}
-<span id="L809" class="ln">   809  </span>
+<span id="L805" class="ln">   805  </span>		return c
+<span id="L806" class="ln">   806  </span>	}
+<span id="L807" class="ln">   807  </span>
+<span id="L808" class="ln">   808  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L809" class="ln">   809  </span>		t.Parallel()
+<span id="L810" class="ln">   810  </span>
+<span id="L811" class="ln">   811  </span>		t.Run(&#34;使用済みかつ有効期限内なら未使用へ戻す&#34;, func(t *testing.T) {
+<span id="L812" class="ln">   812  </span>			t.Parallel()
+<span id="L813" class="ln">   813  </span>
+<span id="L814" class="ln">   814  </span>			c := redeemed(t)
+<span id="L815" class="ln">   815  </span>
+<span id="L816" class="ln">   816  </span>			restored, err := c.Restore(usableAt.Add(time.Minute))
+<span id="L817" class="ln">   817  </span>
+<span id="L818" class="ln">   818  </span>			require.NoError(t, err)
+<span id="L819" class="ln">   819  </span>			assert.True(t, restored)
+<span id="L820" class="ln">   820  </span>			assert.False(t, c.IsUsed())
+<span id="L821" class="ln">   821  </span>			assert.Nil(t, c.UsedAt())
+<span id="L822" class="ln">   822  </span>		})
+<span id="L823" class="ln">   823  </span>
+<span id="L824" class="ln">   824  </span>		t.Run(&#34;戻したクーポンは再び引き換えられる&#34;, func(t *testing.T) {
+<span id="L825" class="ln">   825  </span>			t.Parallel()
+<span id="L826" class="ln">   826  </span>
+<span id="L827" class="ln">   827  </span>			c := redeemed(t)
+<span id="L828" class="ln">   828  </span>			_, err := c.Restore(usableAt.Add(time.Minute))
+<span id="L829" class="ln">   829  </span>			require.NoError(t, err)
+<span id="L830" class="ln">   830  </span>
+<span id="L831" class="ln">   831  </span>			require.NoError(t, c.Redeem(usableAt.Add(2*time.Minute)))
+<span id="L832" class="ln">   832  </span>			assert.True(t, c.IsUsed())
+<span id="L833" class="ln">   833  </span>		})
+<span id="L834" class="ln">   834  </span>
+<span id="L835" class="ln">   835  </span>		t.Run(&#34;有効期限ちょうどの場合は戻さず使用日時を保つ&#34;, func(t *testing.T) {
+<span id="L836" class="ln">   836  </span>			t.Parallel()
+<span id="L837" class="ln">   837  </span>
+<span id="L838" class="ln">   838  </span>			c := redeemed(t)
+<span id="L839" class="ln">   839  </span>
+<span id="L840" class="ln">   840  </span>			restored, err := c.Restore(testExpiresAt)
+<span id="L841" class="ln">   841  </span>
+<span id="L842" class="ln">   842  </span>			require.NoError(t, err)
+<span id="L843" class="ln">   843  </span>			assert.False(t, restored)
+<span id="L844" class="ln">   844  </span>			require.NotNil(t, c.UsedAt())
+<span id="L845" class="ln">   845  </span>			assert.Equal(t, usableAt, *c.UsedAt())
+<span id="L846" class="ln">   846  </span>		})
+<span id="L847" class="ln">   847  </span>
+<span id="L848" class="ln">   848  </span>		t.Run(&#34;有効期限を過ぎている場合は戻さず使用日時を保つ&#34;, func(t *testing.T) {
+<span id="L849" class="ln">   849  </span>			t.Parallel()
+<span id="L850" class="ln">   850  </span>
+<span id="L851" class="ln">   851  </span>			c := redeemed(t)
+<span id="L852" class="ln">   852  </span>
+<span id="L853" class="ln">   853  </span>			restored, err := c.Restore(testExpiresAt.Add(time.Hour))
+<span id="L854" class="ln">   854  </span>
+<span id="L855" class="ln">   855  </span>			require.NoError(t, err)
+<span id="L856" class="ln">   856  </span>			assert.False(t, restored)
+<span id="L857" class="ln">   857  </span>			require.NotNil(t, c.UsedAt())
+<span id="L858" class="ln">   858  </span>			assert.Equal(t, usableAt, *c.UsedAt())
+<span id="L859" class="ln">   859  </span>		})
+<span id="L860" class="ln">   860  </span>	})
+<span id="L861" class="ln">   861  </span>
+<span id="L862" class="ln">   862  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L863" class="ln">   863  </span>		t.Parallel()
+<span id="L864" class="ln">   864  </span>
+<span id="L865" class="ln">   865  </span>		t.Run(&#34;未使用の場合はErrNotUsedを返し状態を変えない&#34;, func(t *testing.T) {
+<span id="L866" class="ln">   866  </span>			t.Parallel()
+<span id="L867" class="ln">   867  </span>
+<span id="L868" class="ln">   868  </span>			c := newTestCoupon(t)
+<span id="L869" class="ln">   869  </span>
+<span id="L870" class="ln">   870  </span>			restored, err := c.Restore(usableAt)
+<span id="L871" class="ln">   871  </span>
+<span id="L872" class="ln">   872  </span>			require.ErrorIs(t, err, ErrNotUsed)
+<span id="L873" class="ln">   873  </span>			assert.False(t, restored)
+<span id="L874" class="ln">   874  </span>			assert.False(t, c.IsUsed())
+<span id="L875" class="ln">   875  </span>		})
+<span id="L876" class="ln">   876  </span>
+<span id="L877" class="ln">   877  </span>		t.Run(&#34;未使用かつ失効している場合も未使用を先に返す&#34;, func(t *testing.T) {
+<span id="L878" class="ln">   878  </span>			t.Parallel()
+<span id="L879" class="ln">   879  </span>
+<span id="L880" class="ln">   880  </span>			c := newTestCoupon(t)
+<span id="L881" class="ln">   881  </span>
+<span id="L882" class="ln">   882  </span>			_, err := c.Restore(testExpiresAt.Add(time.Hour))
+<span id="L883" class="ln">   883  </span>
+<span id="L884" class="ln">   884  </span>			require.ErrorIs(t, err, ErrNotUsed)
+<span id="L885" class="ln">   885  </span>		})
+<span id="L886" class="ln">   886  </span>	})
+<span id="L887" class="ln">   887  </span>}
+<span id="L888" class="ln">   888  </span>
+<span id="L889" class="ln">   889  </span>func Test_validateValidity(t *testing.T) {
+<span id="L890" class="ln">   890  </span>	t.Parallel()
+<span id="L891" class="ln">   891  </span>
+<span id="L892" class="ln">   892  </span>	issuedAt := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
+<span id="L893" class="ln">   893  </span>
+<span id="L894" class="ln">   894  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L895" class="ln">   895  </span>		t.Parallel()
+<span id="L896" class="ln">   896  </span>
+<span id="L897" class="ln">   897  </span>		t.Run(&#34;有効期限が発行日時より後なら通す&#34;, func(t *testing.T) {
+<span id="L898" class="ln">   898  </span>			t.Parallel()
+<span id="L899" class="ln">   899  </span>
+<span id="L900" class="ln">   900  </span>			require.NoError(t, validateValidity(issuedAt, issuedAt.Add(time.Nanosecond)))
+<span id="L901" class="ln">   901  </span>		})
+<span id="L902" class="ln">   902  </span>	})
+<span id="L903" class="ln">   903  </span>
+<span id="L904" class="ln">   904  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L905" class="ln">   905  </span>		t.Parallel()
+<span id="L906" class="ln">   906  </span>
+<span id="L907" class="ln">   907  </span>		t.Run(&#34;発行日時がゼロ値なら検証エラーになる&#34;, func(t *testing.T) {
+<span id="L908" class="ln">   908  </span>			t.Parallel()
+<span id="L909" class="ln">   909  </span>
+<span id="L910" class="ln">   910  </span>			require.ErrorIs(t, validateValidity(time.Time{}, issuedAt.Add(time.Hour)), ErrInvalidIssuedAt)
+<span id="L911" class="ln">   911  </span>		})
+<span id="L912" class="ln">   912  </span>
+<span id="L913" class="ln">   913  </span>		t.Run(&#34;有効期限がゼロ値なら検証エラーになる&#34;, func(t *testing.T) {
+<span id="L914" class="ln">   914  </span>			t.Parallel()
+<span id="L915" class="ln">   915  </span>
+<span id="L916" class="ln">   916  </span>			require.ErrorIs(t, validateValidity(issuedAt, time.Time{}), ErrInvalidExpiresAt)
+<span id="L917" class="ln">   917  </span>		})
+<span id="L918" class="ln">   918  </span>
+<span id="L919" class="ln">   919  </span>		t.Run(&#34;有効期限が発行日時と同時刻なら検証エラーになる&#34;, func(t *testing.T) {
+<span id="L920" class="ln">   920  </span>			t.Parallel()
+<span id="L921" class="ln">   921  </span>
+<span id="L922" class="ln">   922  </span>			require.ErrorIs(t, validateValidity(issuedAt, issuedAt), ErrInvalidExpiresAt)
+<span id="L923" class="ln">   923  </span>		})
+<span id="L924" class="ln">   924  </span>
+<span id="L925" class="ln">   925  </span>		t.Run(&#34;有効期限が発行日時より前なら検証エラーになる&#34;, func(t *testing.T) {
+<span id="L926" class="ln">   926  </span>			t.Parallel()
+<span id="L927" class="ln">   927  </span>
+<span id="L928" class="ln">   928  </span>			require.ErrorIs(t, validateValidity(issuedAt, issuedAt.Add(-time.Hour)), ErrInvalidExpiresAt)
+<span id="L929" class="ln">   929  </span>		})
+<span id="L930" class="ln">   930  </span>	})
+<span id="L931" class="ln">   931  </span>}
+<span id="L932" class="ln">   932  </span>
+<span id="L933" class="ln">   933  </span><span class="comment">// newConditionedCoupon は、条件を持つクーポンを生成します。nil を渡した条件は設定されません。</span>
+<span id="L934" class="ln">   934  </span>func newConditionedCoupon(t *testing.T, minPurchaseAmount *int64, usableFrom *time.Time) *Coupon {
+<span id="L935" class="ln">   935  </span>	t.Helper()
+<span id="L936" class="ln">   936  </span>
+<span id="L937" class="ln">   937  </span>	attrs := validCouponArgs(t)
+<span id="L938" class="ln">   938  </span>	attrs.MinPurchaseAmount = minPurchaseAmount
+<span id="L939" class="ln">   939  </span>	attrs.UsableFrom = usableFrom
+<span id="L940" class="ln">   940  </span>	c, err := New(newTestUUID(t), attrs)
+<span id="L941" class="ln">   941  </span>	require.NoError(t, err)
+<span id="L942" class="ln">   942  </span>
+<span id="L943" class="ln">   943  </span>	return c
+<span id="L944" class="ln">   944  </span>}
+<span id="L945" class="ln">   945  </span>
+<span id="L946" class="ln">   946  </span>func TestCoupon_MinPurchaseAmount(t *testing.T) {
+<span id="L947" class="ln">   947  </span>	t.Parallel()
+<span id="L948" class="ln">   948  </span>
+<span id="L949" class="ln">   949  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L950" class="ln">   950  </span>		t.Parallel()
+<span id="L951" class="ln">   951  </span>
+<span id="L952" class="ln">   952  </span>		t.Run(&#34;条件を持たない場合はnilを返す&#34;, func(t *testing.T) {
+<span id="L953" class="ln">   953  </span>			t.Parallel()
+<span id="L954" class="ln">   954  </span>
+<span id="L955" class="ln">   955  </span>			assert.Nil(t, newTestCoupon(t).MinPurchaseAmount())
+<span id="L956" class="ln">   956  </span>		})
+<span id="L957" class="ln">   957  </span>
+<span id="L958" class="ln">   958  </span>		t.Run(&#34;返した値を書き換えてもクーポンの条件は変わらない&#34;, func(t *testing.T) {
+<span id="L959" class="ln">   959  </span>			t.Parallel()
+<span id="L960" class="ln">   960  </span>
+<span id="L961" class="ln">   961  </span>			minAmount := int64(5000)
+<span id="L962" class="ln">   962  </span>			c := newConditionedCoupon(t, &amp;minAmount, nil)
+<span id="L963" class="ln">   963  </span>
+<span id="L964" class="ln">   964  </span>			got := c.MinPurchaseAmount()
+<span id="L965" class="ln">   965  </span>			require.NotNil(t, got)
+<span id="L966" class="ln">   966  </span>			*got = 1
+<span id="L967" class="ln">   967  </span>
+<span id="L968" class="ln">   968  </span>			require.NotNil(t, c.MinPurchaseAmount())
+<span id="L969" class="ln">   969  </span>			assert.Equal(t, int64(5000), *c.MinPurchaseAmount())
+<span id="L970" class="ln">   970  </span>		})
+<span id="L971" class="ln">   971  </span>	})
+<span id="L972" class="ln">   972  </span>}
+<span id="L973" class="ln">   973  </span>
+<span id="L974" class="ln">   974  </span>func TestCoupon_UsableFrom(t *testing.T) {
+<span id="L975" class="ln">   975  </span>	t.Parallel()
+<span id="L976" class="ln">   976  </span>
+<span id="L977" class="ln">   977  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L978" class="ln">   978  </span>		t.Parallel()
+<span id="L979" class="ln">   979  </span>
+<span id="L980" class="ln">   980  </span>		t.Run(&#34;条件を持たない場合はnilを返す&#34;, func(t *testing.T) {
+<span id="L981" class="ln">   981  </span>			t.Parallel()
+<span id="L982" class="ln">   982  </span>
+<span id="L983" class="ln">   983  </span>			assert.Nil(t, newTestCoupon(t).UsableFrom())
+<span id="L984" class="ln">   984  </span>		})
+<span id="L985" class="ln">   985  </span>
+<span id="L986" class="ln">   986  </span>		t.Run(&#34;返した値を書き換えてもクーポンの条件は変わらない&#34;, func(t *testing.T) {
+<span id="L987" class="ln">   987  </span>			t.Parallel()
+<span id="L988" class="ln">   988  </span>
+<span id="L989" class="ln">   989  </span>			from := testIssuedAt.Add(24 * time.Hour)
+<span id="L990" class="ln">   990  </span>			c := newConditionedCoupon(t, nil, &amp;from)
+<span id="L991" class="ln">   991  </span>
+<span id="L992" class="ln">   992  </span>			got := c.UsableFrom()
+<span id="L993" class="ln">   993  </span>			require.NotNil(t, got)
+<span id="L994" class="ln">   994  </span>			*got = testIssuedAt
+<span id="L995" class="ln">   995  </span>
+<span id="L996" class="ln">   996  </span>			require.NotNil(t, c.UsableFrom())
+<span id="L997" class="ln">   997  </span>			assert.Equal(t, from, *c.UsableFrom())
+<span id="L998" class="ln">   998  </span>		})
+<span id="L999" class="ln">   999  </span>	})
+<span id="L1000" class="ln">  1000  </span>}
+<span id="L1001" class="ln">  1001  </span>
+<span id="L1002" class="ln">  1002  </span>func TestCoupon_IsNotYetUsable(t *testing.T) {
+<span id="L1003" class="ln">  1003  </span>	t.Parallel()
+<span id="L1004" class="ln">  1004  </span>
+<span id="L1005" class="ln">  1005  </span>	from := testIssuedAt.Add(24 * time.Hour)
+<span id="L1006" class="ln">  1006  </span>
+<span id="L1007" class="ln">  1007  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1008" class="ln">  1008  </span>		t.Parallel()
+<span id="L1009" class="ln">  1009  </span>
+<span id="L1010" class="ln">  1010  </span>		t.Run(&#34;利用開始日時を持たない場合は常にfalseを返す&#34;, func(t *testing.T) {
+<span id="L1011" class="ln">  1011  </span>			t.Parallel()
+<span id="L1012" class="ln">  1012  </span>
+<span id="L1013" class="ln">  1013  </span>			assert.False(t, newTestCoupon(t).IsNotYetUsable(testIssuedAt))
+<span id="L1014" class="ln">  1014  </span>		})
+<span id="L1015" class="ln">  1015  </span>
+<span id="L1016" class="ln">  1016  </span>		t.Run(&#34;利用開始日時より前の場合はtrueを返す&#34;, func(t *testing.T) {
+<span id="L1017" class="ln">  1017  </span>			t.Parallel()
+<span id="L1018" class="ln">  1018  </span>
+<span id="L1019" class="ln">  1019  </span>			c := newConditionedCoupon(t, nil, &amp;from)
+<span id="L1020" class="ln">  1020  </span>
+<span id="L1021" class="ln">  1021  </span>			assert.True(t, c.IsNotYetUsable(from.Add(-time.Nanosecond)))
+<span id="L1022" class="ln">  1022  </span>		})
+<span id="L1023" class="ln">  1023  </span>
+<span id="L1024" class="ln">  1024  </span>		t.Run(&#34;利用開始日時ちょうどの場合はfalseを返す&#34;, func(t *testing.T) {
+<span id="L1025" class="ln">  1025  </span>			t.Parallel()
+<span id="L1026" class="ln">  1026  </span>
+<span id="L1027" class="ln">  1027  </span>			c := newConditionedCoupon(t, nil, &amp;from)
+<span id="L1028" class="ln">  1028  </span>
+<span id="L1029" class="ln">  1029  </span>			assert.False(t, c.IsNotYetUsable(from))
+<span id="L1030" class="ln">  1030  </span>		})
+<span id="L1031" class="ln">  1031  </span>
+<span id="L1032" class="ln">  1032  </span>		t.Run(&#34;利用開始日時より後の場合はfalseを返す&#34;, func(t *testing.T) {
+<span id="L1033" class="ln">  1033  </span>			t.Parallel()
+<span id="L1034" class="ln">  1034  </span>
+<span id="L1035" class="ln">  1035  </span>			c := newConditionedCoupon(t, nil, &amp;from)
+<span id="L1036" class="ln">  1036  </span>
+<span id="L1037" class="ln">  1037  </span>			assert.False(t, c.IsNotYetUsable(from.Add(time.Nanosecond)))
+<span id="L1038" class="ln">  1038  </span>		})
+<span id="L1039" class="ln">  1039  </span>	})
+<span id="L1040" class="ln">  1040  </span>}
+<span id="L1041" class="ln">  1041  </span>
+<span id="L1042" class="ln">  1042  </span>func TestCoupon_SatisfiesMinPurchase(t *testing.T) {
+<span id="L1043" class="ln">  1043  </span>	t.Parallel()
+<span id="L1044" class="ln">  1044  </span>
+<span id="L1045" class="ln">  1045  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1046" class="ln">  1046  </span>		t.Parallel()
+<span id="L1047" class="ln">  1047  </span>
+<span id="L1048" class="ln">  1048  </span>		t.Run(&#34;最低購入金額を持たない場合は常に満たす&#34;, func(t *testing.T) {
+<span id="L1049" class="ln">  1049  </span>			t.Parallel()
+<span id="L1050" class="ln">  1050  </span>
+<span id="L1051" class="ln">  1051  </span>			assert.True(t, newTestCoupon(t).SatisfiesMinPurchase(0))
+<span id="L1052" class="ln">  1052  </span>		})
+<span id="L1053" class="ln">  1053  </span>
+<span id="L1054" class="ln">  1054  </span>		t.Run(&#34;下限に満たない場合は満たさない&#34;, func(t *testing.T) {
+<span id="L1055" class="ln">  1055  </span>			t.Parallel()
+<span id="L1056" class="ln">  1056  </span>
+<span id="L1057" class="ln">  1057  </span>			minAmount := int64(5000)
+<span id="L1058" class="ln">  1058  </span>			c := newConditionedCoupon(t, &amp;minAmount, nil)
+<span id="L1059" class="ln">  1059  </span>
+<span id="L1060" class="ln">  1060  </span>			assert.False(t, c.SatisfiesMinPurchase(4999))
+<span id="L1061" class="ln">  1061  </span>		})
+<span id="L1062" class="ln">  1062  </span>
+<span id="L1063" class="ln">  1063  </span>		t.Run(&#34;下限ちょうどの場合は満たす&#34;, func(t *testing.T) {
+<span id="L1064" class="ln">  1064  </span>			t.Parallel()
+<span id="L1065" class="ln">  1065  </span>
+<span id="L1066" class="ln">  1066  </span>			minAmount := int64(5000)
+<span id="L1067" class="ln">  1067  </span>			c := newConditionedCoupon(t, &amp;minAmount, nil)
+<span id="L1068" class="ln">  1068  </span>
+<span id="L1069" class="ln">  1069  </span>			assert.True(t, c.SatisfiesMinPurchase(5000))
+<span id="L1070" class="ln">  1070  </span>		})
+<span id="L1071" class="ln">  1071  </span>
+<span id="L1072" class="ln">  1072  </span>		t.Run(&#34;下限を超える場合は満たす&#34;, func(t *testing.T) {
+<span id="L1073" class="ln">  1073  </span>			t.Parallel()
+<span id="L1074" class="ln">  1074  </span>
+<span id="L1075" class="ln">  1075  </span>			minAmount := int64(5000)
+<span id="L1076" class="ln">  1076  </span>			c := newConditionedCoupon(t, &amp;minAmount, nil)
+<span id="L1077" class="ln">  1077  </span>
+<span id="L1078" class="ln">  1078  </span>			assert.True(t, c.SatisfiesMinPurchase(5001))
+<span id="L1079" class="ln">  1079  </span>		})
+<span id="L1080" class="ln">  1080  </span>	})
+<span id="L1081" class="ln">  1081  </span>}
+<span id="L1082" class="ln">  1082  </span>
+<span id="L1083" class="ln">  1083  </span>func Test_validateConditions(t *testing.T) {
+<span id="L1084" class="ln">  1084  </span>	t.Parallel()
+<span id="L1085" class="ln">  1085  </span>
+<span id="L1086" class="ln">  1086  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L1087" class="ln">  1087  </span>		t.Parallel()
+<span id="L1088" class="ln">  1088  </span>
+<span id="L1089" class="ln">  1089  </span>		t.Run(&#34;条件をどちらも持たない場合はエラーにならない&#34;, func(t *testing.T) {
+<span id="L1090" class="ln">  1090  </span>			t.Parallel()
+<span id="L1091" class="ln">  1091  </span>
+<span id="L1092" class="ln">  1092  </span>			require.NoError(t, validateConditions(validCouponArgs(t)))
+<span id="L1093" class="ln">  1093  </span>		})
+<span id="L1094" class="ln">  1094  </span>
+<span id="L1095" class="ln">  1095  </span>		t.Run(&#34;利用開始日時が有効期限より前ならエラーにならない&#34;, func(t *testing.T) {
+<span id="L1096" class="ln">  1096  </span>			t.Parallel()
+<span id="L1097" class="ln">  1097  </span>
+<span id="L1098" class="ln">  1098  </span>			attrs := validCouponArgs(t)
+<span id="L1099" class="ln">  1099  </span>			from := testExpiresAt.Add(-time.Nanosecond)
+<span id="L1100" class="ln">  1100  </span>			attrs.UsableFrom = &amp;from
+<span id="L1101" class="ln">  1101  </span>
+<span id="L1102" class="ln">  1102  </span>			require.NoError(t, validateConditions(attrs))
+<span id="L1103" class="ln">  1103  </span>		})
+<span id="L1104" class="ln">  1104  </span>	})
+<span id="L1105" class="ln">  1105  </span>
+<span id="L1106" class="ln">  1106  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L1107" class="ln">  1107  </span>		t.Parallel()
+<span id="L1108" class="ln">  1108  </span>
+<span id="L1109" class="ln">  1109  </span>		t.Run(&#34;最低購入金額が0の場合はErrInvalidMinPurchaseAmountを返す&#34;, func(t *testing.T) {
+<span id="L1110" class="ln">  1110  </span>			t.Parallel()
+<span id="L1111" class="ln">  1111  </span>
+<span id="L1112" class="ln">  1112  </span>			attrs := validCouponArgs(t)
+<span id="L1113" class="ln">  1113  </span>			minAmount := int64(0)
+<span id="L1114" class="ln">  1114  </span>			attrs.MinPurchaseAmount = &amp;minAmount
+<span id="L1115" class="ln">  1115  </span>
+<span id="L1116" class="ln">  1116  </span>			require.ErrorIs(t, validateConditions(attrs), ErrInvalidMinPurchaseAmount)
+<span id="L1117" class="ln">  1117  </span>		})
+<span id="L1118" class="ln">  1118  </span>
+<span id="L1119" class="ln">  1119  </span>		t.Run(&#34;最低購入金額が負の場合はErrInvalidMinPurchaseAmountを返す&#34;, func(t *testing.T) {
+<span id="L1120" class="ln">  1120  </span>			t.Parallel()
+<span id="L1121" class="ln">  1121  </span>
+<span id="L1122" class="ln">  1122  </span>			attrs := validCouponArgs(t)
+<span id="L1123" class="ln">  1123  </span>			minAmount := int64(-1)
+<span id="L1124" class="ln">  1124  </span>			attrs.MinPurchaseAmount = &amp;minAmount
+<span id="L1125" class="ln">  1125  </span>
+<span id="L1126" class="ln">  1126  </span>			require.ErrorIs(t, validateConditions(attrs), ErrInvalidMinPurchaseAmount)
+<span id="L1127" class="ln">  1127  </span>		})
+<span id="L1128" class="ln">  1128  </span>
+<span id="L1129" class="ln">  1129  </span>		t.Run(&#34;利用開始日時が有効期限ちょうどの場合はErrInvalidUsableFromを返す&#34;, func(t *testing.T) {
+<span id="L1130" class="ln">  1130  </span>			t.Parallel()
+<span id="L1131" class="ln">  1131  </span>
+<span id="L1132" class="ln">  1132  </span>			attrs := validCouponArgs(t)
+<span id="L1133" class="ln">  1133  </span>			from := testExpiresAt
+<span id="L1134" class="ln">  1134  </span>			attrs.UsableFrom = &amp;from
+<span id="L1135" class="ln">  1135  </span>
+<span id="L1136" class="ln">  1136  </span>			require.ErrorIs(t, validateConditions(attrs), ErrInvalidUsableFrom)
+<span id="L1137" class="ln">  1137  </span>		})
+<span id="L1138" class="ln">  1138  </span>
+<span id="L1139" class="ln">  1139  </span>		t.Run(&#34;利用開始日時が有効期限より後の場合はErrInvalidUsableFromを返す&#34;, func(t *testing.T) {
+<span id="L1140" class="ln">  1140  </span>			t.Parallel()
+<span id="L1141" class="ln">  1141  </span>
+<span id="L1142" class="ln">  1142  </span>			attrs := validCouponArgs(t)
+<span id="L1143" class="ln">  1143  </span>			from := testExpiresAt.Add(time.Nanosecond)
+<span id="L1144" class="ln">  1144  </span>			attrs.UsableFrom = &amp;from
+<span id="L1145" class="ln">  1145  </span>
+<span id="L1146" class="ln">  1146  </span>			require.ErrorIs(t, validateConditions(attrs), ErrInvalidUsableFrom)
+<span id="L1147" class="ln">  1147  </span>		})
+<span id="L1148" class="ln">  1148  </span>	})
+<span id="L1149" class="ln">  1149  </span>}
+<span id="L1150" class="ln">  1150  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

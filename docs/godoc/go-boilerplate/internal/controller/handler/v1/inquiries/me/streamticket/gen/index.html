@@ -366,7 +366,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=1818:1852#L38">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=1918:1952#L39">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -485,12 +485,13 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InquiryStreamTicketResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=1031:1628#L20">InquiryStreamTicketResponse</a>
+			<h2 id="InquiryStreamTicketResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=1131:1728#L21">InquiryStreamTicketResponse</a>
 				<a class="permalink" href="#InquiryStreamTicketResponse">¶</a>
 				
 				
 			</h2>
-			<p>InquiryStreamTicketResponse 購読に使う 1 回限りの ticket。生値はこの応答にしか現れず、サーバは hash しか保存しない。
+			<p>InquiryStreamTicketResponse 購読に使う ticket。有効期限まで、新しい接続を始めるたびに繰り返し使える（自動再接続を含む）。
+生値はこの応答にしか現れず、サーバは hash しか保存しない。
 接続は GET /v1/streams/{destination} に streamId を渡して開始する。
 
 			</p><pre>type InquiryStreamTicketResponse struct {
@@ -525,7 +526,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2051:2094#L41">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2151:2194#L42">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -570,7 +571,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2290:2330#L44">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2390:2430#L45">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -615,7 +616,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="NotFound404">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2518:2550#L47">NotFound404</a>
+			<h2 id="NotFound404">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2618:2650#L48">NotFound404</a>
 				<a class="permalink" href="#NotFound404">¶</a>
 				
 				
@@ -1069,7 +1070,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2748:2790#L50">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2848:2890#L51">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -1185,7 +1186,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=2982:3018#L53">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/inquiries/me/streamticket/gen/type.gen.go.html?s=3082:3118#L54">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				

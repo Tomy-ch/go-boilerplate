@@ -124,7 +124,7 @@
 <span id="L67" class="ln">    67  </span>	<span class="comment">// 対象がない場合は空配列です。キャンセル済みは集計対象外のため、キャンセルのステータスは現れません。</span>
 <span id="L68" class="ln">    68  </span>	StatusBreakdown []PurchaseStatusBreakdownResponse `json:&#34;statusBreakdown&#34;`
 <span id="L69" class="ln">    69  </span>
-<span id="L70" class="ln">    70  </span>	<span class="comment">// TotalAmount 対象期間の支払金額の合計（小計 + 税額 + 送料、キャンセル済みを除く）。</span>
+<span id="L70" class="ln">    70  </span>	<span class="comment">// TotalAmount 対象期間の支払金額の合計（小計 - 値引き額 + 税額 + 送料、キャンセル済みを除く）。</span>
 <span id="L71" class="ln">    71  </span>	<span class="comment">// statusBreakdown の totalAmount の総和と一致します。USD セント単位の整数です。対象がない場合は 0 です。</span>
 <span id="L72" class="ln">    72  </span>	<span class="comment">//</span>
 <span id="L73" class="ln">    73  </span>	<span class="comment">//</span>

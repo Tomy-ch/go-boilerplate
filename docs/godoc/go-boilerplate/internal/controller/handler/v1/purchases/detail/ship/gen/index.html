@@ -399,7 +399,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=4469:4503#L116">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=4538:4572#L116">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -444,7 +444,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="Conflict409">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=4691:4723#L119">Conflict409</a>
+			<h2 id="Conflict409">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=4760:4792#L119">Conflict409</a>
 				<a class="permalink" href="#Conflict409">¶</a>
 				
 				
@@ -563,7 +563,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=4912:4945#L122">Forbidden403</a>
+			<h2 id="Forbidden403">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=4981:5014#L122">Forbidden403</a>
 				<a class="permalink" href="#Forbidden403">¶</a>
 				
 				
@@ -608,7 +608,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=5144:5187#L125">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=5213:5256#L125">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -653,7 +653,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=5383:5423#L128">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=5452:5492#L128">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -698,7 +698,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="NotFound404">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=5611:5643#L131">NotFound404</a>
+			<h2 id="NotFound404">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=5680:5712#L131">NotFound404</a>
 				<a class="permalink" href="#NotFound404">¶</a>
 				
 				
@@ -1075,7 +1075,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseCodeParam">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=4248:4279#L113">PurchaseCodeParam</a>
+			<h2 id="PurchaseCodeParam">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=4317:4348#L113">PurchaseCodeParam</a>
 				<a class="permalink" href="#PurchaseCodeParam">¶</a>
 				
 				
@@ -1139,7 +1139,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseShipResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=1912:3469#L44">PurchaseShipResponse</a>
+			<h2 id="PurchaseShipResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=1912:3538#L44">PurchaseShipResponse</a>
 				<a class="permalink" href="#PurchaseShipResponse">¶</a>
 				
 				
@@ -1187,7 +1187,7 @@ either of them for path registration
     <span class="comment">// Example: 16000</span>
     TaxAmount <a href="../../../../../../../../../builtin/#int64">int64</a> `json:&#34;taxAmount&#34;`
 
-<span id="PurchaseShipResponse.TotalAmount"></span>    <span class="comment">// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。</span>
+<span id="PurchaseShipResponse.TotalAmount"></span>    <span class="comment">// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。</span>
     <span class="comment">//</span>
     <span class="comment">// Example: 176500</span>
     TotalAmount <a href="../../../../../../../../../builtin/#int64">int64</a> `json:&#34;totalAmount&#34;`
@@ -1213,7 +1213,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=3749:4179#L95">PurchaseStatusRef</a>
+			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=3818:4248#L95">PurchaseStatusRef</a>
 				<a class="permalink" href="#PurchaseStatusRef">¶</a>
 				
 				
@@ -1435,7 +1435,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=5835:5871#L134">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/ship/gen/type.gen.go.html?s=5904:5940#L134">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				

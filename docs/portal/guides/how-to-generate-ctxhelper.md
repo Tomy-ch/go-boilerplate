@@ -128,7 +128,7 @@ However:
 ## Relationship with CI
 
 - generation is performed locally, and the results are committed
-- CI re-runs `make gen-go-code` and fails the pull request when the committed output differs
+- CI re-runs the generation (`make gen-go-code-ci` on the runner) and fails the pull request when the committed output differs
   (`.github/workflows/gen-go-artifacts-check.yaml`), so a forgotten regeneration is caught
 
 ## Notes

@@ -149,10 +149,16 @@
 					<dd>    <a href="#Coupon.IsHeldBy">func (c *Coupon) IsHeldBy(userID uuid.UUID) bool</a></dd>
 				
 					
+					<dd>    <a href="#Coupon.IsNotYetUsable">func (c *Coupon) IsNotYetUsable(now time.Time) bool</a></dd>
+				
+					
 					<dd>    <a href="#Coupon.IsUsed">func (c *Coupon) IsUsed() bool</a></dd>
 				
 					
 					<dd>    <a href="#Coupon.IssuedAt">func (c *Coupon) IssuedAt() time.Time</a></dd>
+				
+					
+					<dd>    <a href="#Coupon.MinPurchaseAmount">func (c *Coupon) MinPurchaseAmount() *int64</a></dd>
 				
 					
 					<dd>    <a href="#Coupon.Redeem">func (c *Coupon) Redeem(now time.Time) error</a></dd>
@@ -161,7 +167,13 @@
 					<dd>    <a href="#Coupon.Restore">func (c *Coupon) Restore(now time.Time) (bool, error)</a></dd>
 				
 					
+					<dd>    <a href="#Coupon.SatisfiesMinPurchase">func (c *Coupon) SatisfiesMinPurchase(subtotalCents int64) bool</a></dd>
+				
+					
 					<dd>    <a href="#Coupon.Scope">func (c *Coupon) Scope() Scope</a></dd>
+				
+					
+					<dd>    <a href="#Coupon.UsableFrom">func (c *Coupon) UsableFrom() *time.Time</a></dd>
 				
 					
 					<dd>    <a href="#Coupon.UsedAt">func (c *Coupon) UsedAt() *time.Time</a></dd>
@@ -198,7 +210,16 @@
 					<dd>    <a href="#Discount.Kind">func (d Discount) Kind() DiscountKind</a></dd>
 				
 					
+					<dd>    <a href="#Discount.LimitToMaxAmount">func (d Discount) LimitToMaxAmount(cents int64) int64</a></dd>
+				
+					
+					<dd>    <a href="#Discount.MaxAmount">func (d Discount) MaxAmount() *int64</a></dd>
+				
+					
 					<dd>    <a href="#Discount.Value">func (d Discount) Value() decimal.Decimal</a></dd>
+				
+					
+					<dd>    <a href="#Discount.WithMaxAmount">func (d Discount) WithMaxAmount(maxAmount int64) (Discount, error)</a></dd>
 				
 			
 				
@@ -376,11 +397,20 @@
     <span id="ErrInvalidExpiresAt">ErrInvalidExpiresAt</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;expiresAt failed&#34;)
     <span class="comment">// ErrInvalidIssuedAt は、発行日時の検証に失敗した場合のエラーです。</span>
     <span id="ErrInvalidIssuedAt">ErrInvalidIssuedAt</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;issuedAt failed&#34;)
+    <span class="comment">// ErrInvalidMaxAmount は、値引き上限の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidMaxAmount">ErrInvalidMaxAmount</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;maxAmount failed&#34;)
+    <span class="comment">// ErrInvalidMinPurchaseAmount は、最低購入金額の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidMinPurchaseAmount">ErrInvalidMinPurchaseAmount</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;minPurchaseAmount failed&#34;)
+    <span class="comment">// ErrInvalidUsableFrom は、利用開始日時の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidUsableFrom">ErrInvalidUsableFrom</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;usableFrom failed&#34;)
     <span class="comment">// ErrAlreadyUsed は、使用済みのクーポンを引き換えようとした場合のエラーです。</span>
     <span class="comment">// 同じ内容の再送でも時間の経過でも解消しません。</span>
     <span id="ErrAlreadyUsed">ErrAlreadyUsed</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;coupon is already used&#34;)
     <span class="comment">// ErrExpired は、失効したクーポンを引き換えようとした場合のエラーです。</span>
     <span id="ErrExpired">ErrExpired</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;coupon is expired&#34;)
+    <span class="comment">// ErrNotYetUsable は、利用開始日時より前のクーポンを引き換えようとした場合のエラーです。</span>
+    <span class="comment">// 時間の経過で解消する点が ErrExpired と逆になります。</span>
+    <span id="ErrNotYetUsable">ErrNotYetUsable</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;coupon is not yet usable&#34;)
     <span class="comment">// ErrNotHeld は、その利用者が保有していないクーポンを指した場合のエラーです。</span>
     <span class="comment">// 存在しないクーポンもこのエラーに畳みます。区別できると保有していないクーポンの存在が漏れるためです</span>
     <span class="comment">// （docs/spec/usecase/purchase.md の CreatePurchase）。</span>
@@ -409,7 +439,7 @@
 		
 			
 			
-			<h2 id="Attributes">type <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=1560:1893#L27">Attributes</a>
+			<h2 id="Attributes">type <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=1672:2277#L29">Attributes</a>
 				<a class="permalink" href="#Attributes">¶</a>
 				
 				
@@ -424,6 +454,10 @@
     Discount <a href="#Discount">Discount</a>
 <span id="Attributes.Scope"></span>    <span class="comment">// Scope は、どの明細が対象かです。</span>
     Scope <a href="#Scope">Scope</a>
+<span id="Attributes.MinPurchaseAmount"></span>    <span class="comment">// MinPurchaseAmount は、使うために必要な購入額の下限です。条件が無ければ nil です。</span>
+    MinPurchaseAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="Attributes.UsableFrom"></span>    <span class="comment">// UsableFrom は、使えるようになる日時です。発行時点から使えるなら nil です。</span>
+    UsableFrom *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
 <span id="Attributes.ExpiresAt"></span>    <span class="comment">// ExpiresAt は、有効期限です。</span>
     ExpiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
 <span id="Attributes.IssuedAt"></span>    <span class="comment">// IssuedAt は、発行日時です。</span>
@@ -445,7 +479,7 @@
 		
 			
 			
-			<h2 id="Coupon">type <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=1206:1371#L15">Coupon</a>
+			<h2 id="Coupon">type <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=1206:1483#L15">Coupon</a>
 				<a class="permalink" href="#Coupon">¶</a>
 				
 				
@@ -468,7 +502,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=2304:2361#L44">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=2688:2745#L50">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -483,7 +517,7 @@ Cross-field Invariants を参照）。
 				
 			
 				
-				</p><h3 id="Reconstruct">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=2597:2681#L50">Reconstruct</a>
+				</p><h3 id="Reconstruct">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=2981:3065#L56">Reconstruct</a>
 					<a class="permalink" href="#Reconstruct">¶</a>
 					
 					
@@ -498,7 +532,7 @@ Cross-field Invariants を参照）。
 
 			
 				
-				</p><h3 id="Coupon.Discount">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=4432:4468#L108">Discount</a>
+				</p><h3 id="Coupon.Discount">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=5727:5763#L133">Discount</a>
 					<a class="permalink" href="#Coupon.Discount">¶</a>
 					
 					
@@ -511,23 +545,25 @@ Cross-field Invariants を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.DiscountFor">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=5912:5967#L134">DiscountFor</a>
+				</p><h3 id="Coupon.DiscountFor">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=7818:7873#L169">DiscountFor</a>
 					<a class="permalink" href="#Coupon.DiscountFor">¶</a>
 					
 					
 				</h3>
 				<pre>func (c *<a href="#Coupon">Coupon</a>) DiscountFor(lines []<a href="#Line">Line</a>) (<a href="../../../../builtin/#int">int</a>, <a href="../../../../builtin/#error">error</a>)</pre>
 				<p>DiscountFor は、渡された明細のうち適用範囲に入るものを対象として、差し引く額を決済スケールの
-整数（USD セント）で返します。対象が 1 件も無い場合と、差し引く額が最小単位に満たない場合は 0 です。
+整数（USD セント）で返します。対象が 1 件も無い場合、購入額が最低購入金額に満たない場合、
+差し引く額が最小単位に満たない場合はいずれも 0 です。
+</p><p>最低購入金額が見るのは購入の小計で、値引き上限は丸めたあとの額に効きます
+（根拠は docs/spec/domain/coupon.md の Behavior Methods &gt; DiscountFor）。
 </p><p>丸めはこのメソッドでのみ行います（<a href="#Discount.Apply">Discount.Apply</a> は丸めません。ADR-0038 (two-scale-quantity-model)）。
-根拠は docs/spec/domain/coupon.md の Behavior Methods &gt; DiscountFor を参照してください。
 
 				
 				
 				
 			
 				
-				</p><h3 id="Coupon.ExpiresAt">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=4639:4677#L114">ExpiresAt</a>
+				</p><h3 id="Coupon.ExpiresAt">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=6385:6423#L146">ExpiresAt</a>
 					<a class="permalink" href="#Coupon.ExpiresAt">¶</a>
 					
 					
@@ -540,7 +576,7 @@ Cross-field Invariants を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.ID">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=4217:4248#L102">ID</a>
+				</p><h3 id="Coupon.ID">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=5512:5543#L127">ID</a>
 					<a class="permalink" href="#Coupon.ID">¶</a>
 					
 					
@@ -553,7 +589,7 @@ Cross-field Invariants を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.IsExpired">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=7607:7653#L186">IsExpired</a>
+				</p><h3 id="Coupon.IsExpired">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=10669:10715#L245">IsExpired</a>
 					<a class="permalink" href="#Coupon.IsExpired">¶</a>
 					
 					
@@ -567,7 +603,7 @@ Cross-field Invariants を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.IsHeldBy">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=5304:5352#L127">IsHeldBy</a>
+				</p><h3 id="Coupon.IsHeldBy">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=7050:7098#L159">IsHeldBy</a>
 					<a class="permalink" href="#Coupon.IsHeldBy">¶</a>
 					
 					
@@ -581,7 +617,22 @@ Cross-field Invariants を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.IsUsed">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=5036:5066#L123">IsUsed</a>
+				</p><h3 id="Coupon.IsNotYetUsable">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=11078:11129#L250">IsNotYetUsable</a>
+					<a class="permalink" href="#Coupon.IsNotYetUsable">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Coupon">Coupon</a>) IsNotYetUsable(now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsNotYetUsable は、渡された時点でクーポンがまだ使えないかどうかを返します。
+利用開始日時ちょうどは使える側に含めます。利用開始日時を持たないクーポンは常に false です
+（区間の閉じ方は docs/spec/domain/coupon.md の Behavior Methods）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Coupon.IsUsed">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=6782:6812#L155">IsUsed</a>
 					<a class="permalink" href="#Coupon.IsUsed">¶</a>
 					
 					
@@ -594,7 +645,7 @@ Cross-field Invariants を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.IssuedAt">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=4751:4788#L117">IssuedAt</a>
+				</p><h3 id="Coupon.IssuedAt">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=6497:6534#L149">IssuedAt</a>
 					<a class="permalink" href="#Coupon.IssuedAt">¶</a>
 					
 					
@@ -607,21 +658,36 @@ Cross-field Invariants を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.Redeem">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=6629:6673#L153">Redeem</a>
-					<a class="permalink" href="#Coupon.Redeem">¶</a>
+				</p><h3 id="Coupon.MinPurchaseAmount">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=6054:6097#L140">MinPurchaseAmount</a>
+					<a class="permalink" href="#Coupon.MinPurchaseAmount">¶</a>
 					
 					
 				</h3>
-				<pre>func (c *<a href="#Coupon">Coupon</a>) Redeem(now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="../../../../builtin/#error">error</a></pre>
-				<p>Redeem は、クーポンを使用済みにします。使用済みから未使用へ戻すのは <a href="#Coupon.Restore">Coupon.Restore</a> だけです。
-</p><p>既に使用済みなら ErrAlreadyUsed、渡された時点で失効しているなら ErrExpired を返し、状態を変えません。
+				<pre>func (c *<a href="#Coupon">Coupon</a>) MinPurchaseAmount() *<a href="../../../../builtin/#int64">int64</a></pre>
+				<p>MinPurchaseAmount は、使うために必要な購入額の下限を決済スケール（USD セント）で返します。
+条件が無い場合は nil です。
 
 				
 				
 				
 			
 				
-				</p><h3 id="Coupon.Restore">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=7156:7209#L171">Restore</a>
+				</p><h3 id="Coupon.Redeem">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=9635:9679#L209">Redeem</a>
+					<a class="permalink" href="#Coupon.Redeem">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Coupon">Coupon</a>) Redeem(now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>Redeem は、クーポンを使用済みにします。使用済みから未使用へ戻すのは <a href="#Coupon.Restore">Coupon.Restore</a> だけです。
+</p><p>既に使用済みなら ErrAlreadyUsed、渡された時点で失効しているなら ErrExpired、
+利用開始日時より前なら ErrNotYetUsable を返し、状態を変えません。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Coupon.Restore">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=10218:10271#L230">Restore</a>
 					<a class="permalink" href="#Coupon.Restore">¶</a>
 					
 					
@@ -637,7 +703,21 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.Scope">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=4538:4568#L111">Scope</a>
+				</p><h3 id="Coupon.SatisfiesMinPurchase">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=9155:9218#L201">SatisfiesMinPurchase</a>
+					<a class="permalink" href="#Coupon.SatisfiesMinPurchase">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Coupon">Coupon</a>) SatisfiesMinPurchase(subtotalCents <a href="../../../../builtin/#int64">int64</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>SatisfiesMinPurchase は、購入の小計が最低購入金額を満たすかどうかを返します。
+条件が無いクーポンは常に満たします。額は決済スケール（USD セント）の整数です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Coupon.Scope">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=5833:5863#L136">Scope</a>
 					<a class="permalink" href="#Coupon.Scope">¶</a>
 					
 					
@@ -650,7 +730,20 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.UsedAt">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=4894:4930#L120">UsedAt</a>
+				</p><h3 id="Coupon.UsableFrom">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=6259:6299#L143">UsableFrom</a>
+					<a class="permalink" href="#Coupon.UsableFrom">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Coupon">Coupon</a>) UsableFrom() *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+				<p>UsableFrom は、使えるようになる日時を返します。発行時点から使える場合は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Coupon.UsedAt">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=6640:6676#L152">UsedAt</a>
 					<a class="permalink" href="#Coupon.UsedAt">¶</a>
 					
 					
@@ -663,7 +756,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="Coupon.UserID">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=4329:4364#L105">UserID</a>
+				</p><h3 id="Coupon.UserID">func (*Coupon) <a href="../../../../src/go-boilerplate/internal/domain/coupon/coupon_domain.go.html?s=5624:5659#L130">UserID</a>
 					<a class="permalink" href="#Coupon.UserID">¶</a>
 					
 					
@@ -701,13 +794,14 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 		
 			
 			
-			<h2 id="Discount">type <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=1526:1593#L30">Discount</a>
+			<h2 id="Discount">type <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=1670:1763#L32">Discount</a>
 				<a class="permalink" href="#Discount">¶</a>
 				
 				
 			</h2>
 			<p>Discount は、値引きを表す値オブジェクトです。決まり方（種別）と、その種別における値の組です。
 </p><p>定額では value が差し引く金額（USD ドルの十進量）、定率では value が対象額に掛ける率です。
+定率は 1 回に引ける額の上限を持てます（<a href="#Discount.WithMaxAmount">Discount.WithMaxAmount</a>）。定額は持ちません。
 適用範囲は関知しません。どの明細が対象かは <a href="#Scope">Scope</a> が答えます。
 
 			</p><pre>type Discount struct {
@@ -725,7 +819,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 
 			
 				
-				<h3 id="NewDiscount">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=4614:4690#L93">NewDiscount</a>
+				<h3 id="NewDiscount">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=4784:4860#L96">NewDiscount</a>
 					<a class="permalink" href="#NewDiscount">¶</a>
 					
 					
@@ -739,7 +833,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="NewFlatDiscount">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=3486:3548#L74">NewFlatDiscount</a>
+				</p><h3 id="NewFlatDiscount">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=3656:3718#L77">NewFlatDiscount</a>
 					<a class="permalink" href="#NewFlatDiscount">¶</a>
 					
 					
@@ -752,7 +846,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="NewRateDiscount">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=3999:4059#L83">NewRateDiscount</a>
+				</p><h3 id="NewRateDiscount">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=4169:4229#L86">NewRateDiscount</a>
 					<a class="permalink" href="#NewRateDiscount">¶</a>
 					
 					
@@ -767,7 +861,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 
 			
 				
-				</p><h3 id="Discount.Apply">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=5933:5998#L121">Apply</a>
+				</p><h3 id="Discount.Apply">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=7792:7857#L159">Apply</a>
 					<a class="permalink" href="#Discount.Apply">¶</a>
 					
 					
@@ -785,7 +879,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="Discount.IsZero">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=5288:5319#L111">IsZero</a>
+				</p><h3 id="Discount.IsZero">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=7147:7178#L149">IsZero</a>
 					<a class="permalink" href="#Discount.IsZero">¶</a>
 					
 					
@@ -798,7 +892,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="Discount.Kind">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=4980:5017#L105">Kind</a>
+				</p><h3 id="Discount.Kind">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=6098:6135#L127">Kind</a>
 					<a class="permalink" href="#Discount.Kind">¶</a>
 					
 					
@@ -811,7 +905,36 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="Discount.Value">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=5158:5199#L108">Value</a>
+				</p><h3 id="Discount.LimitToMaxAmount">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=6747:6800#L137">LimitToMaxAmount</a>
+					<a class="permalink" href="#Discount.LimitToMaxAmount">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Discount">Discount</a>) LimitToMaxAmount(cents <a href="../../../../builtin/#int64">int64</a>) <a href="../../../../builtin/#int64">int64</a></pre>
+				<p>LimitToMaxAmount は、決済スケール（USD セント）の値引き額へ上限を適用した額を返します。
+上限が無い場合と、上限に満たない場合はそのまま返します。
+</p><p>上限は決済スケール（USD セント）の額に対する条件です
+（適用の位置は docs/spec/domain/coupon.md の Discount を参照）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Discount.MaxAmount">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=6300:6336#L130">MaxAmount</a>
+					<a class="permalink" href="#Discount.MaxAmount">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Discount">Discount</a>) MaxAmount() *<a href="../../../../builtin/#int64">int64</a></pre>
+				<p>MaxAmount は、1 回に引ける額の上限を決済スケール（USD セント）で返します。上限が無い場合は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Discount.Value">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=7017:7058#L146">Value</a>
 					<a class="permalink" href="#Discount.Value">¶</a>
 					
 					
@@ -823,10 +946,27 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 				
 			
+				
+				</p><h3 id="Discount.WithMaxAmount">func (Discount) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=5672:5738#L113">WithMaxAmount</a>
+					<a class="permalink" href="#Discount.WithMaxAmount">¶</a>
+					
+					
+				</h3>
+				<pre>func (d <a href="#Discount">Discount</a>) WithMaxAmount(maxAmount <a href="../../../../builtin/#int64">int64</a>) (<a href="#Discount">Discount</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>WithMaxAmount は、1 回に引ける額の上限を設けた値引きを返します。上限は決済スケール
+（USD セント）の整数です。元の値引きは変わりません。
+</p><p>上限は定率にのみ意味を持ちます。定額に設定しようとした場合は ErrInvalidMaxAmount を返します
+（定額は引く額そのものが決まっているため、上限は同じことを二重に述べるだけになります）。
+0 以下の上限は値引きを成立させないため、同じく ErrInvalidMaxAmount を返します。
+
+				
+				
+				
+			
 		
 			
 			
-			</p><h2 id="DiscountKind">type <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=1107:1158#L21">DiscountKind</a>
+			</p><h2 id="DiscountKind">type <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=1133:1184#L22">DiscountKind</a>
 				<a class="permalink" href="#DiscountKind">¶</a>
 				
 				
@@ -850,7 +990,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 
 			
 				
-				<h3 id="NewDiscountKind">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=1970:2022#L42">NewDiscountKind</a>
+				<h3 id="NewDiscountKind">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=2140:2192#L45">NewDiscountKind</a>
 					<a class="permalink" href="#NewDiscountKind">¶</a>
 					
 					
@@ -863,7 +1003,7 @@ docs/spec/domain/coupon.md の Behavior Methods &gt; Restore を参照）。
 				
 			
 				
-				</p><h3 id="NewDiscountKindByName">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=2548:2609#L54">NewDiscountKindByName</a>
+				</p><h3 id="NewDiscountKindByName">func <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=2718:2779#L57">NewDiscountKindByName</a>
 					<a class="permalink" href="#NewDiscountKindByName">¶</a>
 					
 					
@@ -879,7 +1019,7 @@ code からの解決（<a href="#NewDiscountKind">NewDiscountKind</a>）と同�
 
 			
 				
-				</p><h3 id="DiscountKind.Code">func (DiscountKind) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=2896:2928#L64">Code</a>
+				</p><h3 id="DiscountKind.Code">func (DiscountKind) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=3066:3098#L67">Code</a>
 					<a class="permalink" href="#DiscountKind.Code">¶</a>
 					
 					
@@ -892,7 +1032,7 @@ code からの解決（<a href="#NewDiscountKind">NewDiscountKind</a>）と同�
 				
 			
 				
-				</p><h3 id="DiscountKind.IsZero">func (DiscountKind) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=3215:3250#L70">IsZero</a>
+				</p><h3 id="DiscountKind.IsZero">func (DiscountKind) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=3385:3420#L73">IsZero</a>
 					<a class="permalink" href="#DiscountKind.IsZero">¶</a>
 					
 					
@@ -905,7 +1045,7 @@ code からの解決（<a href="#NewDiscountKind">NewDiscountKind</a>）と同�
 				
 			
 				
-				</p><h3 id="DiscountKind.Name">func (DiscountKind) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=3086:3121#L67">Name</a>
+				</p><h3 id="DiscountKind.Name">func (DiscountKind) <a href="../../../../src/go-boilerplate/internal/domain/coupon/discount.go.html?s=3256:3291#L70">Name</a>
 					<a class="permalink" href="#DiscountKind.Name">¶</a>
 					
 					

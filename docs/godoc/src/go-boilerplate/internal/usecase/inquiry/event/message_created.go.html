@@ -61,9 +61,9 @@
 <span id="L4" class="ln">     4  </span>
 <span id="L5" class="ln">     5  </span>import (
 <span id="L6" class="ln">     6  </span>	&#34;encoding/json&#34;
-<span id="L7" class="ln">     7  </span>	&#34;time&#34;
-<span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/domain/inquiry&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/domain/inquiry&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/usecase/tools/datetime&#34;
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L11" class="ln">    11  </span>)
 <span id="L12" class="ln">    12  </span>
@@ -100,7 +100,7 @@
 <span id="L43" class="ln">    43  </span>		Author:    messageAuthor{Kind: m.Author().Kind().String()},
 <span id="L44" class="ln">    44  </span>		Body:      m.Body(),
 <span id="L45" class="ln">    45  </span>		Sequence:  m.Sequence(),
-<span id="L46" class="ln">    46  </span>		CreatedAt: m.CreatedAt().Format(time.RFC3339Nano),
+<span id="L46" class="ln">    46  </span>		CreatedAt: datetime.FormatUTC(m.CreatedAt()),
 <span id="L47" class="ln">    47  </span>	})
 <span id="L48" class="ln">    48  </span>	if err != nil {
 <span id="L49" class="ln">    49  </span>		return nil, xerrors.Wrap(err, &#34;failed to encode inquiry.message.created payload&#34;)

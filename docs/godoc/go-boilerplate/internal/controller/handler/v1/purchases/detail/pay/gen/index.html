@@ -399,7 +399,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=4458:4492#L116">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=4527:4561#L116">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -444,7 +444,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="Conflict409">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=4680:4712#L119">Conflict409</a>
+			<h2 id="Conflict409">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=4749:4781#L119">Conflict409</a>
 				<a class="permalink" href="#Conflict409">¶</a>
 				
 				
@@ -563,7 +563,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=4911:4954#L122">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=4980:5023#L122">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -608,7 +608,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=5150:5190#L125">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=5219:5259#L125">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -653,7 +653,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="NotFound404">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=5378:5410#L128">NotFound404</a>
+			<h2 id="NotFound404">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=5447:5479#L128">NotFound404</a>
 				<a class="permalink" href="#NotFound404">¶</a>
 				
 				
@@ -1032,7 +1032,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseCodeParam">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=4237:4268#L113">PurchaseCodeParam</a>
+			<h2 id="PurchaseCodeParam">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=4306:4337#L113">PurchaseCodeParam</a>
 				<a class="permalink" href="#PurchaseCodeParam">¶</a>
 				
 				
@@ -1096,7 +1096,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchasePayResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=1911:3458#L44">PurchasePayResponse</a>
+			<h2 id="PurchasePayResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=1911:3527#L44">PurchasePayResponse</a>
 				<a class="permalink" href="#PurchasePayResponse">¶</a>
 				
 				
@@ -1144,7 +1144,7 @@ either of them for path registration
     <span class="comment">// Example: 16000</span>
     TaxAmount <a href="../../../../../../../../../builtin/#int64">int64</a> `json:&#34;taxAmount&#34;`
 
-<span id="PurchasePayResponse.TotalAmount"></span>    <span class="comment">// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。</span>
+<span id="PurchasePayResponse.TotalAmount"></span>    <span class="comment">// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。</span>
     <span class="comment">//</span>
     <span class="comment">// Example: 176500</span>
     TotalAmount <a href="../../../../../../../../../builtin/#int64">int64</a> `json:&#34;totalAmount&#34;`
@@ -1170,7 +1170,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=3738:4168#L95">PurchaseStatusRef</a>
+			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=3807:4237#L95">PurchaseStatusRef</a>
 				<a class="permalink" href="#PurchaseStatusRef">¶</a>
 				
 				
@@ -1321,7 +1321,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=5608:5650#L131">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=5677:5719#L131">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -1437,7 +1437,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=5842:5878#L134">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/pay/gen/type.gen.go.html?s=5911:5947#L134">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				

@@ -55,8 +55,8 @@
 
 
 
-<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/streams --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml</span>
-<span id="L2" class="ln">     2  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/streams --package=gen --generate=echo5-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml</span>
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/streams --package=gen --generate=types -o ./gen/type.gen.go ../../../openapi/openapi.gen.yaml</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//go:generate oapi-codegen --include-tags=v1/streams --package=gen --generate=echo5-server -o ./gen/server.gen.go ../../../openapi/openapi.gen.yaml</span>
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span><span class="comment">// Package stream は、SSE stream endpoint（GET /v1/streams/{destination}）の handler です。</span>
 <span id="L5" class="ln">     5  </span><span class="comment">// レスポンスを確定する前の判定 — ticket の検証（security scheme が済ませ StreamGrant に置く）、cursor の解決、</span>

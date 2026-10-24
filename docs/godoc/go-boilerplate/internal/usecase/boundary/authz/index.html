@@ -175,7 +175,7 @@
 		
 			
 			
-			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=3871:3889#L48">Action</a>
+			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=4212:4230#L54">Action</a>
 				<a class="permalink" href="#Action">¶</a>
 				
 				
@@ -186,7 +186,6 @@
 
 			
 				<p>sample-api:begin
-サンプル EC の操作。Action 型と String は基盤として残す。
 
 				</p><pre>const (
     <span class="comment">// ActionUserList は、ユーザーの列挙操作（一覧・フィード・検索、admin）を表します。</span>
@@ -206,7 +205,8 @@
     <span class="comment">// ActionProductStockUpdate は、商品在庫の増減操作（admin）を表します。</span>
     <span id="ActionProductStockUpdate">ActionProductStockUpdate</span> <a href="#Action">Action</a> = &#34;product:stock:update&#34;
     <span class="comment">// ActionProductDiscontinue は、商品の廃番操作と、その影響の見積もりの参照（admin）を表します。</span>
-    <span class="comment">// 見積もりは廃番を実行できる主体だけが見るべき情報なので、実行と同じ権限で守ります。</span>
+    <span class="comment">// 参照が実行と同一の Action を共有する理由は docs/spec/usecase/product.md の</span>
+    <span class="comment">// GetDiscontinueImpact を参照。</span>
     <span id="ActionProductDiscontinue">ActionProductDiscontinue</span> <a href="#Action">Action</a> = &#34;product:discontinue&#34;
     <span class="comment">// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。</span>
     <span id="ActionProductListLowStock">ActionProductListLowStock</span> <a href="#Action">Action</a> = &#34;product:low-stock:list&#34;
@@ -236,6 +236,12 @@
     <span class="comment">// ActionCouponBulkIssue は、販促クーポンの一括発行（admin）を表します。</span>
     <span class="comment">// 受給者を名指しする発行とは別の Action です。理由は docs/spec/usecase/coupon.md の Overview を参照。</span>
     <span id="ActionCouponBulkIssue">ActionCouponBulkIssue</span> <a href="#Action">Action</a> = &#34;coupon:bulk-issue&#34;
+    <span class="comment">// ActionCampaignDefine は、キャンペーンの定義（admin）を表します。</span>
+    <span id="ActionCampaignDefine">ActionCampaignDefine</span> <a href="#Action">Action</a> = &#34;campaign:define&#34;
+    <span class="comment">// ActionCampaignList は、キャンペーンの列挙操作（admin）を表します。</span>
+    <span id="ActionCampaignList">ActionCampaignList</span> <a href="#Action">Action</a> = &#34;campaign:list&#34;
+    <span class="comment">// ActionCampaignSuspend は、キャンペーンの停止（admin）を表します。</span>
+    <span id="ActionCampaignSuspend">ActionCampaignSuspend</span> <a href="#Action">Action</a> = &#34;campaign:suspend&#34;
 )</pre>
 			
 
@@ -249,7 +255,7 @@
 
 			
 				
-				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=3951:3982#L51">String</a>
+				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=4292:4323#L57">String</a>
 					<a class="permalink" href="#Action.String">¶</a>
 					
 					

@@ -614,8 +614,8 @@ and a rewritten ADR are not the same amount of work to re-extract.
 | `make pin-actions-resolve` | Resolves each `uses:` tag to its commit SHA and updates the `.github/actions-pin.toml` lockfile. | Quarantines refs younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14; 0 disables). |
 | `make pin-actions-apply` | Pins `uses:` to `@<sha> # <tag>` from the lockfile. | None |
 | `make pin-actions-check` | Verifies `uses:` are pinned per the lockfile (no write). | CI / pre-commit gate. |
-| `make egress-apply` | Writes `.github/egress.toml` into every job's inline `allowed-endpoints` block. | The classes and how to add a host: [`.github/workflows/README.md`](../.github/workflows/README.md) § Runner Hardening. |
-| `make egress-check` | Verifies every inline `allowed-endpoints` block matches the SSOT (no write). | CI / pre-commit gate. |
+| `make egress-apply` | Writes `.github/egress.toml` into the `with:` block of every job's bullfrog step. | The classes and how to add a host: [`.github/workflows/README.md`](../.github/workflows/README.md) § Runner Hardening. |
+| `make egress-check` | Verifies every bullfrog step's `with:` block matches the SSOT (no write). | CI / pre-commit gate. |
 
 ### Commit message lint related
 

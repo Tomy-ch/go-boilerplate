@@ -126,7 +126,7 @@
 <span id="L69" class="ln">    69  </span>	<span class="comment">// Example: 16000</span>
 <span id="L70" class="ln">    70  </span>	TaxAmount int64 `json:&#34;taxAmount&#34;`
 <span id="L71" class="ln">    71  </span>
-<span id="L72" class="ln">    72  </span>	<span class="comment">// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。</span>
+<span id="L72" class="ln">    72  </span>	<span class="comment">// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。</span>
 <span id="L73" class="ln">    73  </span>	<span class="comment">//</span>
 <span id="L74" class="ln">    74  </span>	<span class="comment">// Example: 176500</span>
 <span id="L75" class="ln">    75  </span>	TotalAmount int64 `json:&#34;totalAmount&#34;`

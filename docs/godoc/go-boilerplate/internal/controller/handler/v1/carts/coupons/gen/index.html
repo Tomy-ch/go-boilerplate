@@ -433,7 +433,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponDiscount">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=2885:3493#L69">CouponDiscount</a>
+			<h2 id="CouponDiscount">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=2885:4246#L69">CouponDiscount</a>
 				<a class="permalink" href="#CouponDiscount">¶</a>
 				
 				
@@ -447,8 +447,20 @@ including any per-operation middleware.
     <span class="comment">// Example: rate</span>
     Kind <a href="#CouponDiscountKind">CouponDiscountKind</a> `json:&#34;kind&#34;`
 
+<span id="CouponDiscount.MaxAmount"></span>    <span class="comment">// MaxAmount 定率の値引きが 1 回に引ける額の上限。USD セント単位の整数です。</span>
+    <span class="comment">// 定率（`rate`）にのみ意味を持ち、定額（`flat`）では常に null です。</span>
+    <span class="comment">// 上限が無い場合も null で、そのときは対象額に率を掛けた額がそのまま引かれます。</span>
+    <span class="comment">//</span>
+    <span class="comment">//</span>
+    <span class="comment">// Example: 2000</span>
+    MaxAmount *<a href="../../../../../../../../builtin/#int64">int64</a> `json:&#34;maxAmount&#34;`
+
 <span id="CouponDiscount.Value"></span>    <span class="comment">// Value 種別における値。定額なら差し引く金額、定率なら対象額に掛ける率を、</span>
     <span class="comment">// 正確な十進量を保つ decimal 文字列で表します（例 `&#34;0.10&#34;` は 10% 引き）。</span>
+    <span class="comment">// 定額の金額は商品の price と同じ USD のドル建てで（例 `&#34;5.00&#34;` は 5 ドル引き）、</span>
+    <span class="comment">// USD セント単位の整数で表す maxAmount とは桁が違います。</span>
+    <span class="comment">// 定額で引く額は対象額が上限で、セント未満の桁は値引き額を求める時点で切り捨てられます</span>
+    <span class="comment">// （四捨五入ではありません）。</span>
     <span class="comment">// JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。</span>
     <span class="comment">//</span>
     <span class="comment">//</span>
@@ -471,7 +483,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponDiscountKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=3663:3693#L88">CouponDiscountKind</a>
+			<h2 id="CouponDiscountKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=4416:4446#L100">CouponDiscountKind</a>
 				<a class="permalink" href="#CouponDiscountKind">¶</a>
 				
 				
@@ -515,7 +527,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="CouponResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=3948:5029#L92">CouponResponse</a>
+			</p><h2 id="CouponResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=4701:6328#L104">CouponResponse</a>
 				<a class="permalink" href="#CouponResponse">¶</a>
 				
 				
@@ -544,8 +556,19 @@ including any per-operation middleware.
     <span class="comment">// Example: 2026-09-01T00:00:00Z</span>
     IssuedAt <a href="../../../../../../../../time/">time</a>.<a href="../../../../../../../../time/#Time">Time</a> `json:&#34;issuedAt&#34;`
 
+<span id="CouponResponse.MinPurchaseAmount"></span>    <span class="comment">// MinPurchaseAmount このクーポンを使うために必要な購入額の下限。USD セント単位の整数です。</span>
+    <span class="comment">// 条件が無い場合は null で、そのときは購入額を問わず使えます。</span>
+    <span class="comment">//</span>
+    <span class="comment">//</span>
+    <span class="comment">// Example: 5000</span>
+    MinPurchaseAmount *<a href="../../../../../../../../builtin/#int64">int64</a> `json:&#34;minPurchaseAmount&#34;`
+
 <span id="CouponResponse.Scope"></span>    <span class="comment">// Scope クーポンの適用範囲。どの明細が対象かを表します。値引き（いくら引くか）とは独立した軸です。</span>
     Scope <a href="#CouponScope">CouponScope</a> `json:&#34;scope&#34;`
+
+<span id="CouponResponse.UsableFrom"></span>    <span class="comment">// UsableFrom 使えるようになる日時。この時刻ちょうどを含めて以降に使えます。</span>
+    <span class="comment">// 条件が無い場合は null で、そのときは発行した時点から使えます。</span>
+    UsableFrom *<a href="../../../../../../../../time/">time</a>.<a href="../../../../../../../../time/#Time">Time</a> `json:&#34;usableFrom&#34;`
 
 <span id="CouponResponse.UsedAt"></span>    <span class="comment">// UsedAt 使用日時。未使用の場合は null です。使用済みへの遷移は一度きりで取り消せません。</span>
     UsedAt *<a href="../../../../../../../../time/">time</a>.<a href="../../../../../../../../time/#Time">Time</a> `json:&#34;usedAt&#34;`
@@ -566,7 +589,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponScope">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=5182:5792#L121">CouponScope</a>
+			<h2 id="CouponScope">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=6481:7091#L144">CouponScope</a>
 				<a class="permalink" href="#CouponScope">¶</a>
 				
 				
@@ -604,7 +627,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="CouponScopeKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=6046:6073#L141">CouponScopeKind</a>
+			<h2 id="CouponScopeKind">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=7345:7372#L164">CouponScopeKind</a>
 				<a class="permalink" href="#CouponScopeKind">¶</a>
 				
 				
@@ -685,7 +708,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=6263:6665#L144">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=7562:7964#L167">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
@@ -952,7 +975,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=6864:6907#L162">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=8163:8206#L185">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -997,7 +1020,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=7103:7143#L165">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=8402:8442#L188">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -1153,7 +1176,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=7341:7383#L168">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=8640:8682#L191">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -1269,7 +1292,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=7575:7611#L171">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/carts/coupons/gen/type.gen.go.html?s=8874:8910#L194">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				

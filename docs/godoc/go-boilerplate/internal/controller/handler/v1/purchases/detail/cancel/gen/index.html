@@ -399,7 +399,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=4504:4538#L116">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=4573:4607#L116">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -444,7 +444,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="Conflict409">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=4726:4758#L119">Conflict409</a>
+			<h2 id="Conflict409">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=4795:4827#L119">Conflict409</a>
 				<a class="permalink" href="#Conflict409">¶</a>
 				
 				
@@ -563,7 +563,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=4957:5000#L122">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5026:5069#L122">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -608,7 +608,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5196:5236#L125">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5265:5305#L125">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -653,7 +653,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="NotFound404">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5424:5456#L128">NotFound404</a>
+			<h2 id="NotFound404">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5493:5525#L128">NotFound404</a>
 				<a class="permalink" href="#NotFound404">¶</a>
 				
 				
@@ -1032,7 +1032,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseCancelResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=1248:2819#L24">PurchaseCancelResponse</a>
+			<h2 id="PurchaseCancelResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=1248:2888#L24">PurchaseCancelResponse</a>
 				<a class="permalink" href="#PurchaseCancelResponse">¶</a>
 				
 				
@@ -1080,7 +1080,7 @@ either of them for path registration
     <span class="comment">// Example: 16000</span>
     TaxAmount <a href="../../../../../../../../../builtin/#int64">int64</a> `json:&#34;taxAmount&#34;`
 
-<span id="PurchaseCancelResponse.TotalAmount"></span>    <span class="comment">// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。</span>
+<span id="PurchaseCancelResponse.TotalAmount"></span>    <span class="comment">// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。</span>
     <span class="comment">//</span>
     <span class="comment">// Example: 176500</span>
     TotalAmount <a href="../../../../../../../../../builtin/#int64">int64</a> `json:&#34;totalAmount&#34;`
@@ -1106,7 +1106,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseCodeParam">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=4283:4314#L113">PurchaseCodeParam</a>
+			<h2 id="PurchaseCodeParam">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=4352:4383#L113">PurchaseCodeParam</a>
 				<a class="permalink" href="#PurchaseCodeParam">¶</a>
 				
 				
@@ -1129,7 +1129,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseDetailResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=2948:3504#L74">PurchaseDetailResponse</a>
+			<h2 id="PurchaseDetailResponse">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=3017:3573#L74">PurchaseDetailResponse</a>
 				<a class="permalink" href="#PurchaseDetailResponse">¶</a>
 				
 				
@@ -1170,7 +1170,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=3784:4214#L95">PurchaseStatusRef</a>
+			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=3853:4283#L95">PurchaseStatusRef</a>
 				<a class="permalink" href="#PurchaseStatusRef">¶</a>
 				
 				
@@ -1321,7 +1321,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5654:5696#L131">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5723:5765#L131">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -1437,7 +1437,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5888:5924#L134">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel/gen/type.gen.go.html?s=5957:5993#L134">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				

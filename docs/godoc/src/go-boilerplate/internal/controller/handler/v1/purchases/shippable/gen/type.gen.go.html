@@ -109,7 +109,7 @@
 <span id="L52" class="ln">    52  </span>	<span class="comment">// Example: 2026-07-23T00:00:00Z</span>
 <span id="L53" class="ln">    53  </span>	OrderedAt time.Time `json:&#34;orderedAt&#34;`
 <span id="L54" class="ln">    54  </span>
-<span id="L55" class="ln">    55  </span>	<span class="comment">// TotalAmount 合計（小計 + 税額 + 送料）。USD セント単位の整数です。</span>
+<span id="L55" class="ln">    55  </span>	<span class="comment">// TotalAmount 合計（小計 - 値引き額 + 税額 + 送料）。税額は値引き後の金額に対する額です。USD セント単位の整数です。</span>
 <span id="L56" class="ln">    56  </span>	<span class="comment">//</span>
 <span id="L57" class="ln">    57  </span>	<span class="comment">// Example: 176500</span>
 <span id="L58" class="ln">    58  </span>	TotalAmount int64 `json:&#34;totalAmount&#34;`
