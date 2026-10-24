@@ -351,7 +351,6 @@ func Test_run(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir を使うため並列化できない
 func Test_listTracked(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("コミット前でもindexに載っていれば昇順で返す", func(t *testing.T) {

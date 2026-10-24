@@ -289,7 +289,6 @@ func Test_matchesIgnore(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir を使うため並列化できない
 func Test_gitOutput(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("標準出力をそのまま返す", func(t *testing.T) {

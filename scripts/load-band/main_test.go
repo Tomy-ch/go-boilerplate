@@ -257,7 +257,6 @@ func Test_renderStatus(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない
 func Test_worktreeList(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("リポジトリの中では窓を数えられる出力を返す", func(t *testing.T) {

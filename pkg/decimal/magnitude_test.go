@@ -51,8 +51,7 @@ func Test_checkMagnitude(t *testing.T) {
 
 		t.Run("String がプロセスを停止させる規模の指数を拒否する", func(t *testing.T) {
 			t.Parallel()
-			d, err := decimal.NewFromString("00E100044400")
-			require.NoError(t, err)
+			d := decimal.New(0, 100044400)
 			require.ErrorIs(t, checkMagnitude(d), ErrInvalid)
 		})
 	})

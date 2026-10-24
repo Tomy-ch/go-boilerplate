@@ -968,7 +968,6 @@ func Test_report(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可
 func Test_added(t *testing.T) {
 	current := []requirement{
 		{module: "github.com/x/y", version: "v2.0.0"},
@@ -1293,7 +1292,6 @@ func Test_run(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可
 func Test_readWorkTreeGoMod(t *testing.T) {
 	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
