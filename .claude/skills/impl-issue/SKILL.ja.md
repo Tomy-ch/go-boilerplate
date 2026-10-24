@@ -322,7 +322,7 @@ cd <pkg> && mockgen -source=<f>.go -destination=mock/mock_<f>.go.gen.go -package
 
 本当にコンテナが要るのは `make dump-schema` だけで、しかも migration を足したときだけ。
 
-罠が 2 つ。`merge-dml-ci` は `go run ./cmd/` を走らせるため、クエリ生成前に Repository メソッドを足すとビルドが詰まる — 生成の間だけ実装をスタブにし、後で戻す（先に `cp` で退避）。`//go:generate` 行は spec をパッケージからの相対パスで受け取る。そのため `go generate` はコンテナ内でもホストからでも動く:
+罠が 1 つある。`merge-dml-ci` は `go run ./cmd/` を走らせるため、クエリ生成前に Repository メソッドを足すとビルドが詰まる — 生成の間だけ実装をスタブにし、後で戻す（先に `cp` で退避）。`//go:generate` 行は spec をパッケージからの相対パスで受け取る。そのため `go generate` はコンテナ内でもホストからでも動く:
 
 ```bash
 cd internal/controller/httpstack/oapi/validator && go generate ./
