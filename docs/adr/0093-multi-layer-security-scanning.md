@@ -161,11 +161,11 @@ are given while GitHub trials an egress proxy) and the Docker address range `172
 (connections from the host to a service container's published port are judged by the
 container's address). Neither is an outside destination. bullfrog accepts IPv4 only in
 `allowed-ips`, so the IPv6 loopback cannot be allowed: a client that resolves `localhost` to
-`::1` leaves a blocked connection in the job summary before it falls back to `127.0.0.1`.
+`::1` leaves a blocked connection in the job summary, and only a client that then falls back to
+`127.0.0.1` connects. `psql` does not fall back, so the Postgres setup connects to `127.0.0.1`.
 
 **The vendor choice.** bullfrog is chosen because it blocks on private repositories with no
-paid tier — the copies of this template mostly are private — and its source is MIT-licensed
-and readable at the pinned SHA. Its predecessor here, `step-security/harden-runner`, blocks
+paid tier, and its source is MIT-licensed and readable at the pinned SHA. Its predecessor here, `step-security/harden-runner`, blocks
 only on public repositories in its free tier and passes silently elsewhere. **The following was
 read from the source at v0.11.1 (agent v0.11.2) and is re-checked whenever the pinned SHA
 moves — the `actions-pin` upgrade is where that happens**: the agent binary is verified by a
