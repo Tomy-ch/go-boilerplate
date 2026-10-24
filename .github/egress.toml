@@ -9,7 +9,7 @@
 
 # 全ジョブが許す IP。セクション名が IPv4 のアドレスか CIDR で、reason がそれを許す根拠と外す条件。
 # IPv6 は bullfrog が allowed-ips に受け付けないので書けない。localhost が ::1 に解決されると公開ポート
-# への接続が Blocked として残るが、クライアントは 127.0.0.1 へ戻って繋がる。
+# への接続が Blocked として残る。繋がるのは 127.0.0.1 へ戻るクライアントだけで、psql は戻らない。
 [ip."127.0.0.100"]
 reason = "一部の hosted runner（westus2）では egress proxy の試験が resolv.conf の先頭をこのローカル転送役にする。bullfrog が信用する DNS サーバに無いので、許さないと名前解決が止まる。転送先の問い合わせも bullfrog の DNS 判定を通るので許すドメインは広がらない。外す条件は runner の resolv.conf が 127.0.0.53 だけを指すようになること"
 
@@ -403,6 +403,9 @@ extra = [
   # アクションは検証を飛ばさずハードエラーで落ちるため、この 2 つは検証の一部である。
   # フォールバック側も許可するのは、アクションが一次側の失敗時に自動で切り替えるため。
   "keyserver.ubuntu.com",
+  # gpg は hkps の取得先を SRV（_pgpkey-https._tcp.keyserver.ubuntu.com）で引き、落ちると A へ戻らない。
+  # _ はホストに書けないのでワイルドカードで通す。
+  "*.keyserver.ubuntu.com",
   "keys.openpgp.org",
 ]
 

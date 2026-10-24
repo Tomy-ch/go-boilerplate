@@ -180,6 +180,7 @@ jobs:
             *.sonarcloud.io
             binaries.sonarsource.com
             keyserver.ubuntu.com
+            *.keyserver.ubuntu.com
             keys.openpgp.org
 
       # Sonar attributes an issue to the commit that introduced it, which it can only do
