@@ -121,9 +121,10 @@ diff action.old.yml action.new.yml
 - New `inputs` are usually benign; a new **default that points at a URL or a token** is not.
 - A JS action's `package.json` gaining dependencies means the bundle now carries code from somewhere
   else — check the new dependency the way `references/npm.md` does.
-- Note any added network endpoint. This repo runs `harden-runner` in `audit` mode, so egress is
-  recorded but not restricted (`docs/design/security.md` → "Honest limits") — a new endpoint will be
-  visible after the fact, not blocked.
+- Note any added network endpoint. This repo runs `bullfrog` in `block` mode against the allowlist
+  in `.github/egress.toml`, so a new endpoint fails the job rather than slipping through — except in
+  the `audit` job and in the jobs that keep sudo, where the filter can be bypassed
+  (`docs/design/security.md` → "Honest limits").
 
 ## Reporting notes
 

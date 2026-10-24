@@ -18,7 +18,7 @@ export function removeEgressSections(content: string, jobKeys: readonly string[]
   let dropping = false;
 
   for (const line of content.split("\n")) {
-    if (/^\[(class|job)\./.test(line)) {
+    if (line.startsWith("[")) {
       dropping = targets.has(line.trim());
     }
 

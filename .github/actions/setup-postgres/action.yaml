@@ -7,9 +7,11 @@ inputs:
     required: false
     default: "18"
   host:
+    # IPv4 on purpose: bullfrog cannot allow ::1, and psql does not fall back to 127.0.0.1 when the
+    # filter cuts a connection that localhost resolved to ::1.
     description: Postgres host address
     required: false
-    default: localhost
+    default: 127.0.0.1
   port:
     description: Postgres port
     required: false

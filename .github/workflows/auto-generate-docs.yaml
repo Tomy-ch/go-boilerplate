@@ -19,8 +19,10 @@ jobs:
     timeout-minutes: 25
 
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
+
+    outputs:
+      has_diff: ${{ steps.diff.outputs.has_diff }}
 
     env:
       ENV: ci
@@ -73,68 +75,69 @@ jobs:
 
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        uses: bullfrogsec/bullfrog@7dee337d4575320b6d8cbe9a56d48d2fb765963a # v0.11.1
         with:
           egress-policy: block
-          allowed-endpoints: >
-            agent.api.stepsecurity.io:443
-            api.github.com:443
-            github.com:443
-            codeload.github.com:443
-            objects.githubusercontent.com:443
-            raw.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-            *.actions.githubusercontent.com:443
-            *.blob.core.windows.net:443
-            mise.jdx.dev:443
-            mise-versions.jdx.dev:443
-            mise.run:443
-            mise.en.dev:443
-            aquaproj.github.io:443
-            proxy.golang.org:443
-            sum.golang.org:443
-            index.golang.org:443
-            storage.googleapis.com:443
-            dl.google.com:443
-            go.dev:443
-            golang.org:443
-            downloads.sqlc.dev:443
-            nodejs.org:443
-            registry.npmjs.org:443
-            get.pnpm.io:443
-            astral.sh:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
-            api.npmjs.org:443
-            api.osv.dev:443
-            npm.jsr.io:443
-            docker.io:443
-            index.docker.io:443
-            registry-1.docker.io:443
-            auth.docker.io:443
-            *.docker.io:443
-            production.cloudflare.docker.com:443
-            production.cloudfront.docker.com:443
-            mirror.gcr.io:443
-            ghcr.io:443
-            pkg-containers.githubusercontent.com:443
-            dl-cdn.alpinelinux.org:443
-            dl-cdn.alpinelinux.org:80
-            deb.debian.org:443
-            deb.debian.org:80
-            security.debian.org:443
-            security.debian.org:80
-            apt.postgresql.org:443
-            apt.postgresql.org:80
-            www.postgresql.org:443
-            archive.ubuntu.com:80
-            azure.archive.ubuntu.com:80
-            security.ubuntu.com:80
-            esm.ubuntu.com:443
-            motd.ubuntu.com:443
+          dns-policy: allowed-domains-only
+          collect-process-info: false
+          enable-sudo: true
+          allowed-ips: |
+            127.0.0.100
+            172.16.0.0/12
+          allowed-domains: |
+            api.github.com
+            github.com
+            codeload.github.com
+            objects.githubusercontent.com
+            raw.githubusercontent.com
+            release-assets.githubusercontent.com
+            *.actions.githubusercontent.com
+            *.blob.core.windows.net
+            mise.jdx.dev
+            mise-versions.jdx.dev
+            mise.run
+            mise.en.dev
+            aquaproj.github.io
+            proxy.golang.org
+            sum.golang.org
+            index.golang.org
+            storage.googleapis.com
+            dl.google.com
+            go.dev
+            golang.org
+            downloads.sqlc.dev
+            nodejs.org
+            registry.npmjs.org
+            get.pnpm.io
+            astral.sh
+            pypi.org
+            files.pythonhosted.org
+            tuf-repo-cdn.sigstore.dev
+            rekor.sigstore.dev
+            fulcio.sigstore.dev
+            api.npmjs.org
+            api.osv.dev
+            npm.jsr.io
+            docker.io
+            index.docker.io
+            registry-1.docker.io
+            auth.docker.io
+            *.docker.io
+            production.cloudflare.docker.com
+            production.cloudfront.docker.com
+            mirror.gcr.io
+            ghcr.io
+            pkg-containers.githubusercontent.com
+            dl-cdn.alpinelinux.org
+            deb.debian.org
+            security.debian.org
+            apt.postgresql.org
+            www.postgresql.org
+            archive.ubuntu.com
+            azure.archive.ubuntu.com
+            security.ubuntu.com
+            esm.ubuntu.com
+            motd.ubuntu.com
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -159,9 +162,7 @@ jobs:
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
-      # The stamp is a TypeScript script now, so it runs through the node tool runner rather than
-      # bare node: the container is where `tsx` and the script's dependencies live, and every
-      # other generation step in this job already goes through it.
+      # Run through the node tool runner, not bare node: `tsx` and the script's dependencies live in the container.
       - name: Stamp OpenAPI version from release branch
         run: make stamp-openapi-version REF="${GITHUB_REF_NAME}"
         env:
@@ -230,7 +231,6 @@ jobs:
             git checkout -- docs/coverage/index.html 2>/dev/null || true
           fi
 
-          # After removing noise, decide whether to create a PR based on whether committable diffs remain.
           git add -A
           if git diff --cached --quiet; then
             echo "has_diff=false" >> "$GITHUB_OUTPUT"
@@ -238,10 +238,83 @@ jobs:
             echo "has_diff=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Export the generated changes
+        if: steps.diff.outputs.has_diff == 'true'
+        run: git diff --cached --binary > generated.patch
+
+      - name: Upload the generated changes
+        if: steps.diff.outputs.has_diff == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: generated-docs-patch
+          path: generated.patch
+          if-no-files-found: error
+          retention-days: 1
+
+  # The app's private key outlives the run, so it stays out of generate-docs: that job keeps sudo,
+  # which can lift the egress filter.
+  open-pr:
+    needs: generate-docs
+    if: needs.generate-docs.outputs.has_diff == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: bullfrogsec/bullfrog@7dee337d4575320b6d8cbe9a56d48d2fb765963a # v0.11.1
+        with:
+          egress-policy: block
+          dns-policy: allowed-domains-only
+          collect-process-info: false
+          enable-sudo: false
+          allowed-ips: |
+            127.0.0.100
+            172.16.0.0/12
+          allowed-domains: |
+            api.github.com
+            github.com
+            codeload.github.com
+            objects.githubusercontent.com
+            raw.githubusercontent.com
+            release-assets.githubusercontent.com
+            *.actions.githubusercontent.com
+            *.blob.core.windows.net
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download the generated changes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: generated-docs-patch
+
+      - name: Apply the generated changes
+        run: |
+          set -euo pipefail
+          git apply --index --binary generated.patch
+          rm generated.patch
+          # The patch comes from a job that keeps sudo, so only the generated outputs may reach the pull request.
+          outside="$(git diff --cached --name-only | grep -vE '^docs/(openapi|db-schema|coverage|godoc)/|^docs/portal/(docs\.json$|guides/|dist/)|^openapi/openapi(\.gen)?\.yaml$|\.gen\.go$' || true)"
+          if [ -n "$outside" ]; then
+            echo '::error::the generated patch touches paths outside the generated outputs:'
+            printf '%s\n' "$outside"
+            exit 1
+          fi
+          if [ -z "$(git status --porcelain)" ]; then
+            echo '::error::the generated patch applied to nothing'
+            exit 1
+          fi
+
       # The secrets context is unavailable in `if:`, hence the detour through a run step output.
       - name: Check auto-PR app credentials
         id: app-config
-        if: steps.diff.outputs.has_diff == 'true'
         env:
           AUTO_PR_APP_ID: ${{ secrets.AUTO_PR_APP_ID }}
           AUTO_PR_APP_PRIVATE_KEY: ${{ secrets.AUTO_PR_APP_PRIVATE_KEY }}
@@ -257,7 +330,7 @@ jobs:
       # Why an app token rather than GITHUB_TOKEN: README.md § Notes.
       - name: Mint the auto-PR app token
         id: app-token
-        if: steps.diff.outputs.has_diff == 'true' && steps.app-config.outputs.configured == 'true'
+        if: steps.app-config.outputs.configured == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ secrets.AUTO_PR_APP_ID }}
@@ -268,7 +341,6 @@ jobs:
           permission-pull-requests: write
 
       - name: Create PR
-        if: steps.diff.outputs.has_diff == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
           # Falls back to GITHUB_TOKEN when the app is not configured: the pull request still opens,

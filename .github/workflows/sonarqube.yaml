@@ -68,19 +68,24 @@ jobs:
 
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        uses: bullfrogsec/bullfrog@7dee337d4575320b6d8cbe9a56d48d2fb765963a # v0.11.1
         with:
           egress-policy: block
-          allowed-endpoints: >
-            agent.api.stepsecurity.io:443
-            api.github.com:443
-            github.com:443
-            codeload.github.com:443
-            objects.githubusercontent.com:443
-            raw.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-            *.actions.githubusercontent.com:443
-            *.blob.core.windows.net:443
+          dns-policy: allowed-domains-only
+          collect-process-info: false
+          enable-sudo: false
+          allowed-ips: |
+            127.0.0.100
+            172.16.0.0/12
+          allowed-domains: |
+            api.github.com
+            github.com
+            codeload.github.com
+            objects.githubusercontent.com
+            raw.githubusercontent.com
+            release-assets.githubusercontent.com
+            *.actions.githubusercontent.com
+            *.blob.core.windows.net
 
       - name: Resolve SonarQube credentials
         id: token
@@ -110,73 +115,75 @@ jobs:
 
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        uses: bullfrogsec/bullfrog@7dee337d4575320b6d8cbe9a56d48d2fb765963a # v0.11.1
         with:
           egress-policy: block
-          allowed-endpoints: >
-            agent.api.stepsecurity.io:443
-            api.github.com:443
-            github.com:443
-            codeload.github.com:443
-            objects.githubusercontent.com:443
-            raw.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-            *.actions.githubusercontent.com:443
-            *.blob.core.windows.net:443
-            mise.jdx.dev:443
-            mise-versions.jdx.dev:443
-            mise.run:443
-            mise.en.dev:443
-            aquaproj.github.io:443
-            proxy.golang.org:443
-            sum.golang.org:443
-            index.golang.org:443
-            storage.googleapis.com:443
-            dl.google.com:443
-            go.dev:443
-            golang.org:443
-            downloads.sqlc.dev:443
-            nodejs.org:443
-            registry.npmjs.org:443
-            get.pnpm.io:443
-            astral.sh:443
-            pypi.org:443
-            files.pythonhosted.org:443
-            tuf-repo-cdn.sigstore.dev:443
-            rekor.sigstore.dev:443
-            fulcio.sigstore.dev:443
-            api.npmjs.org:443
-            api.osv.dev:443
-            npm.jsr.io:443
-            docker.io:443
-            index.docker.io:443
-            registry-1.docker.io:443
-            auth.docker.io:443
-            *.docker.io:443
-            production.cloudflare.docker.com:443
-            production.cloudfront.docker.com:443
-            mirror.gcr.io:443
-            ghcr.io:443
-            pkg-containers.githubusercontent.com:443
-            dl-cdn.alpinelinux.org:443
-            dl-cdn.alpinelinux.org:80
-            deb.debian.org:443
-            deb.debian.org:80
-            security.debian.org:443
-            security.debian.org:80
-            apt.postgresql.org:443
-            apt.postgresql.org:80
-            www.postgresql.org:443
-            archive.ubuntu.com:80
-            azure.archive.ubuntu.com:80
-            security.ubuntu.com:80
-            esm.ubuntu.com:443
-            motd.ubuntu.com:443
-            sonarcloud.io:443
-            *.sonarcloud.io:443
-            binaries.sonarsource.com:443
-            keyserver.ubuntu.com:443
-            keys.openpgp.org:443
+          dns-policy: allowed-domains-only
+          collect-process-info: false
+          enable-sudo: false
+          allowed-ips: |
+            127.0.0.100
+            172.16.0.0/12
+          allowed-domains: |
+            api.github.com
+            github.com
+            codeload.github.com
+            objects.githubusercontent.com
+            raw.githubusercontent.com
+            release-assets.githubusercontent.com
+            *.actions.githubusercontent.com
+            *.blob.core.windows.net
+            mise.jdx.dev
+            mise-versions.jdx.dev
+            mise.run
+            mise.en.dev
+            aquaproj.github.io
+            proxy.golang.org
+            sum.golang.org
+            index.golang.org
+            storage.googleapis.com
+            dl.google.com
+            go.dev
+            golang.org
+            downloads.sqlc.dev
+            nodejs.org
+            registry.npmjs.org
+            get.pnpm.io
+            astral.sh
+            pypi.org
+            files.pythonhosted.org
+            tuf-repo-cdn.sigstore.dev
+            rekor.sigstore.dev
+            fulcio.sigstore.dev
+            api.npmjs.org
+            api.osv.dev
+            npm.jsr.io
+            docker.io
+            index.docker.io
+            registry-1.docker.io
+            auth.docker.io
+            *.docker.io
+            production.cloudflare.docker.com
+            production.cloudfront.docker.com
+            mirror.gcr.io
+            ghcr.io
+            pkg-containers.githubusercontent.com
+            dl-cdn.alpinelinux.org
+            deb.debian.org
+            security.debian.org
+            apt.postgresql.org
+            www.postgresql.org
+            archive.ubuntu.com
+            azure.archive.ubuntu.com
+            security.ubuntu.com
+            esm.ubuntu.com
+            motd.ubuntu.com
+            sonarcloud.io
+            *.sonarcloud.io
+            binaries.sonarsource.com
+            keyserver.ubuntu.com
+            *.keyserver.ubuntu.com
+            keys.openpgp.org
 
       # Sonar attributes an issue to the commit that introduced it, which it can only do
       # with the history present. fetch-depth: 0 is the vendor's documented requirement
@@ -475,19 +482,24 @@ jobs:
 
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        uses: bullfrogsec/bullfrog@7dee337d4575320b6d8cbe9a56d48d2fb765963a # v0.11.1
         with:
           egress-policy: block
-          allowed-endpoints: >
-            agent.api.stepsecurity.io:443
-            api.github.com:443
-            github.com:443
-            codeload.github.com:443
-            objects.githubusercontent.com:443
-            raw.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-            *.actions.githubusercontent.com:443
-            *.blob.core.windows.net:443
+          dns-policy: allowed-domains-only
+          collect-process-info: false
+          enable-sudo: false
+          allowed-ips: |
+            127.0.0.100
+            172.16.0.0/12
+          allowed-domains: |
+            api.github.com
+            github.com
+            codeload.github.com
+            objects.githubusercontent.com
+            raw.githubusercontent.com
+            release-assets.githubusercontent.com
+            *.actions.githubusercontent.com
+            *.blob.core.windows.net
 
       # The composite action below is read from the workspace, so the repository has to be
       # present even though nothing here scans it.
@@ -539,19 +551,24 @@ jobs:
 
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        uses: bullfrogsec/bullfrog@7dee337d4575320b6d8cbe9a56d48d2fb765963a # v0.11.1
         with:
           egress-policy: block
-          allowed-endpoints: >
-            agent.api.stepsecurity.io:443
-            api.github.com:443
-            github.com:443
-            codeload.github.com:443
-            objects.githubusercontent.com:443
-            raw.githubusercontent.com:443
-            release-assets.githubusercontent.com:443
-            *.actions.githubusercontent.com:443
-            *.blob.core.windows.net:443
+          dns-policy: allowed-domains-only
+          collect-process-info: false
+          enable-sudo: false
+          allowed-ips: |
+            127.0.0.100
+            172.16.0.0/12
+          allowed-domains: |
+            api.github.com
+            github.com
+            codeload.github.com
+            objects.githubusercontent.com
+            raw.githubusercontent.com
+            release-assets.githubusercontent.com
+            *.actions.githubusercontent.com
+            *.blob.core.windows.net
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

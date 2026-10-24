@@ -28,6 +28,6 @@ go.sum                                @Tomy-ch
 # carries them into go.mod, the Dockerfile FROM tags and the READMEs.
 mise.toml                             @Tomy-ch
 
-# The `harden-runner` allowlist SSOT — `make egress-apply` writes each entry out to
-# every workflow that carries the job.
+# The egress SSOT (allowlist, allowed IPs, sudo exceptions) — `make egress-apply` writes
+# each entry out to every workflow that carries the job.
 .github/egress.toml                   @Tomy-ch

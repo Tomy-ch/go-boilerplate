@@ -232,9 +232,11 @@ Handler --> Usecase
 3. 作成したファイルの先頭に生成用のコメントを追加
 
 ```go
-//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go ../../../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../openapi/openapi.gen.yaml
 ```
+
+spec のパスはパッケージのディレクトリからの相対パスです。`go generate` は各ディレクティブをそこで実行するためです。リポジトリルートから 1 階層下がるごとに `../` が 1 つ増えます。
 
 1. `swagger-cli`でOpenAPIを結合・検証し、`oapi-codegen`で生成
    - `make gen` で一括生成可能
@@ -719,8 +721,8 @@ rec := testecho.NewEchoTestClient(t, e).
 ## 参考スニペット
 
 ```go
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go ../../../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../openapi/openapi.gen.yaml
 
 package items
 

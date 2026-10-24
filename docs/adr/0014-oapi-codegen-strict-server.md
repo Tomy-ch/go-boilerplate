@@ -33,11 +33,13 @@ cannot express.
 Each handler file carries two `go:generate` directives at the top:
 
 ```go
-//go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=types -o ./gen/type.gen.go <path-to-root>/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go <path-to-root>/openapi/openapi.gen.yaml
 ```
 
-The `--include-tags=<tag>` flag filters the bundled spec to only the operations that belong
+`<path-to-root>` is the relative path from the handler package to the repository root, because
+`go generate` runs each directive in its package directory. The `--include-tags=<tag>` flag
+filters the bundled spec to only the operations that belong
 to this handler package. The generated `gen/` sub-package contains:
 
 - `type.gen.go` — request/response types for the tag.

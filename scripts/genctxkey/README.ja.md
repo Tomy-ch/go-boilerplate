@@ -128,7 +128,7 @@ make gen-go-code
 ## CIとの関係
 
 - 生成はローカルで実施し、結果をコミットする前提です
-- CI は `make gen-go-code` を回し直し、コミット済みの出力と差があればプルリクエストを失敗させます
+- CI は生成を回し直し（ランナー上で `make gen-go-code-ci`）、コミット済みの出力と差があればプルリクエストを失敗させます
   （`.github/workflows/gen-go-artifacts-check.yaml`）。再生成の忘れはここで捕まります
 
 ## 補足

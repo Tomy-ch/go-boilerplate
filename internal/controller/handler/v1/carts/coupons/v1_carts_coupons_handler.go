@@ -1,5 +1,5 @@
-//go:generate oapi-codegen --include-tags=v1/carts/me/coupons --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/carts/me/coupons --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/carts/me/coupons --package=gen --generate=types -o ./gen/type.gen.go ../../../../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/carts/me/coupons --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../../openapi/openapi.gen.yaml
 
 // Package cartscoupons は、/v1/carts/me/coupons エンドポイントに関連するハンドラを提供します。
 package cartscoupons

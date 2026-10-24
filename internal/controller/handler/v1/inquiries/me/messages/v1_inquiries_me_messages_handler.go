@@ -1,5 +1,5 @@
-//go:generate oapi-codegen --include-tags=v1/inquiries/me/messages --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/inquiries/me/messages --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/inquiries/me/messages --package=gen --generate=types -o ./gen/type.gen.go ../../../../../../../openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/inquiries/me/messages --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go ../../../../../../../openapi/openapi.gen.yaml
 
 // Package messages は、/v1/inquiries/me/messages エンドポイントに関連するハンドラを提供します。
 package messages
