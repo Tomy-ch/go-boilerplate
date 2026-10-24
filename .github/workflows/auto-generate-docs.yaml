@@ -83,7 +83,6 @@ jobs:
           allowed-ips: |
             127.0.0.100
             172.16.0.0/12
-            ::1
           allowed-domains: |
             api.github.com
             github.com
@@ -273,7 +272,6 @@ jobs:
           allowed-ips: |
             127.0.0.100
             172.16.0.0/12
-            ::1
           allowed-domains: |
             api.github.com
             github.com
@@ -300,6 +298,13 @@ jobs:
           set -euo pipefail
           git apply --index --binary generated.patch
           rm generated.patch
+          # The patch comes from a job that keeps sudo, so only the generated outputs may reach the pull request.
+          outside="$(git diff --cached --name-only | grep -vE '^docs/(openapi|db-schema|coverage|godoc)/|^docs/portal/(docs\.json$|guides/|dist/)|^openapi/openapi(\.gen)?\.yaml$|\.gen\.go$' || true)"
+          if [ -n "$outside" ]; then
+            echo '::error::the generated patch touches paths outside the generated outputs:'
+            printf '%s\n' "$outside"
+            exit 1
+          fi
           if [ -z "$(git status --porcelain)" ]; then
             echo '::error::the generated patch applied to nothing'
             exit 1
