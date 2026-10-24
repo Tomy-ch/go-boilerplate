@@ -43,6 +43,9 @@ var (
 	ipRe        = regexp.MustCompile(`^[0-9./]+$`)
 	stepKeyRe   = regexp.MustCompile(`^( *)(- )?([A-Za-z_][A-Za-z0-9_-]*):`)
 	hostRe      = regexp.MustCompile(`^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$`)
+	// stepKeys は通信制限ステップが持ってよいキー。if や continue-on-error はステップを実行しないまま
+	// 検査を通すので持たせない。
+	stepKeys = map[string]bool{"name": true, "id": true, "uses": true, "with": true}
 	// actionRefRe は、生成器が所有する形でなくても拾うべき通信制限ステップへの言及。
 	actionRefRe = regexp.MustCompile(`bullfrogsec/bullfrog|step-security/harden-runner`)
 )
@@ -114,6 +117,16 @@ type ssot struct {
 	reasons   map[string]string
 }
 
+// section は parseSSOT が読んでいる最中のセクション。class / job / ip のどれか 1 つだけを持つ。
+// seen はそのセクションの中で既に現れたキー。
+type section struct {
+	ssot  *ssot
+	class *class
+	job   *jobSpec
+	ip    string
+	seen  map[string]bool
+}
+
 // orderedHosts は初出順を保ったまま重複を落とすホスト集合。
 type orderedHosts struct {
 	list []string
@@ -162,10 +175,7 @@ func run(args []string, wd func() (string, error)) error {
 // parseSSOT は SSOT の本文を IP・クラス定義・ジョブ宣言へ分解する。
 func parseSSOT(data string) (*ssot, error) {
 	s := &ssot{classes: map[string]*class{}, jobs: map[string]*jobSpec{}, reasons: map[string]string{}}
-	var curClass *class
-	var curJob *jobSpec
-	curIP := ""
-	var seen map[string]bool
+	var cur *section
 
 	lines := strings.Split(data, "\n")
 	for i := 0; i < len(lines); i++ {
@@ -178,18 +188,12 @@ func parseSSOT(data string) (*ssot, error) {
 			continue
 		}
 		if m := sectionRe.FindStringSubmatch(line); m != nil {
-			name := m[2] + m[3]
-			if err := s.openSection(m[1], name); err != nil {
+			if cur, err = s.enterSection(m[1], m[2]+m[3]); err != nil {
 				return nil, err
 			}
-			curClass, curJob, curIP = s.classes[name], s.jobs[name], ""
-			if m[1] == "ip" {
-				curIP = name
-			}
-			seen = map[string]bool{}
 			continue
 		}
-		if curClass == nil && curJob == nil && curIP == "" {
+		if cur == nil {
 			return nil, xerrors.Wrap(errSSOTSyntax, fmt.Sprintf("%d 行目: %q（セクションの外に値があります）", i+1, line))
 		}
 		key, values, next, err := parseAssignment(lines, i)
@@ -197,20 +201,35 @@ func parseSSOT(data string) (*ssot, error) {
 			return nil, err
 		}
 		i = next
-		if seen[key] {
-			return nil, xerrors.Wrap(errSSOTDuplicate, fmt.Sprintf("%d 行目: キー %q", i+1, key))
-		}
-		seen[key] = true
-		if curIP != "" {
-			err = s.assignIP(curIP, key, values)
-		} else {
-			err = assign(curClass, curJob, key, values)
-		}
-		if err != nil {
+		if err := cur.assign(key, values); err != nil {
 			return nil, xerrors.Wrap(err, fmt.Sprintf("%d 行目", i+1))
 		}
 	}
 	return s, s.validate()
+}
+
+// enterSection は見出しのセクションを登録し、続く代入の宛先を返す。
+func (s *ssot) enterSection(kind, name string) (*section, error) {
+	if err := s.openSection(kind, name); err != nil {
+		return nil, err
+	}
+	sec := &section{ssot: s, class: s.classes[name], job: s.jobs[name], seen: map[string]bool{}}
+	if kind == "ip" {
+		sec.ip = name
+	}
+	return sec, nil
+}
+
+// assign は開いているセクションへ 1 つの代入を載せる。同じセクションの中のキーの重複は弾く。
+func (sec *section) assign(key string, values []string) error {
+	if sec.seen[key] {
+		return xerrors.Wrap(errSSOTDuplicate, "キー "+key)
+	}
+	sec.seen[key] = true
+	if sec.ip != "" {
+		return sec.ssot.assignIP(sec.ip, key, values)
+	}
+	return assign(sec.class, sec.job, key, values)
 }
 
 // stripValueComment は SSOT の 1 行から、クオートの外の `#` 以降を落とす。
@@ -579,10 +598,6 @@ func withinFirstStep(lines []string, first, usesLine int) bool {
 	}
 	return true
 }
-
-// stepKeys は通信制限ステップが持ってよいキー。if や continue-on-error はステップを実行しないまま
-// 検査を通すので持たせない。
-var stepKeys = map[string]bool{"name": true, "id": true, "uses": true, "with": true}
 
 // checkStepKeys は first から始まるステップのうち、with ブロックの後ろ（end 以降）と前にある
 // ステップ直下のキーが stepKeys に収まることを確かめる。indent はステップのキーの字下げ。

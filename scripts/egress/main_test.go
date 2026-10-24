@@ -244,6 +244,78 @@ func Test_parseSSOT(t *testing.T) {
 	})
 }
 
+func Test_ssot_enterSection(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ジョブのセクションへの代入先を返す", func(t *testing.T) {
+			t.Parallel()
+			s := newSSOT()
+			sec, err := s.enterSection("job", "a.yaml:one")
+			require.NoError(t, err)
+			assert.Same(t, s.jobs["a.yaml:one"], sec.job)
+			assert.Nil(t, sec.class)
+			assert.Empty(t, sec.ip)
+		})
+
+		t.Run("IP のセクションは名前を代入先にする", func(t *testing.T) {
+			t.Parallel()
+			sec, err := newSSOT().enterSection("ip", "127.0.0.1")
+			require.NoError(t, err)
+			assert.Equal(t, "127.0.0.1", sec.ip)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("登録の失敗を伝播する", func(t *testing.T) {
+			t.Parallel()
+			_, err := newSSOT().enterSection("ip", "localhost")
+			require.ErrorIs(t, err, errSSOTIP)
+		})
+	})
+}
+
+func Test_section_assign(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ジョブのキーをジョブへ載せる", func(t *testing.T) {
+			t.Parallel()
+			sec, err := newSSOT().enterSection("job", "a.yaml:one")
+			require.NoError(t, err)
+			require.NoError(t, sec.assign("sudo", []string{"needs docker"}))
+			assert.Equal(t, "needs docker", sec.job.sudo)
+		})
+
+		t.Run("IP のセクションでは reason を載せる", func(t *testing.T) {
+			t.Parallel()
+			s := newSSOT()
+			sec, err := s.enterSection("ip", "127.0.0.1")
+			require.NoError(t, err)
+			require.NoError(t, sec.assign("reason", []string{"loopback"}))
+			assert.Equal(t, "loopback", s.reasons["127.0.0.1"])
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("同じセクションの中のキーの重複を弾く", func(t *testing.T) {
+			t.Parallel()
+			sec, err := newSSOT().enterSection("class", "base")
+			require.NoError(t, err)
+			require.NoError(t, sec.assign("hosts", []string{"a"}))
+			require.ErrorIs(t, sec.assign("hosts", []string{"b"}), errSSOTDuplicate)
+		})
+	})
+}
+
 func Test_stripValueComment(t *testing.T) {
 	t.Parallel()
 
@@ -981,7 +1053,13 @@ func Test_readStep(t *testing.T) {
 
 		t.Run("字下げが戻るまでを with ブロックとして読む", func(t *testing.T) {
 			t.Parallel()
-			lines := []string{"        with:", "          egress-policy: audit", "          allowed-ips: |", "            127.0.0.1", "      - name: X"}
+			lines := []string{
+				"        with:",
+				"          egress-policy: audit",
+				"          allowed-ips: |",
+				"            127.0.0.1",
+				"      - name: X",
+			}
 			st, err := readStep("a.yaml", lines, 0, 8)
 			require.NoError(t, err)
 			assert.Equal(t, policyAudit, st.policy)
@@ -1066,8 +1144,14 @@ func Test_checkStepKeys(t *testing.T) {
 
 		t.Run("name と id と uses と with だけのステップを受け入れる", func(t *testing.T) {
 			t.Parallel()
-			lines := []string{"      - name: H", "        id: h", "        " + testUses, "        with:", "          egress-policy: block",
-				"      - name: Checkout"}
+			lines := []string{
+				"      - name: H",
+				"        id: h",
+				"        " + testUses,
+				"        with:",
+				"          egress-policy: block",
+				"      - name: Checkout",
+			}
 			assert.NoError(t, checkStepKeys(lines, 0, 5, 8))
 		})
 
@@ -1184,7 +1268,7 @@ func Test_ssot_rewriteFile(t *testing.T) {
 			require.NotEqual(t, bYAML, body)
 			out, err := mustParse(t, testSSOT).rewriteFile("b.yaml", body, map[string]bool{})
 			require.NoError(t, err)
-			assert.Equal(t, bYAML, out)
+			assert.Equal(t, strings.Split(bYAML, "\n"), strings.Split(out, "\n"))
 		})
 
 		t.Run("生成済みの workflow はそのまま返す", func(t *testing.T) {
@@ -1192,7 +1276,7 @@ func Test_ssot_rewriteFile(t *testing.T) {
 			used := map[string]bool{}
 			out, err := mustParse(t, testSSOT).rewriteFile("b.yaml", bYAML, used)
 			require.NoError(t, err)
-			assert.Equal(t, bYAML, out)
+			assert.Equal(t, strings.Split(bYAML, "\n"), strings.Split(out, "\n"))
 			assert.True(t, used["b.yaml:two"])
 			assert.True(t, used["b.yaml:audited"])
 		})
