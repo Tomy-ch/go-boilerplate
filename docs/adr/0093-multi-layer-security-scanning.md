@@ -149,16 +149,19 @@ API and refuses privileged containers, host-path mounts and host namespaces. A j
 cannot run without one of those keeps sudo only through a `sudo` entry naming the evidence
 (a buildx builder started as a privileged container, a scanner run with the workspace
 mounted and host networking, a Docker container action, a package install through
-`sudo apt-get`). In such a job the filter can be lifted, so it gets no long-lived credential
-and no `id-token`: the GitHub App key that opens the docs pull request lives in a separate
-job without sudo. The `GITHUB_TOKEN` is not part of that rule, because `api.github.com` stays
-reachable under any filter and the token can be misused through it with or without sudo.
+`sudo apt-get`). In such a job the filter can be lifted, so it gets no long-lived credential:
+the GitHub App key that opens the docs pull request lives in a separate job without sudo, and
+that job applies only the paths of the generated outputs from the patch it is handed. The
+short-lived tokens are not part of that rule: the `GITHUB_TOKEN` can be misused through
+`api.github.com`, which stays reachable under any filter, and a job's `id-token` lives no longer
+than the job. The image build and Scorecard keep sudo together with `id-token: write`.
 
 The IPs every job allows are runner-local: `127.0.0.100` (the resolver some hosted runners
-are given while GitHub trials an egress proxy), the Docker address range `172.16.0.0/12`
+are given while GitHub trials an egress proxy) and the Docker address range `172.16.0.0/12`
 (connections from the host to a service container's published port are judged by the
-container's address) and `::1` (bullfrog allows only `127.0.0.1` of the loopback by default).
-None of them is an outside destination.
+container's address). Neither is an outside destination. bullfrog accepts IPv4 only in
+`allowed-ips`, so the IPv6 loopback cannot be allowed: a client that resolves `localhost` to
+`::1` leaves a blocked connection in the job summary before it falls back to `127.0.0.1`.
 
 **The vendor choice.** bullfrog is chosen because it blocks on private repositories with no
 paid tier — the copies of this template mostly are private — and its source is MIT-licensed

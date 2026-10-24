@@ -36,7 +36,7 @@ API コンシューマーは未再生成のバージョンを見る。このド�
 ### 1. PR 時ドリフトゲート（2 つのワークフロー）
 
 **`gen-go-artifacts-check.yaml`**: `.go`、`go.mod`、`go.sum`、または makefile ファイルに
-触れるすべての PR で、`make gen-go-code` を実行し、次に `git add -A` を行って差分を検査する。
+触れるすべての PR で、ランナー上で `make gen-go-code-ci` を実行し、次に `git add -A` を行って差分を検査する。
 生成ファイルが変更された場合:
 
 - PR のソースファイル（`.go`、`*.gen.go`・`*.sql.go`・`*_mock.go` を除く）が変更されたかどうかを判断する。

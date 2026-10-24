@@ -39,7 +39,7 @@ Split the generated-artifact CI story into two complementary mechanisms:
 ### 1. PR-time drift gate (two workflows)
 
 **`gen-go-artifacts-check.yaml`**: On every PR that touches `.go`,
-`go.mod`, `go.sum`, or makefile files, run `make gen-go-code`, then `git add -A` and
+`go.mod`, `go.sum`, or makefile files, run `make gen-go-code-ci` on the runner, then `git add -A` and
 inspect the diff. If generated files changed:
 
 - Determine whether the PR's source files (`.go`, excluding `*.gen.go`, `*.sql.go`,

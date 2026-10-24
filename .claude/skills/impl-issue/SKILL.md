@@ -475,12 +475,11 @@ Only `make dump-schema` truly needs the container, and only when a migration was
 
 Two traps. `merge-dml-ci` runs `go run ./cmd/`, so a Repository method added before its query exists
 deadlocks the build — stub the implementation for the duration of generation, then restore it (`cp`
-the file first). And the embedded-spec generator's `//go:generate` line points at a container path, so
-invoke it with the real one:
+the file first). The `//go:generate` lines take the spec by a path relative to their package, so
+`go generate` works from the host as well as inside the container:
 
 ```bash
-cd internal/controller/httpstack/oapi/validator \
-  && oapi-codegen --package=gen --generate=spec -o ./gen/validate.gen.go <repo>/openapi/openapi.gen.yaml
+cd internal/controller/httpstack/oapi/validator && go generate ./
 ```
 
 Changing an OpenAPI description alone still moves three artifacts: the bundle, `docs/openapi/index.html`,
