@@ -35,13 +35,14 @@ var (
 	scalarRe    = regexp.MustCompile(`^(\w+)\s*=\s*"([^"]*)"$`)
 	arrayHeadRe = regexp.MustCompile(`^(\w+)\s*=\s*\[(.*)$`)
 	quotedRe    = regexp.MustCompile(`"([^"]*)"`)
-	quotedHash  = regexp.MustCompile(`"[^"]*#[^"]*"`)
-	jobIDRe     = regexp.MustCompile(`^  ([A-Za-z_][A-Za-z0-9_-]*):\s*$`)
+	jobIDRe     = regexp.MustCompile(`^  ([A-Za-z_][A-Za-z0-9_-]*):\s*(#.*)?$`)
 	stepsKeyRe  = regexp.MustCompile(`^    steps:\s*$`)
 	stepItemRe  = regexp.MustCompile(`^      - `)
 	stepUsesRe  = regexp.MustCompile(`^(\s*)(- )?uses: bullfrogsec/bullfrog@[0-9a-f]{40} # v\S+\s*$`)
 	policyRe    = regexp.MustCompile(`^\s*egress-policy:\s*(\S+)\s*$`)
-	hostRe      = regexp.MustCompile(`^(\*\.)?[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$`)
+	ipRe        = regexp.MustCompile(`^[0-9./]+$`)
+	stepKeyRe   = regexp.MustCompile(`^( *)(- )?([A-Za-z_][A-Za-z0-9_-]*):`)
+	hostRe      = regexp.MustCompile(`^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$`)
 	// actionRefRe は、生成器が所有する形でなくても拾うべき通信制限ステップへの言及。
 	actionRefRe = regexp.MustCompile(`bullfrogsec/bullfrog|step-security/harden-runner`)
 )
@@ -63,7 +64,7 @@ var (
 	errSSOTPolicy = xerrors.New("SSOT の egress_policy が不正です")
 	// errSSOTHost は、ホストがポート付き・空白入り・途中にワイルドカードを持つ場合のエラー。
 	errSSOTHost = xerrors.New("SSOT のホストがドメイン名として不正です")
-	// errSSOTIP は、IP セクションの名前が IP アドレスでも CIDR でもない場合のエラー。
+	// errSSOTIP は、IP セクションの名前が IPv4 のアドレスでも CIDR でもない場合のエラー。
 	errSSOTIP = xerrors.New("SSOT の IP が不正です")
 	// errSSOTReason は、IP の reason やジョブの sudo の根拠が空の場合のエラー。
 	errSSOTReason = xerrors.New("SSOT に根拠の無い宣言があります")
@@ -168,10 +169,11 @@ func parseSSOT(data string) (*ssot, error) {
 
 	lines := strings.Split(data, "\n")
 	for i := 0; i < len(lines); i++ {
-		if !strings.HasPrefix(strings.TrimSpace(lines[i]), "#") && quotedHash.MatchString(lines[i]) {
-			return nil, xerrors.Wrap(errSSOTSyntax, fmt.Sprintf("%d 行目: 値の中に # は書けません", i+1))
+		stripped, err := stripValueComment(lines[i], i)
+		if err != nil {
+			return nil, err
 		}
-		line := strings.TrimSpace(stripComment(lines[i]))
+		line := strings.TrimSpace(stripped)
 		if line == "" {
 			continue
 		}
@@ -211,7 +213,24 @@ func parseSSOT(data string) (*ssot, error) {
 	return s, s.validate()
 }
 
-// stripComment は行末コメントを落とす。値のクオート内の `#` は parseSSOT が先に弾く。
+// stripValueComment は SSOT の 1 行から、クオートの外の `#` 以降を落とす。
+// クオートの中の `#` は値を途中で切ってしまうので、構文エラーとして返す。n は 0 起点の行番号。
+func stripValueComment(line string, n int) (string, error) {
+	inQuote := false
+	for i, r := range line {
+		switch {
+		case r == '"':
+			inQuote = !inQuote
+		case r == '#' && inQuote:
+			return "", xerrors.Wrap(errSSOTSyntax, fmt.Sprintf("%d 行目: 値の中に # は書けません", n+1))
+		case r == '#':
+			return line[:i], nil
+		}
+	}
+	return line, nil
+}
+
+// stripComment は workflow の行の行末コメントを落とす。YAML の値の中の `#` までは区別しない。
 func stripComment(line string) string {
 	if before, _, ok := strings.Cut(line, "#"); ok {
 		return before
@@ -248,7 +267,11 @@ func (s *ssot) openSection(kind, name string) error {
 // parseAssignment は lines[i] から始まる代入を読み、キー・値・消費した最終行を返す。
 // 配列は `]` が現れるまで後続行を取り込む。
 func parseAssignment(lines []string, i int) (string, []string, int, error) {
-	line := strings.TrimSpace(stripComment(lines[i]))
+	head, err := stripValueComment(lines[i], i)
+	if err != nil {
+		return "", nil, 0, err
+	}
+	line := strings.TrimSpace(head)
 	if m := scalarRe.FindStringSubmatch(line); m != nil {
 		return m[1], []string{m[2]}, i, nil
 	}
@@ -270,7 +293,9 @@ func parseAssignment(lines []string, i int) (string, []string, int, error) {
 		if i >= len(lines) {
 			return "", nil, 0, xerrors.Wrap(errSSOTSyntax, "配列が閉じられていません: "+key)
 		}
-		rest = stripComment(lines[i])
+		if rest, err = stripValueComment(lines[i], i); err != nil {
+			return "", nil, 0, err
+		}
 	}
 }
 
@@ -326,7 +351,8 @@ func requireUnique(values []string) error {
 }
 
 // validateHost はホストが bullfrog の allowed-domains に書けるドメイン名であることを確かめる。
-// ワイルドカードは先頭の `*.` だけを許す。
+// ワイルドカードは先頭の `*.` だけを許す。bullfrog は英数字・`.`・`-`・`*` 以外を含む値を拒否して
+// ステップごと失敗するので、`_` も書けない。
 func validateHost(host string) error {
 	if !hostRe.MatchString(host) {
 		return xerrors.Wrap(errSSOTHost, host)
@@ -334,8 +360,12 @@ func validateHost(host string) error {
 	return nil
 }
 
-// validateIP は IP セクションの名前が IP アドレスか CIDR であることを確かめる。
+// validateIP は IP セクションの名前が IPv4 のアドレスか CIDR であることを確かめる。
+// bullfrog は数字・`.`・`/` 以外を含む allowed-ips を拒否してステップごと失敗するので、IPv6 も書けない。
 func validateIP(ip string) error {
+	if !ipRe.MatchString(ip) {
+		return xerrors.Wrap(errSSOTIP, ip)
+	}
 	if net.ParseIP(ip) != nil {
 		return nil
 	}
@@ -485,6 +515,9 @@ func scanWorkflow(name string, lines []string) ([]step, error) {
 		if err != nil {
 			return nil, err
 		}
+		if err := checkStepKeys(lines, stepped[jobs[i]], st.endLine, indent); err != nil {
+			return nil, xerrors.Wrap(err, key)
+		}
 		st.jobKey = key
 		steps = append(steps, st)
 		i = st.endLine - 1
@@ -547,6 +580,35 @@ func withinFirstStep(lines []string, first, usesLine int) bool {
 	return true
 }
 
+// stepKeys は通信制限ステップが持ってよいキー。if や continue-on-error はステップを実行しないまま
+// 検査を通すので持たせない。
+var stepKeys = map[string]bool{"name": true, "id": true, "uses": true, "with": true}
+
+// checkStepKeys は first から始まるステップのうち、with ブロックの後ろ（end 以降）と前にある
+// ステップ直下のキーが stepKeys に収まることを確かめる。indent はステップのキーの字下げ。
+func checkStepKeys(lines []string, first, end, indent int) error {
+	for j := first; j < len(lines); j++ {
+		if j > first && stepItemRe.MatchString(lines[j]) {
+			break
+		}
+		line := lines[j]
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		if j >= end && len(line)-len(strings.TrimLeft(line, " ")) < indent {
+			break
+		}
+		m := stepKeyRe.FindStringSubmatch(line)
+		if m == nil || len(m[1])+len(m[2]) != indent {
+			continue
+		}
+		if !stepKeys[m[3]] {
+			return xerrors.Wrap(errStepMalformed, fmt.Sprintf("%d 行目: 通信制限ステップに %s は書けません", j+1, m[3]))
+		}
+	}
+	return nil
+}
+
 // readStep は uses の次の行から始まる with ブロックを読む。indent は uses キーの字下げ。
 // ブロックの中身は生成器が所有するので、egress-policy 以外の行は読み飛ばして差し替える。
 func readStep(name string, lines []string, withLine, indent int) (step, error) {
@@ -562,10 +624,26 @@ func readStep(name string, lines []string, withLine, indent int) (step, error) {
 		}
 		st.endLine = j + 1
 	}
+	if blockResumes(lines, st.endLine, inner) {
+		return step{}, xerrors.Wrap(errStepMalformed, fmt.Sprintf("%s %d 行目: with ブロックの途中に空行かコメントがあります", name, st.endLine+1))
+	}
 	if st.policy == "" {
 		return step{}, xerrors.Wrap(errStepMalformed, fmt.Sprintf("%s %d 行目: egress-policy がありません", name, withLine+1))
 	}
 	return st, nil
+}
+
+// blockResumes は from から続く空行とコメント行の後ろに、inner の字下げの行が再び現れるかを返す。
+// 現れるなら、with ブロックが途中で切れて残りが書き換えから漏れる。
+func blockResumes(lines []string, from int, inner string) bool {
+	for j := from; j < len(lines); j++ {
+		trimmed := strings.TrimSpace(lines[j])
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		return j > from && strings.HasPrefix(lines[j], inner)
+	}
+	return false
 }
 
 // renderStep は 1 ジョブの with ブロックを、uses キーと同じ字下げから書き出す。
@@ -606,9 +684,13 @@ func applyOrCheck(root string, dryRun bool) error {
 	if err != nil {
 		return err
 	}
-	files, err := filepath.Glob(filepath.Join(root, ".github", "workflows", "*.yaml"))
-	if err != nil {
-		return xerrors.Wrap(err, "glob workflows")
+	var files []string
+	for _, pattern := range []string{"*.yaml", "*.yml"} {
+		matched, err := filepath.Glob(filepath.Join(root, ".github", "workflows", pattern))
+		if err != nil {
+			return xerrors.Wrap(err, "glob workflows")
+		}
+		files = append(files, matched...)
 	}
 	sort.Strings(files)
 

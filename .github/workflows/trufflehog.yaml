@@ -33,7 +33,6 @@ jobs:
           allowed-ips: |
             127.0.0.100
             172.16.0.0/12
-            ::1
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -34,7 +34,6 @@ jobs:
           allowed-ips: |
             127.0.0.100
             172.16.0.0/12
-            ::1
           allowed-domains: |
             api.github.com
             github.com
@@ -96,7 +95,6 @@ jobs:
           allowed-ips: |
             127.0.0.100
             172.16.0.0/12
-            ::1
           allowed-domains: |
             api.github.com
             github.com
@@ -131,19 +129,6 @@ jobs:
             api.npmjs.org
             api.osv.dev
             npm.jsr.io
-            docker.io
-            index.docker.io
-            registry-1.docker.io
-            auth.docker.io
-            *.docker.io
-            production.cloudflare.docker.com
-            production.cloudfront.docker.com
-            mirror.gcr.io
-            ghcr.io
-            pkg-containers.githubusercontent.com
-            dl-cdn.alpinelinux.org
-            deb.debian.org
-            security.debian.org
 
       # fetch-depth: 0 so the PR's base and head commits are present locally. The default
       # shallow checkout fetches only the merge commit, so the `git diff` that classifies the

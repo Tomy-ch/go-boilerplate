@@ -151,6 +151,12 @@ func Test_run(t *testing.T) {
 			require.ErrorIs(t, err, errUsage)
 		})
 
+		t.Run("引数が 2 つ以上なら usage を返す", func(t *testing.T) {
+			t.Parallel()
+			err := run([]string{"apply", "extra"}, func() (string, error) { return "", nil })
+			require.ErrorIs(t, err, errUsage)
+		})
+
 		t.Run("未知のサブコマンドは usage を返す", func(t *testing.T) {
 			t.Parallel()
 			err := run([]string{"resolve"}, func() (string, error) { return "", nil })
@@ -224,10 +230,56 @@ func Test_parseSSOT(t *testing.T) {
 			require.ErrorIs(t, err, errSSOTSyntax)
 		})
 
+		t.Run("配列の継続行の値の中の # を弾く", func(t *testing.T) {
+			t.Parallel()
+			_, err := parseSSOT("[class.base]\nhosts = [\n  \"a#b\",\n]\n")
+			require.ErrorIs(t, err, errSSOTSyntax)
+		})
+
 		t.Run("IP セクションの未知のキーを弾く", func(t *testing.T) {
 			t.Parallel()
-			_, err := parseSSOT("[ip.\"::1\"]\nhosts = [\"a\"]\n")
+			_, err := parseSSOT("[ip.\"127.0.0.1\"]\nhosts = [\"a\"]\n")
 			require.ErrorIs(t, err, errSSOTSyntax)
+		})
+	})
+}
+
+func Test_stripValueComment(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("クオートの外の行末コメントを落とす", func(t *testing.T) {
+			t.Parallel()
+			got, err := stripValueComment(`hosts = ["a"] # note`, 0)
+			require.NoError(t, err)
+			assert.Equal(t, `hosts = ["a"] `, got)
+		})
+
+		t.Run("行末コメントの中のクオートは値とみなさない", func(t *testing.T) {
+			t.Parallel()
+			got, err := stripValueComment(`  "a", # note "b#c"`, 0)
+			require.NoError(t, err)
+			assert.Equal(t, `  "a", `, got)
+		})
+
+		t.Run("コメントが無い行はそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			got, err := stripValueComment(`[class.base]`, 0)
+			require.NoError(t, err)
+			assert.Equal(t, "[class.base]", got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("クオートの中の # を弾く", func(t *testing.T) {
+			t.Parallel()
+			_, err := stripValueComment(`sudo = "see #12"`, 4)
+			require.ErrorIs(t, err, errSSOTSyntax)
+			assert.Contains(t, err.Error(), "5 行目")
 		})
 	})
 }
@@ -347,6 +399,16 @@ func Test_assign(t *testing.T) {
 			require.ErrorIs(t, assign(&class{}, nil, "endpoints", []string{"a"}), errSSOTSyntax)
 		})
 
+		t.Run("egress_policy に配列を書けない", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, assign(nil, &jobSpec{}, "egress_policy", []string{policyAudit, policyBlock}), errSSOTSyntax)
+		})
+
+		t.Run("sudo に空の配列を書けない", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, assign(nil, &jobSpec{}, "sudo", nil), errSSOTSyntax)
+		})
+
 		t.Run("クラスのキーをジョブへ書けない", func(t *testing.T) {
 			t.Parallel()
 			require.ErrorIs(t, assign(nil, &jobSpec{}, "includes", []string{"mise"}), errSSOTSyntax)
@@ -378,8 +440,8 @@ func Test_ssot_assignIP(t *testing.T) {
 		t.Run("reason を載せる", func(t *testing.T) {
 			t.Parallel()
 			s := newSSOT()
-			require.NoError(t, s.assignIP("::1", "reason", []string{"loopback"}))
-			assert.Equal(t, "loopback", s.reasons["::1"])
+			require.NoError(t, s.assignIP("127.0.0.1", "reason", []string{"loopback"}))
+			assert.Equal(t, "loopback", s.reasons["127.0.0.1"])
 		})
 	})
 
@@ -388,12 +450,12 @@ func Test_ssot_assignIP(t *testing.T) {
 
 		t.Run("reason 以外のキーを弾く", func(t *testing.T) {
 			t.Parallel()
-			require.ErrorIs(t, newSSOT().assignIP("::1", "hosts", []string{"a"}), errSSOTSyntax)
+			require.ErrorIs(t, newSSOT().assignIP("127.0.0.1", "hosts", []string{"a"}), errSSOTSyntax)
 		})
 
 		t.Run("空の reason を弾く", func(t *testing.T) {
 			t.Parallel()
-			require.ErrorIs(t, newSSOT().assignIP("::1", "reason", []string{""}), errSSOTReason)
+			require.ErrorIs(t, newSSOT().assignIP("127.0.0.1", "reason", []string{""}), errSSOTReason)
 		})
 	})
 }
@@ -450,6 +512,11 @@ func Test_validateHost(t *testing.T) {
 			require.ErrorIs(t, validateHost("api.*.com"), errSSOTHost)
 		})
 
+		t.Run("bullfrog が受け付けない _ 入りを弾く", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateHost("_srv._tcp.example.com"), errSSOTHost)
+		})
+
 		t.Run("空白入りを弾く", func(t *testing.T) {
 			t.Parallel()
 			require.ErrorIs(t, validateHost("a b"), errSSOTHost)
@@ -463,10 +530,9 @@ func Test_validateIP(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("IPv4 と IPv6 のアドレスを受け入れる", func(t *testing.T) {
+		t.Run("IPv4 のアドレスを受け入れる", func(t *testing.T) {
 			t.Parallel()
-			require.NoError(t, validateIP("127.0.0.100"))
-			assert.NoError(t, validateIP("::1"))
+			assert.NoError(t, validateIP("127.0.0.100"))
 		})
 
 		t.Run("CIDR を受け入れる", func(t *testing.T) {
@@ -482,6 +548,16 @@ func Test_validateIP(t *testing.T) {
 			t.Parallel()
 			require.ErrorIs(t, validateIP("github.com"), errSSOTIP)
 		})
+
+		t.Run("bullfrog が受け付けない IPv6 を弾く", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateIP("::1"), errSSOTIP)
+		})
+
+		t.Run("数字とドットだけでも IP として読めない値を弾く", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateIP("1.2.3"), errSSOTIP)
+		})
 	})
 }
 
@@ -496,10 +572,10 @@ func Test_ssot_openSection(t *testing.T) {
 			s := newSSOT()
 			require.NoError(t, s.openSection("class", "base"))
 			require.NoError(t, s.openSection("job", "a.yaml:one"))
-			require.NoError(t, s.openSection("ip", "::1"))
+			require.NoError(t, s.openSection("ip", "127.0.0.1"))
 			assert.NotNil(t, s.classes["base"])
 			assert.Equal(t, []string{"a.yaml:one"}, s.jobOrder)
-			assert.Equal(t, []string{"::1"}, s.ips)
+			assert.Equal(t, []string{"127.0.0.1"}, s.ips)
 		})
 	})
 
@@ -523,8 +599,8 @@ func Test_ssot_openSection(t *testing.T) {
 		t.Run("IP の重複を弾く", func(t *testing.T) {
 			t.Parallel()
 			s := newSSOT()
-			require.NoError(t, s.openSection("ip", "::1"))
-			require.ErrorIs(t, s.openSection("ip", "::1"), errSSOTDuplicate)
+			require.NoError(t, s.openSection("ip", "127.0.0.1"))
+			require.ErrorIs(t, s.openSection("ip", "127.0.0.1"), errSSOTDuplicate)
 		})
 
 		t.Run("IP でない名前の IP セクションを弾く", func(t *testing.T) {
@@ -540,10 +616,10 @@ func Test_ssot_validate(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("base クラスの hosts を暗黙適用分として取り出す", func(t *testing.T) {
+		t.Run("base クラスが無ければ暗黙適用分を持たない", func(t *testing.T) {
 			t.Parallel()
-			s := mustParse(t, testSSOT)
-			assert.Equal(t, []string{"b1", "b2"}, s.baseHosts)
+			s := mustParse(t, "[job.\"w.yaml:j\"]\nclasses = []\n")
+			assert.Empty(t, s.baseHosts)
 		})
 	})
 
@@ -566,7 +642,7 @@ func Test_ssot_validate(t *testing.T) {
 
 		t.Run("reason の無い IP を弾く", func(t *testing.T) {
 			t.Parallel()
-			_, err := parseSSOT("[ip.\"::1\"]\n")
+			_, err := parseSSOT("[ip.\"127.0.0.1\"]\n")
 			require.ErrorIs(t, err, errSSOTReason)
 		})
 
@@ -745,9 +821,11 @@ func Test_scanWorkflow(t *testing.T) {
 
 		t.Run("コメントでの言及は形を問わない", func(t *testing.T) {
 			t.Parallel()
-			body := "# bullfrogsec/bullfrog は各ジョブの先頭\n" + testWorkflow("one", "egress-policy: block")
-			_, err := scanWorkflow("a.yaml", strings.Split(body, "\n"))
-			assert.NoError(t, err)
+			body := "# bullfrogsec/bullfrog は各ジョブの先頭\n" + strings.Replace(testWorkflow("one", "egress-policy: block"),
+				"uses: actions/checkout@x\n", "uses: actions/checkout@x # bullfrogsec/bullfrog より後\n", 1)
+			steps, err := scanWorkflow("a.yaml", strings.Split(body, "\n"))
+			require.NoError(t, err)
+			assert.Len(t, steps, 1)
 		})
 	})
 
@@ -798,6 +876,14 @@ func Test_scanWorkflow(t *testing.T) {
 			require.ErrorIs(t, err, errWorkflowJobless)
 		})
 
+		t.Run("実行を条件で外せる通信制限ステップを弾く", func(t *testing.T) {
+			t.Parallel()
+			body := strings.Replace(testWorkflow("one", "egress-policy: block"),
+				"        "+testUses+"\n", "        if: false\n        "+testUses+"\n", 1)
+			_, err := scanWorkflow("a.yaml", strings.Split(body, "\n"))
+			require.ErrorIs(t, err, errStepMalformed)
+		})
+
 		t.Run("with の読めないステップを伝播する", func(t *testing.T) {
 			t.Parallel()
 			body := testWorkflow("one", "allowed-ips: |")
@@ -823,6 +909,12 @@ func Test_workflowJobs(t *testing.T) {
 			t.Parallel()
 			lines := []string{"jobs:", "  one:", "on:", "  push:"}
 			assert.Equal(t, []string{"", "one", "", ""}, workflowJobs(lines))
+		})
+
+		t.Run("行末コメントの付いた job id も読む", func(t *testing.T) {
+			t.Parallel()
+			lines := []string{"jobs:", "  one: # note", "    steps: []"}
+			assert.Equal(t, []string{"", "one", "one"}, workflowJobs(lines))
 		})
 
 		t.Run("桁 0 のコメント行は所属を変えない", func(t *testing.T) {
@@ -889,17 +981,32 @@ func Test_readStep(t *testing.T) {
 
 		t.Run("字下げが戻るまでを with ブロックとして読む", func(t *testing.T) {
 			t.Parallel()
-			lines := []string{"        with:", "          egress-policy: audit", "          allowed-ips: |", "            ::1", "      - name: X"}
+			lines := []string{"        with:", "          egress-policy: audit", "          allowed-ips: |", "            127.0.0.1", "      - name: X"}
 			st, err := readStep("a.yaml", lines, 0, 8)
 			require.NoError(t, err)
 			assert.Equal(t, policyAudit, st.policy)
 			assert.Equal(t, 0, st.withLine)
 			assert.Equal(t, 4, st.endLine)
 		})
+
+		t.Run("ブロックの後ろの空行とコメントは次のステップとの区切りとして扱う", func(t *testing.T) {
+			t.Parallel()
+			lines := []string{"        with:", "          egress-policy: audit", "", "      # note", "      - name: X"}
+			st, err := readStep("a.yaml", lines, 0, 8)
+			require.NoError(t, err)
+			assert.Equal(t, 2, st.endLine)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("途中の空行で切れて残りが書き換えから漏れる with を弾く", func(t *testing.T) {
+			t.Parallel()
+			lines := []string{"        with:", "          egress-policy: block", "", "          allowed-domains: |"}
+			_, err := readStep("a.yaml", lines, 0, 8)
+			require.ErrorIs(t, err, errStepMalformed)
+		})
 
 		t.Run("uses の次に with が無いステップを弾く", func(t *testing.T) {
 			t.Parallel()
@@ -921,6 +1028,73 @@ func Test_readStep(t *testing.T) {
 	})
 }
 
+func Test_blockResumes(t *testing.T) {
+	t.Parallel()
+
+	const inner = "          "
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("空行とコメントの後ろに同じ字下げの行が続けば真を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, blockResumes([]string{"", "    # note", inner + "a: b"}, 0, inner))
+		})
+
+		t.Run("空行の後ろが浅い行なら偽を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, blockResumes([]string{"", "      - name: X"}, 0, inner))
+		})
+
+		t.Run("区切りなしで浅い行が来たら偽を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, blockResumes([]string{"      - name: X"}, 0, inner))
+		})
+
+		t.Run("ファイル末尾までなら偽を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, blockResumes([]string{"", ""}, 0, inner))
+		})
+	})
+}
+
+func Test_checkStepKeys(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("name と id と uses と with だけのステップを受け入れる", func(t *testing.T) {
+			t.Parallel()
+			lines := []string{"      - name: H", "        id: h", "        " + testUses, "        with:", "          egress-policy: block",
+				"      - name: Checkout"}
+			assert.NoError(t, checkStepKeys(lines, 0, 5, 8))
+		})
+
+		t.Run("ステップの後ろの浅い行で検査を終える", func(t *testing.T) {
+			t.Parallel()
+			lines := []string{"      - " + testUses, "        with:", "          egress-policy: block", "  two:", "    if: x"}
+			assert.NoError(t, checkStepKeys(lines, 0, 3, 8))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("uses の前の if を弾く", func(t *testing.T) {
+			t.Parallel()
+			lines := []string{"      - name: H", "        if: false", "        " + testUses, "        with:", "          egress-policy: block"}
+			require.ErrorIs(t, checkStepKeys(lines, 0, 5, 8), errStepMalformed)
+		})
+
+		t.Run("with の後ろの continue-on-error を弾く", func(t *testing.T) {
+			t.Parallel()
+			lines := []string{"      - " + testUses, "        with:", "          egress-policy: block", "        continue-on-error: true"}
+			require.ErrorIs(t, checkStepKeys(lines, 0, 3, 8), errStepMalformed)
+		})
+	})
+}
+
 func Test_renderStep(t *testing.T) {
 	t.Parallel()
 
@@ -929,14 +1103,14 @@ func Test_renderStep(t *testing.T) {
 
 		t.Run("block は名前解決を絞り、IP とドメインを | の一覧で書く", func(t *testing.T) {
 			t.Parallel()
-			got := renderStep(&jobSpec{policy: policyBlock}, []string{"::1"}, []string{"a", "*.b"}, 2)
+			got := renderStep(&jobSpec{policy: policyBlock}, []string{"127.0.0.1"}, []string{"a", "*.b"}, 2)
 			assert.Equal(t, []string{
 				"  with:",
 				"    egress-policy: block",
 				"    dns-policy: allowed-domains-only",
 				"    enable-sudo: false",
 				"    allowed-ips: |",
-				"      ::1",
+				"      127.0.0.1",
 				"    allowed-domains: |",
 				"      a",
 				"      *.b",
@@ -951,8 +1125,8 @@ func Test_renderStep(t *testing.T) {
 
 		t.Run("audit は名前解決とドメインを書かない", func(t *testing.T) {
 			t.Parallel()
-			got := renderStep(&jobSpec{policy: policyAudit}, []string{"::1"}, nil, 0)
-			assert.Equal(t, []string{"with:", "  egress-policy: audit", "  enable-sudo: false", "  allowed-ips: |", "    ::1"}, got)
+			got := renderStep(&jobSpec{policy: policyAudit}, []string{"127.0.0.1"}, nil, 0)
+			assert.Equal(t, []string{"with:", "  egress-policy: audit", "  enable-sudo: false", "  allowed-ips: |", "    127.0.0.1"}, got)
 		})
 
 		t.Run("IP が無ければ allowed-ips を書かない", func(t *testing.T) {
@@ -981,6 +1155,38 @@ func Test_ssot_rewriteFile(t *testing.T) {
 			assert.True(t, used["a.yaml:one"])
 		})
 
+		t.Run("行数の変わるステップが複数あっても互いの位置を崩さない", func(t *testing.T) {
+			t.Parallel()
+			body := strings.Replace(bYAML, `          egress-policy: block
+          dns-policy: allowed-domains-only
+          enable-sudo: false
+          allowed-ips: |
+            127.0.0.100
+          allowed-domains: |
+            b1
+            b2
+`, `          egress-policy: block
+          allowed-endpoints: >
+            stale1:443
+            stale2:443
+            stale3:443
+            stale4:443
+            stale5:443
+            stale6:443
+            stale7:443
+`, 1)
+			body = strings.Replace(body, `          egress-policy: audit
+          enable-sudo: false
+          allowed-ips: |
+            127.0.0.100
+`, `          egress-policy: audit
+`, 1)
+			require.NotEqual(t, bYAML, body)
+			out, err := mustParse(t, testSSOT).rewriteFile("b.yaml", body, map[string]bool{})
+			require.NoError(t, err)
+			assert.Equal(t, bYAML, out)
+		})
+
 		t.Run("生成済みの workflow はそのまま返す", func(t *testing.T) {
 			t.Parallel()
 			used := map[string]bool{}
@@ -999,6 +1205,7 @@ func Test_ssot_rewriteFile(t *testing.T) {
 			t.Parallel()
 			_, err := mustParse(t, testSSOT).rewriteFile("z.yaml", testWorkflow("nope", "egress-policy: block"), map[string]bool{})
 			require.ErrorIs(t, err, errJobMissing)
+			assert.Contains(t, err.Error(), "z.yaml:nope")
 		})
 
 		t.Run("走査の失敗を伝播する", func(t *testing.T) {
@@ -1040,6 +1247,7 @@ func Test_ssot_checkPolicy(t *testing.T) {
 			t.Parallel()
 			err := mustParse(t, testSSOT).checkPolicy("a.yaml:one", policyAudit)
 			require.ErrorIs(t, err, errPolicyMismatch)
+			assert.Contains(t, err.Error(), "a.yaml:one: workflow=audit SSOT=block")
 		})
 	})
 }
@@ -1061,6 +1269,7 @@ func Test_ssot_planFiles(t *testing.T) {
 			changes, used, err := mustParse(t, testSSOT).planFiles(files)
 			require.NoError(t, err)
 			assert.Len(t, changes, 1)
+			assert.Contains(t, changes, filepath.Join(root, ".github", "workflows", "a.yaml"))
 			assert.True(t, used["a.yaml:one"])
 			assert.True(t, used["b.yaml:two"])
 		})
@@ -1113,6 +1322,20 @@ func Test_applyOrCheck(t *testing.T) {
 			require.NoError(t, applyOrCheck(root, false))
 			assert.NoError(t, applyOrCheck(root, true))
 		})
+
+		t.Run("拡張子が yml の workflow も書き換える", func(t *testing.T) {
+			t.Parallel()
+			root := newTestRepo(t, map[string]string{
+				"a.yml":  testWorkflow("one", "egress-policy: block"),
+				"b.yaml": bYAML,
+			})
+			ssotBody := strings.Replace(testSSOT, `[job."a.yaml:one"]`, `[job."a.yml:one"]`, 1)
+			require.NoError(t, os.WriteFile(filepath.Join(root, ssotFile), []byte(ssotBody), filePerm))
+			require.NoError(t, applyOrCheck(root, false))
+			got, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "a.yml")) //nolint:gosec // path from t.TempDir
+			require.NoError(t, err)
+			assert.Contains(t, string(got), "          enable-sudo: true\n")
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -1135,7 +1358,33 @@ func Test_applyOrCheck(t *testing.T) {
 		t.Run("workflow に現れないジョブ宣言を弾く", func(t *testing.T) {
 			t.Parallel()
 			root := newTestRepo(t, map[string]string{"a.yaml": testWorkflow("one", "egress-policy: block")})
-			require.ErrorIs(t, applyOrCheck(root, true), errJobOrphan)
+			err := applyOrCheck(root, true)
+			require.ErrorIs(t, err, errJobOrphan)
+			assert.Contains(t, err.Error(), "b.yaml:audited, b.yaml:two")
+		})
+
+		t.Run("孤児の宣言で失敗した apply は何も書かない", func(t *testing.T) {
+			t.Parallel()
+			before := testWorkflow("one", "egress-policy: block")
+			root := newTestRepo(t, map[string]string{"a.yaml": before})
+			require.ErrorIs(t, applyOrCheck(root, false), errJobOrphan)
+			got, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "a.yaml")) //nolint:gosec // path from t.TempDir
+			require.NoError(t, err)
+			assert.Equal(t, before, string(got))
+		})
+
+		t.Run("別のファイルの走査で失敗した apply は書き換え予定のファイルにも触れない", func(t *testing.T) {
+			t.Parallel()
+			before := testWorkflow("one", "egress-policy: block")
+			root := newTestRepo(t, map[string]string{
+				"a.yaml": before,
+				"b.yaml": bYAML,
+				"c.yaml": "name: T\n\njobs:\n  three:\n    steps:\n      - name: Checkout\n",
+			})
+			require.ErrorIs(t, applyOrCheck(root, false), errStepMissing)
+			got, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "a.yaml")) //nolint:gosec // path from t.TempDir
+			require.NoError(t, err)
+			assert.Equal(t, before, string(got))
 		})
 	})
 }
@@ -1171,6 +1420,15 @@ func Test_writeChanges(t *testing.T) {
 			err := writeChanges(root, map[string]string{filepath.Join(root, "a.yaml"): "body"}, true)
 			require.ErrorIs(t, err, errEgressDrift)
 			assert.Contains(t, err.Error(), "a.yaml")
+		})
+
+		t.Run("dry-run は複数の差分をパスの昇順で並べる", func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			changes := map[string]string{filepath.Join(root, "b.yaml"): "body", filepath.Join(root, "a.yaml"): "body"}
+			err := writeChanges(root, changes, true)
+			require.ErrorIs(t, err, errEgressDrift)
+			assert.Contains(t, err.Error(), "a.yaml, b.yaml")
 		})
 
 		t.Run("書き込み失敗を伝播する", func(t *testing.T) {

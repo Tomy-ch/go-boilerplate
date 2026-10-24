@@ -83,7 +83,6 @@ jobs:
           allowed-ips: |
             127.0.0.100
             172.16.0.0/12
-            ::1
           allowed-domains: |
             api.github.com
             github.com
