@@ -54,6 +54,7 @@ jobs:
         with:
           egress-policy: block
           dns-policy: allowed-domains-only
+          collect-process-info: false
           enable-sudo: false
           allowed-ips: |
             127.0.0.100
@@ -68,6 +69,7 @@ jobs:
         ` + testUses + `
         with:
           egress-policy: audit
+          collect-process-info: false
           enable-sudo: false
           allowed-ips: |
             127.0.0.100
@@ -1192,6 +1194,7 @@ func Test_renderStep(t *testing.T) {
 				"  with:",
 				"    egress-policy: block",
 				"    dns-policy: allowed-domains-only",
+				"    collect-process-info: false",
 				"    enable-sudo: false",
 				"    allowed-ips: |",
 				"      127.0.0.1",
@@ -1210,13 +1213,20 @@ func Test_renderStep(t *testing.T) {
 		t.Run("audit は名前解決とドメインを書かない", func(t *testing.T) {
 			t.Parallel()
 			got := renderStep(&jobSpec{policy: policyAudit}, []string{"127.0.0.1"}, nil, 0)
-			assert.Equal(t, []string{"with:", "  egress-policy: audit", "  enable-sudo: false", "  allowed-ips: |", "    127.0.0.1"}, got)
+			assert.Equal(t, []string{
+				"with:",
+				"  egress-policy: audit",
+				"  collect-process-info: false",
+				"  enable-sudo: false",
+				"  allowed-ips: |",
+				"    127.0.0.1",
+			}, got)
 		})
 
 		t.Run("IP が無ければ allowed-ips を書かない", func(t *testing.T) {
 			t.Parallel()
 			got := renderStep(&jobSpec{policy: policyAudit}, nil, nil, 0)
-			assert.Equal(t, []string{"with:", "  egress-policy: audit", "  enable-sudo: false"}, got)
+			assert.Equal(t, []string{"with:", "  egress-policy: audit", "  collect-process-info: false", "  enable-sudo: false"}, got)
 		})
 	})
 }
@@ -1243,6 +1253,7 @@ func Test_ssot_rewriteFile(t *testing.T) {
 			t.Parallel()
 			body := strings.Replace(bYAML, `          egress-policy: block
           dns-policy: allowed-domains-only
+          collect-process-info: false
           enable-sudo: false
           allowed-ips: |
             127.0.0.100
@@ -1260,6 +1271,7 @@ func Test_ssot_rewriteFile(t *testing.T) {
             stale7:443
 `, 1)
 			body = strings.Replace(body, `          egress-policy: audit
+          collect-process-info: false
           enable-sudo: false
           allowed-ips: |
             127.0.0.100

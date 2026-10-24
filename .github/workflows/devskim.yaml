@@ -72,6 +72,7 @@ jobs:
         with:
           egress-policy: block
           dns-policy: allowed-domains-only
+          collect-process-info: false
           enable-sudo: false
           allowed-ips: |
             127.0.0.100

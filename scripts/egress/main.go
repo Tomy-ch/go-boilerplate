@@ -664,7 +664,8 @@ func blockResumes(lines []string, from int, inner string) bool {
 // renderStep は 1 ジョブの with ブロックを、uses キーと同じ字下げから書き出す。
 // 一覧は `|` で書く。bullfrog は入力を改行で割るので、`>` で畳むと 1 行の不正な値になる。
 // audit は名前解決も絞らないので dns-policy と allowed-domains を書かない。enable-sudo は action の
-// 既定が true なので常に明示する。
+// 既定が true なので常に明示する。collect-process-info は判定のたびにプロセスを探して接続を遅らせる
+// ので常に止める。
 func renderStep(j *jobSpec, ips, hosts []string, indent int) []string {
 	pad := strings.Repeat(" ", indent)
 	in := pad + strings.Repeat(" ", withIndentStep)
@@ -673,7 +674,7 @@ func renderStep(j *jobSpec, ips, hosts []string, indent int) []string {
 	if j.policy == policyBlock {
 		out = append(out, in+"dns-policy: allowed-domains-only")
 	}
-	out = append(out, fmt.Sprintf("%senable-sudo: %t", in, j.sudo != ""))
+	out = append(out, in+"collect-process-info: false", fmt.Sprintf("%senable-sudo: %t", in, j.sudo != ""))
 	if len(ips) > 0 {
 		out = append(out, in+"allowed-ips: |")
 		for _, ip := range ips {

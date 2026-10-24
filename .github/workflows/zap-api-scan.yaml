@@ -113,6 +113,7 @@ jobs:
         with:
           egress-policy: block
           dns-policy: allowed-domains-only
+          collect-process-info: false
           enable-sudo: true
           allowed-ips: |
             127.0.0.100
@@ -166,6 +167,11 @@ jobs:
             security.debian.org
             zaproxy.org
             *.zaproxy.org
+
+      # bullfrog drops a refused IPv6 connection without a reset, so a client that resolves localhost to
+      # ::1 waits about a minute before it falls back to 127.0.0.1. The ZAP driver does that on every API call.
+      - name: Disable IPv6 on the loopback
+        run: sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=1
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
