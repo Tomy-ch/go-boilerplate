@@ -11,3 +11,16 @@
 # 同じ状態を作れてしまうため。運用は .github/zizmor.yml と同じで、解決したらエントリを消す。
 #
 # 期限切れは go.mod が変わらなくても訪れるので、回収はスケジュール実行が担う。
+"github.com/labstack/echo/v5@v5.4.2" = { expires = 2026-11-07, issue = 1708, reason = "v5.4.1 のセキュリティ修正（BodyLimit 迂回ほか）を含む。supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/oapi-codegen/runtime@v1.8.0" = { expires = 2026-11-07, issue = 1708, reason = "oapi-codegen 2.8.1（GHSA-q4jc-cx6x-3rqw 修正）の生成コードが要求する。supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/oapi-codegen/echo-v5-middleware@v0.2.1" = { expires = 2026-11-07, issue = 1708, reason = "oapi-codegen 2.8.1（GHSA-q4jc-cx6x-3rqw 修正）の生成コードが要求する。supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/getkin/kin-openapi@v0.152.0" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/aws/aws-sdk-go-v2@v1.47.4" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/aws/aws-sdk-go-v2/config@v1.33.10" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/aws/aws-sdk-go-v2/credentials@v1.20.10" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/aws/aws-sdk-go-v2/service/dynamodb@v1.72.1" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/aws/aws-sdk-go-v2/service/s3@v1.114.5" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/aws/aws-sdk-go-v2/service/sns@v1.47.6" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/aws/aws-sdk-go-v2/service/sqs@v1.52.6" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/aws/smithy-go@v1.28.6" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"github.com/shopspring/decimal@v1.6.0" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
