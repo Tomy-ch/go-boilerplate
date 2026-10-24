@@ -1,7 +1,7 @@
 # ------------------------------
 # ビルド用
 # ------------------------------
-FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS builder
+FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS builder
 
 WORKDIR /app
 
@@ -37,7 +37,7 @@ RUN cp "env/.env.${APP_ENV}" env/.env \
 # ------------------------------
 # 実行用コンテナ: アプリケーションのサーバとして常駐起動する用途
 # ------------------------------
-FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS runtime
+FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS runtime
 
 RUN apk upgrade --no-cache \
     && apk add --no-cache ca-certificates tzdata \
@@ -72,7 +72,7 @@ CMD ["/app/server", "serve"]
 # 開発用ツールビルダー：mise.toml のバージョン pin で開発用 Go ツール一式を install し、
 # バイナリだけを /out に抽出する。最終 tooling ステージに mise 本体を残さないための中継。
 # ------------------------------
-FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS tooling_builder
+FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS tooling_builder
 
 # CGO_ENABLED=0: `go:` backend のツールを静的バイナリにする（go_tools_builder と対称）
 ENV CGO_ENABLED=0
@@ -115,7 +115,7 @@ RUN mkdir /out \
 # ------------------------------
 # ローカル環境
 # ------------------------------
-FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS tooling
+FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS tooling
 
 # ビルドなどに必要なパッケージをインストール
 RUN apk add --no-cache \

@@ -9,7 +9,7 @@ ARG MISE_VERSION=v2026.6.0
 # Go ツールビルダー：mise.toml のバージョン pin で Go 系ツール一式を install し、
 # バイナリだけを /out に抽出する。最終 go_tools ステージに mise 本体を残さないための中継。
 # ------------------------------
-FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS go_tools_builder
+FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS go_tools_builder
 
 # CGO_ENABLED=0: `go:` backend で install されるツール（mockgen）を静的バイナリにする
 ENV CGO_ENABLED=0
@@ -64,7 +64,7 @@ RUN mkdir /out \
 # Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / shellcheck / hadolint / gitleaks / godoc / godoc-static を mise.toml のバージョンで提供
 # Go ランタイムは golang 公式 base image を使用（mise.toml の go 値と `make sync-go-version` で同期）
 # ------------------------------
-FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS go_tools
+FROM golang:1.27.3-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS go_tools
 
 RUN apk add --no-cache \
     bash \
@@ -89,7 +89,7 @@ CMD []
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
 # 補助スクリプトが依存するパッケージを pnpm でローカル node_modules にインストールしておく
 # ------------------------------
-FROM node:24.19.0-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS node_tools
+FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS node_tools
 
 RUN apk add --no-cache \
     bash \
@@ -156,7 +156,7 @@ CMD []
 # mise の Python ビルドは python-build によるソースコンパイルが必要で時間がかかるため、ここでは公式 base に頼る。
 # mise が入れるのは uv までで、sqlfluff 本体は sha256 付きの lockfile から uv が入れる。
 # ------------------------------
-FROM python:3.14.7-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS python_tools
+FROM python:3.14.9-slim@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8 AS python_tools
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

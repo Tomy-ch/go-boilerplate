@@ -47,8 +47,9 @@ trustPolicyExclude: []
 # pnpm は親子の直接辺しか指せないため、親ではなく「解決結果がこの版域に落ちたら」で書く。
 overrides:
   # IN_PLACE で node を除去する afterSanitize hook が切り離された部分木を実行可能なまま残す
-  # （GHSA-55q2-fjhq-7xh7 / GHSA-p98j-92pf-mc4p）。mermaid が引く。
-  "dompurify@<3.4.16": ">=3.4.16 <4"
+  # （GHSA-55q2-fjhq-7xh7 / GHSA-p98j-92pf-mc4p / GHSA-mrv2-3pqr-j5jr）と、SAFE_FOR_TEMPLATES が
+  # shadow root 内で分割された template 式を残す（GHSA-cg2g-xh64-v4q7）。mermaid が引く。
+  "dompurify@<3.4.17": ">=3.4.17 <4"
   # parseCommaParts の無制限再帰による DoS（GHSA-6j4f-fj2g-mc7p）。minimatch が引く。
   "brace-expansion@5": ">=5.0.10 <6"
   # TLS 証明書検証の迂回・WebSocket 経由の DoS・Set-Cookie のキャッシュによる別ユーザーへの漏洩ほか
