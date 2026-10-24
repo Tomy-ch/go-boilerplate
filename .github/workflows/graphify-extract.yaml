@@ -137,7 +137,7 @@ jobs:
 
       - name: Run semantic extraction
         if: steps.config.outputs.configured == 'true'
-        uses: anthropics/claude-code-action@1f291e1cfe0f5fc21db2aef19af844591600ade7 # v1.0.206
+        uses: anthropics/claude-code-action@db77d4d3c98f3f6380e7cd45ffba2342a3dbde3c # v1.0.254
         env:
           # The skill resolves its own interpreter, and its first branch is
           # `uv tool run --from graphifyy`, which takes the newest release from PyPI rather than the
@@ -217,7 +217,7 @@ jobs:
       - name: Mint the auto-PR app token
         id: app-token
         if: steps.config.outputs.configured == 'true' && steps.diff.outputs.has_diff == 'true' && steps.app-config.outputs.configured == 'true'
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
         with:
           app-id: ${{ secrets.AUTO_PR_APP_ID }}
           private-key: ${{ secrets.AUTO_PR_APP_PRIVATE_KEY }}
