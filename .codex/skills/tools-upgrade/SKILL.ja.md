@@ -164,6 +164,8 @@ backend、ツールキー、候補バージョン、**`mise.toml` で現在ピ�
 
   `py-lock` は `python/*.txt` を **すべて** 再生成するため、触っていないツールでも推移依存の新リリースによって差分が出ることがある。その差分は本物で、変更の一部である——確認して残すこと。ただし今回の run の隔離判断は直接の pin ごとに下したものであり、この差分はその外にある。最終報告でその旨を述べる。
 
+  再生成によって書き換えられたすべての `python/*.txt` は、この時点で変更対象の lockfile であり、PR の scanner は移動したものだけでなく、その中にあるすべてを報告する。最終報告の前に、それらのファイルを対象として **`dep-vuln-upgrade` スキル**を lockfile mode で chain する。このスキルが所有する pin について HIGH 以上の finding が返された場合は、ステップ 5〜6 を通じてこのスキル側で扱う。
+
 ### 7. 必要なら `make sync-versions` を実行
 
 `go` / `node` / `python` のいずれかが更新されていれば `make sync-versions` を実行する。これにより `go.mod` と Dockerfile / `docker/**/README.md` 群の `FROM golang:` / `FROM node:` / `FROM python:` ハードコードが伝播する。
@@ -240,6 +242,7 @@ pin と lockfile が一致しているかを見る検査であり、いま宣言
 - [ ] eligible が非空なら、per-tool 適用候補を `ask the user explicitly` で確定。早期採用する pending は別枠・既定未選択・バンド付きで提示
 - [ ] `mise.toml` を承認分のみ atomic に書き換え、key 形式と `v` prefix 慣習を保持
 - [ ] 承認された `python/*.in` の pin を書き換え（パッケージ名と extras を保持）、`make py-lock` を実行し、両方のファイルを残す。`.txt` は手書きしない
+- [ ] `make py-lock` が書き換えたすべての `python/*.txt` を、最終報告前に `dep-vuln-upgrade` スキルの lockfile mode で監査
 - [ ] pin が最新より前にある理由を記録するメモを書かず、途中で見つけたものは削除し、バージョンに依存しない制約は残す
 - [ ] `python/*.in` の pin を変えたなら `make tool-cooldown-audit` を実行
 - [ ] go / node / python が更新されたなら `make sync-versions` を実行

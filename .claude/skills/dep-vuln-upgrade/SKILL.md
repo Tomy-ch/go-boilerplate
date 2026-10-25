@@ -1,8 +1,8 @@
 ---
 name: dep-vuln-upgrade
 description: >-
-  Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's dependency resolvers — the pnpm-resolved packages (`scripts/`, `docs-viewer/`), the Go module graph, and the PyPI tools hash-locked in `python/*.txt` — targeting only the named packages rather than a blanket upgrade, and chaining `/supply-chain-triage` on every entry the supply-chain cooldown catches. Use it whenever the user pastes a vulnerability report — `npm audit`, `pnpm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive deps that need an `overrides` pin and indirect Go modules. Safe patches are applied automatically; only major-version bumps and deliberate cooldown overrides are asked about. Do NOT use it for routine "bump every tool to latest" audits (`/tools-upgrade`, which owns `mise.toml` and `python/*.in`), for upgrading the Go language version (`/go-upgrade`), or for a general `go.mod` dependency refresh (`make tidy-lib`).
-argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" per line] [min_age_days]'
+  Patch specific vulnerable dependencies flagged by a security advisory (CVE / GHSA) across this repo's dependency resolvers — the pnpm-resolved packages (`scripts/`, `docs-viewer/`), the Go module graph, and the PyPI tools hash-locked in `python/*.txt` — targeting only the named packages rather than a blanket upgrade, and chaining `/supply-chain-triage` on every entry the supply-chain cooldown catches. Use it whenever the user pastes a vulnerability report — `npm audit`, `pnpm audit`, Trivy, Dependabot, `govulncheck`, or a hand-written list of "package current → fixed (CVE)" lines — and wants those exact packages bumped to a fixed version, including transitive deps that need an `overrides` pin and indirect Go modules. Also use it in lockfile mode — pass the lockfile path(s) instead of a list — right after any change rewrote a `pnpm-lock.yaml` / `go.sum` / `python/*.txt` (a hand-made bulk bump, a Dependabot redo, `make py-lock`), before pushing, so the residual findings the scanners will post for that whole file are cleared in the same PR (「lockfile を触ったので監査して」). Safe patches are applied automatically; only major-version bumps and deliberate cooldown overrides are asked about. Do NOT use it for routine "bump every tool to latest" audits (`/tools-upgrade`, which owns `mise.toml` and `python/*.in`), for upgrading the Go language version (`/go-upgrade`), or for a general `go.mod` dependency refresh (`make tidy-lib`).
+argument-hint: '[advisory list — one "package current → fixed (CVE/GHSA)" per line | lockfile path(s)] [min_age_days]'
 ---
 
 # Dependency Vulnerability Upgrade
@@ -34,6 +34,7 @@ Use this skill when:
 - The user pastes a vulnerability report (`npm audit`, Trivy, Dependabot alert, `govulncheck`, or a hand-written list) and wants the flagged packages patched.
 - A CVE / GHSA advisory names a package that lives in a `pnpm-lock.yaml` or in `go.mod`, and you want the minimal fixed-version bump plus verification.
 - Transitive deps (pulled by a tool like `redocly` / `orval` / `spectral`) need forcing to a patched version via `overrides`.
+- A change has just rewritten a lockfile — a bulk bump made by hand, a Dependabot PR redone, `make py-lock`, `go mod tidy` — and the branch is about to be pushed. Run it in **lockfile mode** (below) on every lockfile the branch touched.
 
 Do NOT use this skill for:
 
@@ -51,6 +52,61 @@ A Python advisory reaches this repo through one of two shapes, and only the firs
 - **The advisory names a transitive package** that appears only in `python/<tool>.txt`. There is no per-package pin to raise: the lockfile is a resolution, so the fix arrives by raising the tool whose tree pulls it, or not at all until upstream releases. Report which tool's lockfile carries it, whether a newer tool version resolves past the advisory, and leave the decision with the user. Never hand-edit a `.txt` — it carries sha256 hashes that `--require-hashes` enforces at install, so an edited line does not install, it fails.
 
 Either way the cooldown that governs the move is the one described under *the threshold plays two different roles* below, and the escape hatch is `.github/tool-cooldown-bypass.toml` rather than anything in this skill's write surface.
+
+## Lockfile Mode: A Touched Lockfile Brings Its Residual Findings With It
+
+When the arguments name lockfile paths instead of advisories — or no advisory list is given but the
+branch changed a lockfile against its base — build the advisory list yourself from an audit of
+exactly those files, then continue from Step 1 as if the user had pasted it.
+
+Why this mode exists, because the wrong instinct is to skip it: two kinds of PR check look at a
+lockfile, and they answer different questions.
+
+- `dependency-review` and the `osv-diff` job ask **"did this PR add a vulnerable package?"** — a set
+  difference against the base. A finding the base already carried never appears there.
+- `osv-scanner`, `trivy-fs` and `grype` scan **the whole of every lockfile the PR touched** and post
+  every finding as a PR comment; `osv-release-gate` then blocks the next promotion on HIGH and above.
+
+So "it was already there in the base" is not a reason to defer a finding in a file this PR rewrote.
+The reporting / gating split in `docs/design/security.md` ("Why reporting and gating are split")
+exists because an author who did not touch a dependency cannot fix what it inherits — an author who
+just rewrote that lockfile can, at the lowest cost it will ever have, and the PR's own comments are
+already carrying the finding. Read that section at runtime; it governs, this paragraph only applies it.
+
+Build the list per lockfile, citing the command for each entry. Use `osv-scanner` first: it is the
+scanner whose findings gate promotion, it reads all three lockfile kinds, and it is pinned in
+`mise.toml`, so the list you build is the list `osv-release-gate` will judge.
+
+```sh
+# every touched lockfile. python/*.txt needs the parser named — `requirements.txt:python/<tool>.txt` —
+# because osv-scanner picks it from the filename and otherwise skips the file without a finding.
+# Confirm "found N packages" in the plain output: a skipped file and a clean one both print nothing below.
+osv-scanner scan --lockfile <path> --format json \
+  | jq -r '.results[].packages[] | .package as $p | .vulnerabilities[]
+           | "\($p.name) \($p.version) \(.id) \(.database_specific.severity // "-")"' | sort -u
+# pnpm — the fixed-version floor osv-scanner omits
+pnpm audit --dir <dir> --json \
+  | jq -r '.advisories[] | "\(.severity) \(.module_name) \(.findings[0].version) \(.patched_versions) \(.github_advisory_id)"'
+# Go — whether the vulnerable symbol is actually reached
+govulncheck ./...
+```
+
+A PyPI entry found this way is still handed off per the section above. `trivy-fs` and `grype` query
+other databases and can name a package neither command above reports (`grype` has reported
+`braces` GHSA-vfj7-8cjw-p6xm with no fixed release that both of these missed). After pushing, read
+those two PR comments against the list: an extra HIGH or above goes through the same steps, and one
+with no fix joins the open lines below.
+
+Scope of the fix:
+
+- **HIGH and CRITICAL are in scope** for the PR that touched the file — they are what blocks the next
+  promotion. Patch them through the ordinary steps below (same-major `overrides` floor for transitive
+  pnpm deps, cooldown and triage unchanged).
+- **MODERATE and LOW are reported, not chased** — patch one only when the same `overrides` entry or
+  bump already covers it.
+- A finding with **no fixed release**, or whose only fix is `blocked` by the cooldown, stays open.
+  It is not a failure; it is a line the PR description must carry, with the clear date for a
+  cooldown-blocked fix, so a reviewer reading the scanner comments finds the reason next to them.
 
 ## First Step: Parse Advisories and Resolve the Caution Threshold
 
@@ -300,6 +356,7 @@ Summarize in Japanese:
 - Any `minimumReleaseAgeExclude` entry added: which packages got it, the version it exempts, and **the date it must be deleted** — stated as a follow-up the user owns, not as a closed item.
 - For each entry the cooldown caught: its triage band and the axis that drove it, so the record shows the adopt-or-wait call rested on evidence. Name any axis that came back unanswerable.
 - Any `not-present` / `needs-manual` entries the user must handle another way.
+- In lockfile mode: per touched lockfile, the findings left open (no fixed release, or fix blocked by the cooldown with its clear date), written so they can go into the PR description beside the scanner comments.
 - Verification results (`make go-lint` / `make go-test` / `pnpm audit` / frozen install / `govulncheck` / drift checks).
 - Regenerated artifacts, if any, and whether the tool-runner images were rebuilt.
 
@@ -325,6 +382,7 @@ Do NOT commit, stage, or push. The user reviews the working tree and runs `/comm
 Confirm before reporting completion:
 
 - [ ] Advisory list parsed into (package, current, fixed candidates, CVE/GHSA, ecosystem)
+- [ ] In lockfile mode: the list built from `osv-scanner` (plus `pnpm audit` / `govulncheck`) over every touched lockfile; HIGH and above patched, the rest reported; after push, `trivy-fs` / `grype` comments reconciled against it
 - [ ] `<MIN_AGE_DAYS>` resolved **per lockfile** from whichever file declares it (`pnpm-workspace.yaml minimumReleaseAge`, minutes ÷ 1440; `7` default elsewhere); existing `minimumReleaseAgeExclude` entries read; asked only on genuine ambiguity
 - [ ] Each package located in **every** lockfile that holds it (`pnpm-lock.yaml` / `go.mod`) and classified direct vs transitive/indirect; not-present entries surfaced
 - [ ] Fixed version chosen as minimal same-major; major bumps flagged as potentially breaking; downgrade guard applied
