@@ -340,6 +340,29 @@ runtime 検証は意図的にここに置いていない。PR ができた後（
 
 先に `submit-pr` で PR を開く。ローカル検証の間に CI が回り始める。
 
+### PR の Development に issue を登録する
+
+`submit-pr` が戻った直後に、この実行で解決する **すべての issue** — 引き渡されたものと、
+計画へ取り込んだもの — を PR の Development に登録する。`submit-pr` が `closes #N` を追加する
+のは、ブランチ名に番号が含まれる場合の 1 件だけなので、追加済みだと仮定してはならない。
+
+唯一の仕組みは PR 本文の closing keyword である。GitHub の API には、既存 PR と issue を
+リンクする mutation が無い（`createLinkedBranch` がリンクするのはブランチであって PR ではない）。
+本文末尾へ issue ごとに 1 行の `closes #N` を置き、その上で GitHub が実際にリンクしたものを測る:
+
+```bash
+gh pr edit <pr> --body-file <body-with-closes-lines>
+gh pr view <pr> --json baseRefName,closingIssuesReferences \
+  --jq '"\(.baseRefName) \([.closingIssuesReferences[].number])"'
+gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
+```
+
+keyword がリンクするのは、PR のベースがリポジトリの **default branch** である場合だけである。
+ここでは `release/*` 線であることが多く、時間とともに変わるため、毎回測って決めつけない。
+ベースが default branch でないため `closingIssuesReferences` に出ない issue は、issue の
+Development sidebar から手作業でしかリンクできない。その事実を run record へ追記し、issue 番号を
+挙げて PR コメントと最終報告にも書く。停止理由にはしない。
+
 ### runtime 検証 — マージのゲート
 
 動いているシステムに対して実 HTTP 経路を通す。どのモードでも緩められない。
@@ -390,10 +413,13 @@ gh pr checks <n>
 
 ## Step 9 — 締め
 
-issue は**手動で**クローズする。PR のベースが default branch ではなくリリースブランチのとき、自動クローズのキーワードは発火しない:
+この実行で解決したすべての issue に申し送りコメントを投稿し、その時点でも open のものを
+クローズする。マージによって既にクローズされたかどうかは、Step 8 の Development link と同じ
+default-branch 条件に依存するため、予測せずに状態を読む:
 
 ```bash
-gh issue comment <n> --body-file <handover> && gh issue close <n>
+gh issue comment <n> --body-file <handover>
+if [ "$(gh issue view <n> --json state --jq .state)" = OPEN ]; then gh issue close <n>; fi
 ```
 
 申し送りコメントには、決めたこと・計画から想定外だったこと・意図的に手を付けなかったことを書く。
@@ -458,5 +484,8 @@ gh issue comment <n> --body-file <handover> && gh issue close <n>
 - [ ] ローカルゲートを実行した、または CI へ委譲したことを PR に書いた。
 - [ ] コメントのパスを Step 4 の末尾で無条件に走らせた。2 つのレビュースキルをそれぞれ見積もってユーザーへ提示し、承認されたものを確定済みの答えを渡して実行した。自動適用は機械的に判定できるものに限定した。
 - [ ] 決定点をまとめて提示した。
+- [ ] PR を開いた後、解決するすべての issue を `closes #N` により Development へ登録し、
+      `closingIssuesReferences` で確認した — または、ベースブランチのためリンクできなかったものを
+      すべて run record、PR コメント、報告で挙げ、手作業の Development link が必要だと明記した。
 - [ ] PR を開いた上で runtime 検証（curl + トレース）を完了した — または未実施であることと、2 択のどちらを採ったかを明言した — 上でマージした。
-- [ ] issue を申し送り付きで手動クローズ。無関係な指摘は issue モードどおりに処理し、各々起票前に検証済み。残った自己判断を PR コメントへ記録した。
+- [ ] 解決したすべての issue に申し送りコメントを投稿し、マージ後も open のものをクローズした。無関係な指摘は issue モードどおりに処理し、各々起票前に検証済み。残った自己判断を PR コメントへ記録した。
