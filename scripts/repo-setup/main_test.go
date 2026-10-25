@@ -517,6 +517,7 @@ func Test_runner_runAll(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない
 func Test_hostRunner(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("run はホストのコマンドを実行する", func(t *testing.T) {
@@ -939,6 +940,7 @@ func writeReleaseNotes(t *testing.T) string {
 	return noteDir
 }
 
+//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない
 func Test_execute(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("preflight は実行層を使わず初期タグの有無だけを見る", func(t *testing.T) {

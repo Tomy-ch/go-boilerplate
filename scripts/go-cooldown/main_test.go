@@ -989,6 +989,7 @@ func Test_added(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		// base を取れないまま空の差分を返すと、検査が素通りしたことに誰も気づけない。
+		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("base を解決できなければ取得手段を示してエラーにする", func(t *testing.T) {
 			dir := t.TempDir()
 			initGoModRepo(t, dir, "module m\n")
@@ -1000,6 +1001,7 @@ func Test_added(t *testing.T) {
 		})
 
 		// base を読めないまま差分を空として返すと、追加した依存がひとつも検査されない。
+		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("base の go.mod を読み切れなければエラーにする", func(t *testing.T) {
 			dir := t.TempDir()
 			initGoModRepo(t, dir, "module m\n// "+strings.Repeat("a", bufio.MaxScanTokenSize)+"\n")
@@ -1288,8 +1290,10 @@ func Test_run(t *testing.T) {
 }
 
 func Test_readWorkTreeGoMod(t *testing.T) {
+	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
 		// 検査対象は「今のツリーの go.mod」であって、base 側でも生成物でもない。
+		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("作業ディレクトリの go.mod をそのまま返す", func(t *testing.T) {
 			dir := t.TempDir()
 			require.NoError(t, os.WriteFile(filepath.Join(dir, "go.mod"), []byte(goModFixture), 0o600))
@@ -1302,8 +1306,10 @@ func Test_readWorkTreeGoMod(t *testing.T) {
 		})
 	})
 
+	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("異常系", func(t *testing.T) {
 		// 読めないことを黙って空の go.mod として扱うと、依存ゼロ＝違反ゼロとして素通りする。
+		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("go.mod を読めなければ空を返さずエラーにする", func(t *testing.T) {
 			t.Chdir(t.TempDir())
 

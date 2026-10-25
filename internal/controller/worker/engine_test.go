@@ -687,7 +687,7 @@ func TestEngine_drain(t *testing.T) {
 
 			select {
 			case err := <-done:
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			case <-time.After(eventually):
 				t.Fatal("drain が完了しなかった")
 			}
