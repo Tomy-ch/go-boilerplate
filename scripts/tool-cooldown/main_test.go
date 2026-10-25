@@ -372,12 +372,9 @@ func Test_parseDeclarations(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir がプロセス共有の状態を差し替えるため並列化不可
 func Test_declarationPaths(t *testing.T) {
-	//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 	t.Run("正常系", func(t *testing.T) {
 		// glob を取り違えると、PyPI の宣言だけが検査されないまま通る。
-		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 		t.Run("mise.toml と python/*.in を列挙する", func(t *testing.T) {
 			dir := t.TempDir()
 			require.NoError(t, os.MkdirAll(filepath.Join(dir, "python"), 0o750))
@@ -391,7 +388,6 @@ func Test_declarationPaths(t *testing.T) {
 			assert.Equal(t, []string{miseFile, "python/a.in", "python/b.in"}, got)
 		})
 
-		//nolint:paralleltest // 親がプロセス共有の状態を差し替えるため並列化不可
 		t.Run("python/*.in が無ければ mise.toml だけを返す", func(t *testing.T) {
 			t.Chdir(t.TempDir())
 

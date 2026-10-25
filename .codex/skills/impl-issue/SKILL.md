@@ -514,6 +514,29 @@ else until the loop goes back to `gh` for it:
 
 Open the PR first via `submit-pr`, so CI starts while you verify locally.
 
+### Register the issues in the PR's Development
+
+Right after `submit-pr` returns, register **every issue this run resolves** — the one handed over,
+plus any the plan folded in — in the PR's Development. `submit-pr` adds `closes #N` only when the
+branch name carries a number, and only one, so do not assume it happened.
+
+The only mechanism is a closing keyword in the PR body: GitHub's API has no mutation that links an
+existing PR to an issue (`createLinkedBranch` links a branch, not a PR). Put one `closes #N` line per
+issue at the end of the body, then measure what GitHub actually linked:
+
+```bash
+gh pr edit <pr> --body-file <body-with-closes-lines>
+gh pr view <pr> --json baseRefName,closingIssuesReferences \
+  --jq '"\(.baseRefName) \([.closingIssuesReferences[].number])"'
+gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
+```
+
+A keyword links only when the PR's base is the repository's **default branch**, which here is often a
+`release/*` line and changes over time — measure it every run, never assume it. When an issue is
+missing from `closingIssuesReferences` because the base is not the default branch, the link can only
+be added by hand from the issue's Development sidebar: append that to the run record and say it in
+the PR comment and the final report, naming the issue numbers. Do not treat it as a stop.
+
 ### Runtime verification — the merge gate
 
 Exercise the real HTTP path against the running system. No mode relaxes this.
@@ -580,11 +603,13 @@ than the answer to it: report what CI said and what runtime verification found, 
 
 ## Step 9 — Close out
 
-Close the issue **manually** — auto-closing keywords do not fire when the PR targets a release branch
-rather than the default branch:
+Post the handover comment on every issue the run resolved, then close each one that is still open.
+Whether the merge already closed it depends on the same default-branch condition as the Development
+link in Step 8, so read the state instead of predicting it:
 
 ```bash
-gh issue comment <n> --body-file <handover> && gh issue close <n>
+gh issue comment <n> --body-file <handover>
+if [ "$(gh issue view <n> --json state --jq .state)" = OPEN ]; then gh issue close <n>; fi
 ```
 
 The handover comment covers what was decided, what surprised you relative to the plan, and what was
@@ -672,7 +697,10 @@ decision points this skill exists to create.
       and put to the user; the approved ones run with their
       answers passed through. Auto-application confined to machine-checkable fixes.
 - [ ] Decision points presented together.
+- [ ] PR opened, then every resolved issue registered in its Development via `closes #N` and
+      confirmed in `closingIssuesReferences` — or each one the base branch could not link named in the
+      run record, the PR comment and the report as needing a manual Development link.
 - [ ] PR opened, then runtime verification (curl + traces) completed — or its absence stated together
       with which of the two options was taken — before merging.
-- [ ] Issue closed manually with a handover comment; unrelated findings routed per issue mode, each
+- [ ] Handover comment posted on every resolved issue, and each one still open after the merge closed; unrelated findings routed per issue mode, each
       verified before filing; remaining judgment calls recorded in a PR comment.

@@ -29,6 +29,7 @@ pnpm パッケージはセレクタを親の名指しではなく **解決結果
 - ユーザーが脆弱性レポート（`npm audit` / Trivy / Dependabot alert / `govulncheck`、あるいは手書きの一覧）を貼り、指摘 package のパッチを望むとき。
 - CVE / GHSA 勧告が `pnpm-lock.yaml` / `go.mod` に存在する package を名指しし、最小の修正版バンプ + 検証を行いたいとき。
 - ツール（`redocly` / `orval` / `spectral` 等）が引き込む推移的依存を、`overrides` でパッチ版へ強制する必要があるとき。
+- 変更が lockfile を書き換えたばかりで（手作業の一括 bump、Dependabot PR のやり直し、`make py-lock`、`go mod tidy`）、ブランチをこれから push するとき。ブランチが触ったすべての lockfile に対し、**lockfile モード**（後述）で実行する。
 
 次には使わない:
 
@@ -46,6 +47,41 @@ Python の勧告がこのリポジトリに届く形は 2 つあり、ここで�
 - **`python/<tool>.txt` にしか現れない推移的な package を名指しする場合**。引き上げるべき個別の pin は存在しない。lockfile は解決結果なので、修正はそれを引くツール自体を上げることで届くか、上流が出すまで届かないかのどちらかである。どのツールの lockfile が抱えているか、より新しいツール版が勧告を越えて解決するかを報告し、判断はユーザーに委ねる。`.txt` を手編集しない — sha256 を持ち install 時に `--require-hashes` が強制するので、編集した行は install されずに失敗する。
 
 いずれの場合も、移動を支配する cooldown は後述の *しきい値はエコシステムにより* の節が扱うものであり、逃げ道は `.github/tool-cooldown-bypass.toml` であって、このスキルの書き込み面には無い。
+
+## lockfile モード: 触った lockfile は残存する指摘も連れてくる
+
+引数が勧告ではなく lockfile のパスを指す場合、または勧告リストが無いがブランチが base に対して lockfile を変えている場合は、まさにそのファイルの監査から勧告リストを自分で作り、ユーザーが貼り付けたものとして Step 1 から続ける。
+
+このモードがある理由（誤った直感はこれを飛ばすことなので）: lockfile を見る PR チェックは 2 種類あり、答える問いが違う。
+
+- `dependency-review` と `osv-diff` ジョブは **「この PR が脆弱な package を追加したか」** を問う — base との差集合である。base が既に抱えていた指摘はそこには現れない。
+- `osv-scanner`・`trivy-fs`・`grype` は **PR が触ったすべての lockfile の全体** を走査し、すべての指摘を PR コメントとして投稿する。そのうえで `osv-release-gate` が HIGH 以上で次の昇格を止める。
+
+したがって「base に既にあった」は、この PR が書き換えたファイルの指摘を後回しにする理由にならない。`docs/design/security.md` の報告とゲートの分離（"Why reporting and gating are split"）は、依存に触れていない作成者には受け継いだものを直せないから存在する — その lockfile を書き換えたばかりの作成者なら、これ以上ない低コストで直せ、しかも PR 自身のコメントが既にその指摘を運んでいる。その節を実行時に読むこと。統べるのはあちらで、この段落は適用しているだけである。
+
+lockfile ごとにリストを作り、各エントリに根拠のコマンドを添える。まず `osv-scanner` を使う: 指摘が昇格をゲートするスキャナであり、3 種の lockfile をすべて読め、`mise.toml` で pin されているので、作ったリストが `osv-release-gate` の判定対象と一致する。
+
+```sh
+# every touched lockfile. python/*.txt needs the parser named — `requirements.txt:python/<tool>.txt` —
+# because osv-scanner picks it from the filename and otherwise skips the file without a finding.
+# Confirm "found N packages" in the plain output: a skipped file and a clean one both print nothing below.
+osv-scanner scan --lockfile <path> --format json \
+  | jq -r '.results[].packages[] | .package as $p | .vulnerabilities[]
+           | "\($p.name) \($p.version) \(.id) \(.database_specific.severity // "-")"' | sort -u
+# pnpm — the fixed-version floor osv-scanner omits
+pnpm audit --dir <dir> --json \
+  | jq -r '.advisories[] | "\(.severity) \(.module_name) \(.findings[0].version) \(.patched_versions) \(.github_advisory_id)"'
+# Go — whether the vulnerable symbol is actually reached
+govulncheck ./...
+```
+
+この方法で見つかった PyPI のエントリは、引き続き前節に従って渡す。`trivy-fs` と `grype` は別のデータベースを引くため、上の 2 つのコマンドがどちらも報告しない package を名指しすることがある（`grype` は修正版の無い `braces` GHSA-vfj7-8cjw-p6xm を報告したが、上の 2 つはどちらも拾わなかった）。push の後、その 2 つの PR コメントをリストと突き合わせる: 追加の HIGH 以上は同じ手順で扱い、修正の無いものは下記の未解決行に加える。
+
+修正の範囲:
+
+- **HIGH と CRITICAL は、そのファイルを触った PR の範囲**である — 次の昇格を止めるのはこれらだから。下記の通常の手順でパッチする（推移的 pnpm 依存は同一 major の `overrides` フロア、cooldown とトリアージは変わらない）。
+- **MODERATE と LOW は報告するが追わない** — 同じ `overrides` エントリや bump が既にそれを覆うときだけパッチする。
+- **修正版が無い**指摘、または唯一の修正が cooldown で `blocked` の指摘は未解決のまま残る。失敗ではなく、PR の説明に載せるべき 1 行であり、cooldown で止まっている修正には解除日を添える。そうすればスキャナのコメントを読むレビュアーが、その隣に理由を見つけられる。
 
 ## First Step: 勧告のパースと caution しきい値の解決
 
@@ -217,6 +253,8 @@ pnpm install --lockfile-only
 
 **pnpm — 推移的依存**: `<dir>/pnpm-workspace.yaml`（`package.json` ではない）に `overrides` エントリを追加し、本ファイル冒頭の注意に従って解決版域として書いてから `pnpm install --lockfile-only`。同一 major フロアの原則と暫定債務の原則は上で述べたままに適用する。
 
+override の上に置くコメントには、**その override の現在の下限が直す advisory だけ**と、その package を引く親を書く。既にある override の下限を advisory が引き上げるときは、コメントに書き足さず書き換える。新しい下限より下で直った advisory はすべて新しい下限が覆うので、それを名指す行が残っていると、pin が今そこにある理由ではなく経緯を記録することになり、読み手は pin を外せるかを判断するためにその経緯をかき分けることになる。除外（exclusion）のコメントも同じで、その 1 版が買う advisory だけを書く。
+
 **pnpm — cooldown が阻む版を、Step 5 でユーザーが例外を承認した後に入れる場合**: そのパッケージの `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` へ、既存エントリと同じ形式で追加する。
 
 ```yaml
@@ -295,6 +333,7 @@ make tool-runners-build
 - 追加した `minimumReleaseAgeExclude` エントリ: どのパッケージに入れたか、どの版を免除するか、そして **いつ削除しなければならないか** — 完了項目ではなく、ユーザーが負うフォローアップとして書く。
 - cooldown が捕捉した各エントリについて、そのトリアージ・バンドとそれを決めた軸。採用か待機かの判断が証拠に基づいたことを記録に残すため。答えられなかった軸があればそれも挙げる。
 - ユーザーが別手段で対処すべき `not-present` / `needs-manual` エントリ。
+- lockfile モードでは: 触った lockfile ごとに、未解決のまま残った指摘（修正版が無い、または修正が cooldown で止まっているものはその解除日）。スキャナのコメントの隣に置けるよう、PR の説明へそのまま入る形で書く。
 - 検証結果（`make go-lint` / `make go-test` / `npm audit` / `pnpm audit` / frozen install / `govulncheck` / drift チェック）。
 - 再生成物（あれば）と、tool-runner イメージを再ビルドしたかどうか。
 
@@ -320,6 +359,7 @@ commit / stage / push はしない。ユーザーがツリーをレビューし 
 完了報告の前に確認:
 
 - [ ] 勧告リストを（package, current, 修正版候補, CVE/GHSA, ecosystem）にパースした
+- [ ] lockfile モードでは: 触ったすべての lockfile に対し `osv-scanner`（と `pnpm audit` / `govulncheck`）でリストを作り、HIGH 以上をパッチし、残りを報告した。push 後に `trivy-fs` / `grype` のコメントと突き合わせた
 - [ ] `<MIN_AGE_DAYS>` を **lockfile ごとに** 宣言元から解決した（`pnpm-workspace.yaml minimumReleaseAge` は分なので ÷1440。それ以外は `7` 既定）。既存の `minimumReleaseAgeExclude` を読んだ。質問は真に曖昧なときだけ
 - [ ] 各 package を、それを保持する **すべての** lockfile（`pnpm-lock.yaml` / `go.mod`）で特定し direct vs transitive/indirect を分類、not-present を提示した
 - [ ] 修正版を同一 major の最小として選び、major 跨ぎを breaking の可能性としてフラグ、downgrade ガードを適用した

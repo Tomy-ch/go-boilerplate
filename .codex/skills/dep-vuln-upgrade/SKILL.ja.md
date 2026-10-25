@@ -2,7 +2,7 @@
 
 # 脆弱性を名指した依存の限定更新
 
-advisory の一覧はユーザーのメッセージから受け取る。パッケージごとに 1 行（`package current → fixed (CVE/GHSA)`）の形式でも、audit の出力を貼り付けたものでもよい。パッケージ名・記載があればインストール済みバージョン・修正候補・advisory ID・重大度を解釈し、複数の advisory を持つパッケージは重複を排除する。**変更してよいのは advisory が名指したパッケージと、それによって機械的に必要となる出力だけである。**
+ユーザーのメッセージから advisory の一覧を受け取る。lockfile モードでは、代わりに lockfile のパスを受け取る。advisory 一覧はパッケージごとに 1 行（`package current → fixed (CVE/GHSA)`）の形式でも、audit の出力を貼り付けたものでもよい。パッケージ名・記載があればインストール済みバージョン・修正候補・advisory ID・重大度を解釈し、複数の advisory を持つパッケージは重複を排除する。lockfile モードでは、以下の手順でその一覧を構築する。**変更してよいのは advisory が名指したパッケージと、それによって機械的に必要となる出力だけである。**
 
 このリポジトリには独立した解決面が 3 つある。
 
@@ -17,6 +17,41 @@ advisory の一覧はユーザーのメッセージから受け取る。パッ�
 このスキルの実行中に変更してよいのは、advisory に関係する `**/package.json`、パッケージマネージャが生成する `**/pnpm-lock.yaml`、`**/pnpm-workspace.yaml` の `overrides` と明示的に承認された `minimumReleaseAgeExclude` キー、`go.mod`、`go.sum`、そして `vendor/modules.txt` が存在する場合に限り `go mod vendor` の出力としての `vendor/**` だけである。生成物の再生成は、依存起因のドリフト検査がその変化を証明した場合に、既存の `make` ターゲットを通してのみ行う。
 
 生成出力・lockfile・vendor 配下・`node_modules/**`・`python/*.in`・`python/*.txt` を手編集しないこと。無関係なパッケージを変更しないこと。`minimumReleaseAge`・`minimumReleaseAgeStrict`・`minimumReleaseAgeIgnoreMissingTime`・`trustPolicy*`・`allowBuilds`・`blockExoticSubdeps`・`engineStrict` を変更しないこと。
+
+## lockfile モード: 触れた lockfile の残存 finding も引き受ける
+
+引数が advisory ではなく lockfile のパスを名指している場合、または advisory 一覧が無く、ブランチが base に対して lockfile を変更している場合は、厳密にそのファイルだけを監査して advisory 一覧を構築する。その後は、ユーザーがその一覧を貼り付けたものとしてセクション 1 から続行する。
+
+lockfile を調べる PR チェックには 2 種類あり、答える問いが異なる。
+
+- `dependency-review` と `osv-diff` は base との差分を取り、PR が脆弱なパッケージを追加したかどうかを問う。base にすでに存在する finding はそこには現れない。
+- `osv-scanner`・`trivy-fs`・`grype` は PR が触れた各 lockfile 内の全パッケージを走査し、全 finding を PR コメントとして投稿する。その後、`osv-release-gate` が次の昇格を HIGH 以上で阻止する。
+
+したがって、この PR が書き換えた lockfile の finding を「base にすでにあった」という理由で見送ってはならない。実行時には `docs/design/security.md` の「Why reporting and gating are split」節を統べる方針として読み、この節はその方針の適用だけを担う。依存に触れていない作者は継承したものを直せないが、lockfile を書き換えたばかりの作者は、PR コメントにすでに載る残存 HIGH+ finding を最小のコストで解消できる。
+
+lockfile ごとに一覧を構築し、各エントリに使ったコマンドを示す。最初に `osv-scanner` を実行すること。その finding が昇格をゲートし、3 種類すべての lockfile を読み、`mise.toml` で pin されているからである。
+
+```sh
+# every touched lockfile. python/*.txt needs the parser named — `requirements.txt:python/<tool>.txt` —
+# because osv-scanner picks it from the filename and otherwise skips the file without a finding.
+# Confirm "found N packages" in the plain output: a skipped file and a clean one both print nothing below.
+osv-scanner scan --lockfile <path> --format json \
+  | jq -r '.results[].packages[] | .package as $p | .vulnerabilities[]
+           | "\($p.name) \($p.version) \(.id) \(.database_specific.severity // "-")"' | sort -u
+# pnpm — the fixed-version floor osv-scanner omits
+pnpm audit --dir <dir> --json \
+  | jq -r '.advisories[] | "\(.severity) \(.module_name) \(.findings[0].version) \(.patched_versions) \(.github_advisory_id)"'
+# Go — whether the vulnerable symbol is actually reached
+govulncheck ./...
+```
+
+この方法で見つけた PyPI エントリは、既存の PyPI 規則に従ってすべて `tools-upgrade` へ渡す。`trivy-fs` と `grype` は別のデータベースを使う。たとえば `grype` は、上の両コマンドが見落とした、修正版の無い `braces` GHSA-vfj7-8cjw-p6xm を報告したことがある。push 後に両方の PR コメントを一覧と照合し、追加の HIGH または CRITICAL finding は同じ通常フローへ渡す。
+
+lockfile モードの対象範囲は次のとおりである。
+
+- HIGH と CRITICAL の finding は対象に含め、通常の手順で修正する。同一メジャー内の `overrides` 下限、cooldown、triage の規則は変わらない。
+- MODERATE と LOW の finding は報告し、同じエントリまたは更新がすでに覆う場合にのみ修正する。
+- 修正版が無い finding と、cooldown に阻まれた修正は、PR description に記載する未解決行として残す。cooldown に阻まれた修正には必ず解除日を含める。
 
 ## 1. 所在の特定と分類
 
@@ -84,6 +119,8 @@ pnpm install --lockfile-only
 
 **pnpm 推移的依存:** override は `<dir>/pnpm-workspace.yaml` にだけ足す。`package.json` には決して書かない。範囲内のより新しいバージョンが壊れていると分かっている場合を除き、厳密 pin ではなく同一メジャー内の下限（`">=<fixed> <<next-major>"`）を使う。既存の override は保ったまま、lockfile のみのコマンドを実行する。**pnpm のセレクタは入れ子 override の翻訳ではない** —— ローカルの解決範囲の形に従い、必要なセレクタを明確に表現できない場合は人間の判断へ回す。**すべての override は暫定的な負債として扱うこと。**
 
+override の直上のコメントには、その現在の下限が修正対象としている advisory だけと、そのパッケージを引き込む親を記す。新しい advisory によって既存 override の下限を引き上げる場合は、コメントへ追記せず書き換える。新しい下限は、それより低い下限で修正済みだった advisory もすべて包含するため、その advisory を残した行は pin が存在する現在の理由ではなく履歴を記録することになり、読者は pin を撤去できるか判断するためにその履歴を選別しなければならない。除外のコメントにも同じ規則を適用し、その 1 バージョンを採用することで解消される advisory だけを記す。
+
 **承認された blocked な pnpm バージョン:** 影響する各パッケージの `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` へ `<pkg>@<version>` を足す。既存のエントリはすべて残す。**素のパッケージ名を使わないこと。** JST での撤去時刻（`公開日 + 経過閾値`）・advisory・実行時の暴露面（ブラウザバンドル / tool-runner のビルドステップ / サービスの実行時）を併記する。release-age の方針そのものは変更しない。
 
 **Go:** 承認されたモジュールを 1 回の `go get module@version ...` にまとめ、続けて `go mod tidy` を実行する。`go mod vendor` は `vendor/modules.txt` が存在する場合にのみ実行する。
@@ -104,13 +141,14 @@ pnpm install --lockfile-only
 
 ## 最終報告
 
-日本語で報告する。エコシステムと箇所ごとの修正済みパッケージ、バージョンと advisory ID、暫定的な override とその回収条件、メジャー跨ぎ / too-new / 見送り / 除外の各判断、除外に必要な JST での撤去時刻、トリアージの帯と答えられなかった軸、PyPI と not-present / 手動対応の申し送り、生成物のドリフト、tool-runner イメージの再ビルド状況、そして各検証結果。
+日本語で報告する。エコシステムと箇所ごとの修正済みパッケージ、バージョンと advisory ID、暫定的な override とその回収条件、メジャー跨ぎ / too-new / 見送り / 除外の各判断、除外に必要な JST での撤去時刻、トリアージの帯と答えられなかった軸、PyPI と not-present / 手動対応の申し送り、生成物のドリフト、tool-runner イメージの再ビルド状況、そして各検証結果。lockfile モードではさらに、触れた lockfile ごとの未解決 finding を、scanner コメントの隣へそのまま PR description に置ける文面で報告する。対象は、修正版が無いものと、cooldown に阻まれた修正（解除日を併記）である。
 
 stage・commit・push はしない。advisory が名指した依存を超えて修正範囲を広げない。後続の同期作業を始めない。
 
 ## 完了チェックリスト
 
 - [ ] pnpm / Go / PyPI の全面で advisory の所在を特定し、直接性を分類し、不在を報告した。
+- [ ] lockfile モードでは、触れた全 lockfile について `osv-scanner` と、該当する `pnpm audit` / `govulncheck` の出力から一覧を構築し、HIGH 以上を修正して残りを報告し、push 後に `trivy-fs` / `grype` のコメントと照合した。
 - [ ] lockfile ごとに pnpm の cooldown 方針と除外を読み、ダウングレードにならない同一メジャー内の最小修正を選んだ。
 - [ ] `too-new` と `blocked` の全エントリを、判断の前にトリアージした。
 - [ ] 自動適用したのは clear かつメジャー跨ぎでないものだけで、メジャー跨ぎ・too-new・pnpm 除外はすべて明示的に判断した。

@@ -18,3 +18,4 @@
 # 同じ <name>@<version> を複数の workspace が除外している場合でも、エントリは 1 つで足りる。
 # その場合は reason にそれぞれの実行場所を書く（tool-runner 内のビルド時か、配布物に同梱されて
 # 利用者の環境で動くのかで、免除の重みが変わるため）。
+"fast-uri@3.1.9" = { expires = 2026-10-28, issue = 1708, reason = "GHSA-w74x-v6f9-j3xg ほか 3 件の修正版。supply-chain-triage 0/12 LOW（trusted publishing の SLSA provenance がタグのソースと一致）。scripts/ の tool-runner 内で spectral / orval（ajv 経由）のビルド時に動く。窓は 2026-10-27 08:05 JST に明ける" }

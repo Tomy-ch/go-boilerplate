@@ -11,18 +11,18 @@ min_version = "2026.6.0"
 [tools]
 # 言語ランタイム。make tool-cooldown-* の検査対象から意図的に外してあり（ADR-0095）、
 # 昇格の判断は LTS を待つ方針が担う。
-go = "1.27.2"
-node = "24.19.0"
-python = "3.14.7"
+go = "1.27.3"
+node = "24.22.1"
+python = "3.14.9"
 
 # Go ベース（標準レジストリで解決可）
-oapi-codegen = "2.8.0"
+oapi-codegen = "2.8.1"
 sqlc = "1.31.1"
-golangci-lint = "2.14.0"
+golangci-lint = "2.15.0"
 actionlint = "1.7.12"
 # actionlint が run スクリプトを検査するために PATH 上で参照する（同梱ではなく別バイナリ）
 shellcheck = "0.11.0"
-lefthook = "2.1.14"
+lefthook = "2.2.1"
 air = "1.67.4"
 golines = "0.13.0"
 gofumpt = "0.12.0"
@@ -36,49 +36,49 @@ gitleaks = "8.30.1"
 # （v1.26.2 / v1.26.3 には資産があり v1.26.0 / v1.26.1 / v1.27.x には無い）、リリース資産に
 # 依存する backend では版の選択が上流の公開都合に握られるため。go install が上流の正規経路。
 "go:github.com/go-delve/delve/cmd/dlv" = "1.27.2"
-"aqua:aquasecurity/trivy" = "0.74.0"
-"aqua:google/osv-scanner" = "2.6.0"
-"aqua:anchore/grype" = "0.119.0"
+"aqua:aquasecurity/trivy" = "0.75.0"
+"aqua:google/osv-scanner" = "2.7.0"
+"aqua:anchore/grype" = "0.120.1"
 "aqua:Bearer/bearer" = "2.1.1"
-"aqua:trufflesecurity/trufflehog" = "3.97.9"
+"aqua:trufflesecurity/trufflehog" = "3.99.2"
 "aqua:goodwithtech/dockle" = "0.4.15"
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.9.0"
 "go:github.com/cweill/gotests/gotests" = "1.9.0"
-"go:golang.org/x/tools/gopls" = "0.23.0"
+"go:golang.org/x/tools/gopls" = "0.24.0"
 "go:github.com/josharian/impl" = "1.5.0"
 "go:golang.org/x/tools/cmd/godoc" = "0.1.0-deprecated"
 "go:codeberg.org/tslocum/godoc-static" = "1.0.1"
-"go:github.com/google/capslock/cmd/capslock" = "0.3.3"
+"go:github.com/google/capslock/cmd/capslock" = "0.3.4"
 
 # Rust ベース（標準レジストリで解決可）
 # エージェントの Bash 出力を圧縮するトークンプロキシ。make target が呼ぶのではなく
 # アシスタントのフックが host で直接呼ぶ点が、ここの他の宣言と違う。
-rtk = "0.50.0"
+rtk = "0.51.0"
 
 # Rust ベース（backend 明示）
-"aqua:zizmorcore/zizmor" = "1.30.1"
+"aqua:zizmorcore/zizmor" = "1.31.1"
 
 # OCaml ベース（backend 明示）
-"aqua:opengrep/opengrep" = "1.30.1"
+"aqua:opengrep/opengrep" = "1.30.2"
 
 # Node ベース
-"npm:@redocly/cli" = "2.57.0"
+"npm:@redocly/cli" = "2.64.1"
 # fastq@1.20.2 は maintainer が手動 publish した版で provenance が無く、aube の trust policy（no-downgrade）が
 # 推移依存の解決を拒む。6 時間後の 1.20.3 は trusted workflow から出ており、改竄の兆候は無い。例外はこの 1 版に限る。
-"npm:markdownlint-cli2" = { version = "0.23.3", trust_policy_excludes = ["fastq@1.20.2"] }
-"npm:@commitlint/cli" = "21.2.3"
+"npm:markdownlint-cli2" = { version = "0.24.0", trust_policy_excludes = ["fastq@1.20.2"] }
+"npm:@commitlint/cli" = "21.2.4"
 # docs-viewer（ドキュメントポータルのビューアー）の依存解決に使う。aqua backend ではなく
 # npm backend を指定するのは、pnpm の公開元が npm レジストリであり、cooldown の窓を
 # レジストリ側（7 日）で測るのが実態に合うため。
-"npm:pnpm" = "11.28.4"
+"npm:pnpm" = "11.28.6"
 
 # Python ベース
-# 下限は 0.12.2。CPython 3.14.7 の配布物を知るのがこの版からで、これより古いと
+# 下限は 0.13.5。CPython 3.14.9 の配布物を知るのがこの版からで、これより古いと
 # sql-lint がホストで走らせる uv venv が宣言中の python を解決できない。
-uv = "0.12.19"
+uv = "0.13.5"
 # Python 実装だが実行環境を同梱した単体バイナリで配布されるため、python/*.in ではなく
 # aqua backend で入れる。
-"aqua:bridgecrewio/checkov" = "3.3.19"
+"aqua:bridgecrewio/checkov" = "3.3.26"
 
 # Docker イメージのバージョン。[tools] は mise の解決対象専用のため [env] で宣言する。
 [env]

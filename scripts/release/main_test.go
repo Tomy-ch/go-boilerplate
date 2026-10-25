@@ -524,19 +524,15 @@ func Test_output(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可
 func Test_remoteBranchExists(t *testing.T) {
-	//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 	t.Run("正常系", func(t *testing.T) {
 		// 既存ブランチを見落とすと、リリースブランチを取り違えたまま push まで進む。
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("origin に同名ブランチがあれば真を返す", func(t *testing.T) {
 			dir := newRepo(t)
 			t.Chdir(dir)
 			assert.True(t, remoteBranchExists("production"))
 		})
 
-		//nolint:paralleltest // 親が t.Chdir を使うため並列化不可
 		t.Run("origin に無いブランチには偽を返す", func(t *testing.T) {
 			dir := newRepo(t)
 			t.Chdir(dir)

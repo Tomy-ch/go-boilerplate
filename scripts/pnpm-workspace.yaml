@@ -11,7 +11,8 @@ minimumReleaseAge: 10080
 # 期限は .github/pnpm-cooldown-bypass.toml が持つ。ここへ足したら向こうにも expires / issue / reason を
 # 書くこと。期限の無い例外・期限切れ・上限 3 ヶ月超過・lockfile が解決していない版は
 # make pnpm-cooldown-check が落とす。
-minimumReleaseAgeExclude: []
+minimumReleaseAgeExclude:
+  - fast-uri@3.1.9 # 2026-10-27 08:05 JST 以降に削除する。GHSA-w74x-v6f9-j3xg ほか 3 件の修正版で、tool-runner 内の spectral / orval（ajv 経由）で動く。
 # 冷却期間を満たす版が無ければ解決を失敗させる。
 minimumReleaseAgeStrict: true
 # 公開日時を返さないレジストリの依存は解決を失敗させる。
@@ -58,17 +59,22 @@ overrides:
   "brace-expansion@1": ">=1.1.19 <2"
   # parseCommaParts の無制限再帰による DoS（GHSA-6j4f-fj2g-mc7p）。minimatch が引く。
   "brace-expansion@5": ">=5.0.10 <6"
-  # linkify 有効時の二乗時間経路による DoS（GHSA-253c-mchw-3w2r）。typedoc が引く。
-  "markdown-it@<14.3.1": ">=14.3.1 <15"
+  # 複数行の link reference definition 1 つで描画が二乗時間になる DoS（GHSA-gfr2-rv44-r23c）。typedoc が引く。
+  "markdown-it@<14.3.3": ">=14.3.3 <15"
+  # 制約付きコレクションの検証で巨大な入力がメモリを使い切る（GHSA-mrhx-c7xc-m3w5）。@scalar/types が引く。
+  "zod@<4.6.6": ">=4.6.6 <5"
+  # Windows で launch-editor の存在確認を迂回される（GHSA-587h-7wmj-h5pm ほか）。vitest が引く。
+  "vite@<8.2.4": ">=8.2.4 <9"
   "lodash@<4.18.0": 4.18.0
-  # authority の backslash を経路区切りと読む実装差（CVE-2026-18446）に加え、IDN 正規化の
-  # スキップと percent-encode されたスキームによる host 混同、および malformed / 反復
-  # authority を経由した SSRF（GHSA-5jgf-p345-68v8 / f65p-4m7j-42xc / fph4-wmhf-6fwf /
-  # jqff-g426-hqxp）と、閉じない角括弧による host 混同（GHSA-58mr-gqgx-xq4g）を塞ぐ。
-  "fast-uri@<3.1.7": ">=3.1.7 <4"
-  # IN_PLACE で node を除去する afterSanitize hook が切り離された部分木を実行可能なまま残す
-  # （GHSA-55q2-fjhq-7xh7 / GHSA-p98j-92pf-mc4p）。
-  "dompurify@<3.4.16": ">=3.4.16 <4"
+  # domain host の禁止文字の見逃しと相対参照の正規化不備による URI の取り違え（GHSA-w74x-v6f9-j3xg /
+  # wjr9-j795-jxcr / 333x-w4r6-6crp / xhq7-xmqj-769h）。ajv が引く。
+  "fast-uri@<3.1.9": ">=3.1.9 <4"
+  # IN_PLACE で親や兄弟を除去する hook が切り離された部分木のイベントハンドラを生かしたまま残す
+  # （GHSA-mrv2-3pqr-j5jr）と、SAFE_FOR_TEMPLATES が shadow root 内で分割された template 式を残す
+  # （GHSA-cg2g-xh64-v4q7）。mermaid が引く。
+  "dompurify@<3.4.17": ">=3.4.17 <4"
+  # 過剰な content-encoding の未処理エラーによる DoS（GHSA-xjj6-f33q-929c）。@scalar/json-magic が引く。
+  "undici@<7.30.1": ">=7.30.1 <8"
   # indexed source map の section offset によるイベントループの DoS（GHSA-68fv-2mgg-jv7q）。magicast が引く。
   "source-map-js@<1.2.2": ">=1.2.2 <2"
   # settings 経由のプロトタイプ汚染で trust 制限を迂回される（GHSA-238p-pmpm-9mq7）。mermaid が引く。

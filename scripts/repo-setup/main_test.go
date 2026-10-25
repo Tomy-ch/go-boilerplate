@@ -378,7 +378,6 @@ func Test_releaseNotesToDelete(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない
 func Test_tagExists(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("初期タグが存在すれば true", func(t *testing.T) {
@@ -420,7 +419,6 @@ func Test_tagExists(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない
 func Test_branchExists(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("ブランチが存在すれば true", func(t *testing.T) {
@@ -570,7 +568,6 @@ func Test_output(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない
 func Test_runPreflight(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("初期タグが無ければ初期化を許可する", func(t *testing.T) {
@@ -864,7 +861,6 @@ func Test_moveDefaultBranch(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir はプロセス全体の作業ディレクトリを変えるため並列化できない
 func Test_runPruneReleaseNotes(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("初期タグのノートとディレクトリを残して他のノートを消す", func(t *testing.T) {

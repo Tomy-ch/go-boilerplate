@@ -166,6 +166,8 @@ For each approved tool declared in `python/*.in`:
 
   `py-lock` regenerates **every** `python/*.txt`, so an untouched tool can still show a diff when one of its transitive dependencies published a new release. That diff is real and is part of the change — review it, do not discard it. It is also not covered by this run's quarantine decision, which was made per direct pin: say so in the final report.
 
+  Every `python/*.txt` the regeneration rewrote is now a touched lockfile, and the PR's scanners will report everything in it, not only what moved. Before reporting, chain the **`dep-vuln-upgrade` skill** in lockfile mode on those files; a HIGH-or-above finding it hands back for a pin this skill owns is raised here, through steps 5–6.
+
 ### 7. Run `make sync-versions` if Necessary
 
 If any of `go` / `node` / `python` was updated, run `make sync-versions`. This propagates the new runtime version to `go.mod` and the hardcoded `FROM golang:` / `FROM node:` / `FROM python:` references in the Dockerfile and `docker/**/README.md` files.
@@ -242,6 +244,7 @@ Confirm the following before reporting completion:
 - [ ] If eligible set non-empty: user confirmed per-tool update set via `ask the user explicitly`; any early-adopted pending tool listed separately and deselected by default with its band
 - [ ] `mise.toml` rewritten atomically with only approved changes, preserving key formats and `v`-prefix convention
 - [ ] Approved `python/*.in` pins rewritten (package name and extras preserved), `make py-lock` run, and both files left in the tree; no `.txt` hand-edited
+- [ ] Every `python/*.txt` that `make py-lock` rewrote audited via the `dep-vuln-upgrade` skill in lockfile mode before the report
 - [ ] No note recording why a pin sits below latest was written, and any met along the way was deleted; version-independent constraints left in place
 - [ ] `make tool-cooldown-audit` run if a `python/*.in` pin changed
 - [ ] `make sync-versions` run if go / node / python was updated

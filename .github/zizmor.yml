@@ -38,3 +38,12 @@ rules:
   dependabot-cooldown:
     ignore:
       - dependabot.yml
+
+  # claude.yaml takes issue_comment so a PR conversation comment can invoke Claude.
+  # The job checks out the default branch rather than the PR head, keeps contents read-only, and leaves
+  # authorization to the action's own write-permission check (.github/workflows/README.md,
+  # "`claude.yaml` authorization"), so the trigger is the intended entry point rather
+  # than an untrusted-code path.
+  dangerous-triggers:
+    ignore:
+      - claude.yaml

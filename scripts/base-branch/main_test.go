@@ -157,7 +157,6 @@ func Test_run(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // t.Chdir を使うため並列化できない
 func Test_lsRemoteReleases(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("コミット日時が逆順でもバージョン番号で最新を選ぶ", func(t *testing.T) {

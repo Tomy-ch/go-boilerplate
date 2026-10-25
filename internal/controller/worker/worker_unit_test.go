@@ -1218,7 +1218,8 @@ func Test_run_loop(t *testing.T) {
 
 			cancel()
 			select {
-			case <-loopDone:
+			case err := <-loopDone:
+				require.NoError(t, err)
 			case <-time.After(eventually):
 				t.Fatal("ctx キャンセルで loop が終了しなかった")
 			}

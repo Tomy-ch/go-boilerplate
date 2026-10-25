@@ -12,3 +12,10 @@
 # 同じ状態を作れてしまうため。運用は .github/zizmor.yml と同じで、解決したらエントリを消す。
 #
 # 期限切れは mise.toml が変わらなくても訪れるので、回収はスケジュール実行が担う。
+"oapi-codegen@2.8.1" = { expires = 2026-11-07, issue = 1708, reason = "GHSA-q4jc-cx6x-3rqw ほか 5 件のセキュリティ修正。supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"npm:markdownlint-cli2@0.24.0" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"npm:@commitlint/cli@21.2.4" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"golangci-lint@2.15.0" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"aqua:zizmorcore/zizmor@1.31.1" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"aqua:google/osv-scanner@2.7.0" = { expires = 2026-11-07, issue = 1708, reason = "supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし）。一括更新で窓明け前に採用する" }
+"uv@0.13.5" = { expires = 2026-11-07, issue = 1708, reason = "mise.toml の python 3.14.9 を解決できる最初の版。supply-chain-triage で 4 軸を直接証拠で確認し LOW（侵害署名なし、attestation 検証済み）" }
