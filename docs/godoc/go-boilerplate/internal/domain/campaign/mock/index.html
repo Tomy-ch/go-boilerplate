@@ -1,0 +1,497 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_campaign
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/domain/campaign/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_campaign is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockRepository">type MockRepository</a></dd>
+				
+					
+					<dd>    <a href="#NewMockRepository">func NewMockRepository(ctrl *gomock.Controller) *MockRepository</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRepository.CountAll">func (m *MockRepository) CountAll(ctx context.Context) (int, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.CountClaims">func (m *MockRepository) CountClaims(ctx context.Context, params campaign.ClaimCountParams) (int, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.Create">func (m *MockRepository) Create(ctx context.Context, c *campaign.Campaign) error</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.EXPECT">func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindList">func (m *MockRepository) FindList(ctx context.Context, params campaign.ListParams) (campaign.Campaigns, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.LockByCode">func (m *MockRepository) LockByCode(ctx context.Context, code campaign.Code) (*campaign.Campaign, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.LockByID">func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*campaign.Campaign, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.RecordClaim">func (m *MockRepository) RecordClaim(ctx context.Context, claim *campaign.Claim) error</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.UpdateSuspended">func (m *MockRepository) UpdateSuspended(ctx context.Context, id uuid.UUID, suspendedAt time.Time) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockRepositoryMockRecorder">type MockRepositoryMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.CountAll">func (mr *MockRepositoryMockRecorder) CountAll(ctx any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.CountClaims">func (mr *MockRepositoryMockRecorder) CountClaims(ctx, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.Create">func (mr *MockRepositoryMockRecorder) Create(ctx, c any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindList">func (mr *MockRepositoryMockRecorder) FindList(ctx, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.LockByCode">func (mr *MockRepositoryMockRecorder) LockByCode(ctx, code any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.LockByID">func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.RecordClaim">func (mr *MockRepositoryMockRecorder) RecordClaim(ctx, claim any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.UpdateSuspended">func (mr *MockRepositoryMockRecorder) UpdateSuspended(ctx, id, suspendedAt any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html">mock_campaign_repository.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockRepository">type <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=549:665#L13">MockRepository</a>
+				<a class="permalink" href="#MockRepository">¶</a>
+				
+				
+			</h2>
+			<p>MockRepository is a mock of Repository interface.
+
+			</p><pre>type MockRepository struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockRepository">func <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=854:917#L25">NewMockRepository</a>
+					<a class="permalink" href="#NewMockRepository">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockRepository(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockRepository">MockRepository</a></pre>
+				<p>NewMockRepository creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockRepository.CountAll">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=1218:1285#L37">CountAll</a>
+					<a class="permalink" href="#MockRepository.CountAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) CountAll(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (<a href="../../../../../builtin/#int">int</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CountAll mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.CountClaims">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=1727:1831#L52">CountClaims</a>
+					<a class="permalink" href="#MockRepository.CountClaims">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) CountClaims(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="../../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../../go-boilerplate/internal/domain/campaign/#ClaimCountParams">ClaimCountParams</a>) (<a href="../../../../../builtin/#int">int</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CountClaims mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.Create">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=2310:2390#L67">Create</a>
+					<a class="permalink" href="#MockRepository.Create">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) Create(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, c *<a href="../../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../../go-boilerplate/internal/domain/campaign/#Campaign">Campaign</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>Create mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.EXPECT">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=1101:1162#L32">EXPECT</a>
+					<a class="permalink" href="#MockRepository.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) EXPECT() *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindList">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=2795:2905#L81">FindList</a>
+					<a class="permalink" href="#MockRepository.FindList">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindList(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="../../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../../go-boilerplate/internal/domain/campaign/#ListParams">ListParams</a>) (<a href="../../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../../go-boilerplate/internal/domain/campaign/#Campaigns">Campaigns</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindList mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.LockByCode">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=3385:3489#L96">LockByCode</a>
+					<a class="permalink" href="#MockRepository.LockByCode">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) LockByCode(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, code <a href="../../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../../go-boilerplate/internal/domain/campaign/#Code">Code</a>) (*<a href="../../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../../go-boilerplate/internal/domain/campaign/#Campaign">Campaign</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>LockByCode mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.LockByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=3973:4069#L111">LockByID</a>
+					<a class="permalink" href="#MockRepository.LockByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) LockByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../../go-boilerplate/internal/domain/campaign/#Campaign">Campaign</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>LockByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.RecordClaim">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=4538:4624#L126">RecordClaim</a>
+					<a class="permalink" href="#MockRepository.RecordClaim">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) RecordClaim(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, claim *<a href="../../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../../go-boilerplate/internal/domain/campaign/#Claim">Claim</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>RecordClaim mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.UpdateSuspended">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=5078:5182#L140">UpdateSuspended</a>
+					<a class="permalink" href="#MockRepository.UpdateSuspended">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) UpdateSuspended(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, suspendedAt <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>UpdateSuspended mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRepositoryMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=738:802#L20">MockRepositoryMockRecorder</a>
+				<a class="permalink" href="#MockRepositoryMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockRepositoryMockRecorder is the mock recorder for MockRepository.
+
+			</p><pre>type MockRepositoryMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockRepositoryMockRecorder.CountAll">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=1473:1541#L46">CountAll</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.CountAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) CountAll(ctx <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CountAll indicates an expected call of CountAll.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.CountClaims">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=2036:2115#L61">CountClaims</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.CountClaims">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) CountClaims(ctx, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CountClaims indicates an expected call of CountClaims.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.Create">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=2544:2613#L75">Create</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.Create">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) Create(ctx, c <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Create indicates an expected call of Create.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindList">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=3116:3192#L90">FindList</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindList">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindList(ctx, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindList indicates an expected call of FindList.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.LockByCode">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=3704:3780#L105">LockByCode</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.LockByCode">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) LockByCode(ctx, code <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>LockByCode indicates an expected call of LockByCode.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.LockByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=4276:4348#L120">LockByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.LockByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) LockByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>LockByID indicates an expected call of LockByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.RecordClaim">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=4797:4875#L134">RecordClaim</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.RecordClaim">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) RecordClaim(ctx, claim <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>RecordClaim indicates an expected call of RecordClaim.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.UpdateSuspended">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/campaign/mock/mock_campaign_repository.go.gen.go.html?s=5377:5469#L148">UpdateSuspended</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.UpdateSuspended">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) UpdateSuspended(ctx, id, suspendedAt <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UpdateSuspended indicates an expected call of UpdateSuspended.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

@@ -265,7 +265,7 @@
 <span id="L208" class="ln">   208  </span>		return err
 <span id="L209" class="ln">   209  </span>	}
 <span id="L210" class="ln">   210  </span>
-<span id="L211" class="ln">   211  </span>	if err := validateSecurityConfig(cfg.Security); err != nil {
+<span id="L211" class="ln">   211  </span>	if err := validateSecurityConfig(cfg.Security, cfg.App); err != nil {
 <span id="L212" class="ln">   212  </span>		return err
 <span id="L213" class="ln">   213  </span>	}
 <span id="L214" class="ln">   214  </span>
@@ -404,51 +404,62 @@
 <span id="L347" class="ln">   347  </span>
 <span id="L348" class="ln">   348  </span><span class="comment">// validateSecurityConfig は、セキュリティ設定を検証します。</span>
 <span id="L349" class="ln">   349  </span><span class="comment">// CIDR は parseCIDR に委ねる。</span>
-<span id="L350" class="ln">   350  </span>func validateSecurityConfig(secCfg Security) error {
-<span id="L351" class="ln">   351  </span>	if len(secCfg.AllowedOrigins) == 0 {
-<span id="L352" class="ln">   352  </span>		return ErrEmptyAllowedOrigins
-<span id="L353" class="ln">   353  </span>	}
-<span id="L354" class="ln">   354  </span>
-<span id="L355" class="ln">   355  </span>	for _, origin := range secCfg.AllowedOrigins {
-<span id="L356" class="ln">   356  </span>		parsedURL, err := url.Parse(origin)
-<span id="L357" class="ln">   357  </span>		if err != nil {
-<span id="L358" class="ln">   358  </span>			return ErrHTTPOnlyAllowedForLocalhost
-<span id="L359" class="ln">   359  </span>		}
-<span id="L360" class="ln">   360  </span>		<span class="comment">// スキームは url.Parse で小文字正規化されるが、念のため EqualFold で大小無視判定する。</span>
-<span id="L361" class="ln">   361  </span>		if strings.EqualFold(parsedURL.Scheme, &#34;http&#34;) &amp;&amp;
-<span id="L362" class="ln">   362  </span>			parsedURL.Hostname() != &#34;localhost&#34; &amp;&amp; parsedURL.Hostname() != &#34;127.0.0.1&#34; {
-<span id="L363" class="ln">   363  </span>			return ErrHTTPOnlyAllowedForLocalhost
-<span id="L364" class="ln">   364  </span>		}
-<span id="L365" class="ln">   365  </span>	}
+<span id="L350" class="ln">   350  </span><span class="comment">//</span>
+<span id="L351" class="ln">   351  </span><span class="comment">// ワイルドカードの許可オリジンを production モードで拒否するのは、url.Parse がこれを scheme 無しの</span>
+<span id="L352" class="ln">   352  </span><span class="comment">// 相対参照として受理し、下の HTTP 判定にも掛からないためです（env/README.md「Notes」の</span>
+<span id="L353" class="ln">   353  </span><span class="comment">// Wildcard origin guard）。</span>
+<span id="L354" class="ln">   354  </span>func validateSecurityConfig(secCfg Security, appCfg Application) error {
+<span id="L355" class="ln">   355  </span>	if len(secCfg.AllowedOrigins) == 0 {
+<span id="L356" class="ln">   356  </span>		return ErrEmptyAllowedOrigins
+<span id="L357" class="ln">   357  </span>	}
+<span id="L358" class="ln">   358  </span>
+<span id="L359" class="ln">   359  </span>	for _, origin := range secCfg.AllowedOrigins {
+<span id="L360" class="ln">   360  </span>		if origin == WildcardOrigin {
+<span id="L361" class="ln">   361  </span>			if appCfg.Mode == ProductionMode {
+<span id="L362" class="ln">   362  </span>				return ErrWildcardOriginNotProduction
+<span id="L363" class="ln">   363  </span>			}
+<span id="L364" class="ln">   364  </span>			continue
+<span id="L365" class="ln">   365  </span>		}
 <span id="L366" class="ln">   366  </span>
-<span id="L367" class="ln">   367  </span>	return nil
-<span id="L368" class="ln">   368  </span>}
-<span id="L369" class="ln">   369  </span>
-<span id="L370" class="ln">   370  </span><span class="comment">// parseCIDR は、CIDR 文字列を *net.IPNet へ解析します。解析が検証を兼ねる（parse, don&#39;t validate）ので</span>
-<span id="L371" class="ln">   371  </span><span class="comment">// validateConfig には CIDR の検査を置かず、値が要る New が一度だけ呼んで結果を Config へ格納します。</span>
-<span id="L372" class="ln">   372  </span>func parseCIDR(s string) (*net.IPNet, error) {
-<span id="L373" class="ln">   373  </span>	_, cidr, err := net.ParseCIDR(s)
-<span id="L374" class="ln">   374  </span>	if err != nil {
-<span id="L375" class="ln">   375  </span>		return nil, xerrors.Join(ErrFailedToParseCIDR, err)
+<span id="L367" class="ln">   367  </span>		parsedURL, err := url.Parse(origin)
+<span id="L368" class="ln">   368  </span>		if err != nil {
+<span id="L369" class="ln">   369  </span>			return ErrHTTPOnlyAllowedForLocalhost
+<span id="L370" class="ln">   370  </span>		}
+<span id="L371" class="ln">   371  </span>		<span class="comment">// スキームは url.Parse で小文字正規化されるが、念のため EqualFold で大小無視判定する。</span>
+<span id="L372" class="ln">   372  </span>		if strings.EqualFold(parsedURL.Scheme, &#34;http&#34;) &amp;&amp;
+<span id="L373" class="ln">   373  </span>			parsedURL.Hostname() != &#34;localhost&#34; &amp;&amp; parsedURL.Hostname() != &#34;127.0.0.1&#34; {
+<span id="L374" class="ln">   374  </span>			return ErrHTTPOnlyAllowedForLocalhost
+<span id="L375" class="ln">   375  </span>		}
 <span id="L376" class="ln">   376  </span>	}
-<span id="L377" class="ln">   377  </span>	return cidr, nil
-<span id="L378" class="ln">   378  </span>}
-<span id="L379" class="ln">   379  </span>
-<span id="L380" class="ln">   380  </span><span class="comment">// buildStatusCodeSet は、HTTPステータスコードのセットを構築します。</span>
-<span id="L381" class="ln">   381  </span>func buildStatusCodeSet(codes []int) map[int]bool {
-<span id="L382" class="ln">   382  </span>	m := make(map[int]bool, len(codes))
-<span id="L383" class="ln">   383  </span>	for _, code := range codes {
-<span id="L384" class="ln">   384  </span>		m[code] = true
-<span id="L385" class="ln">   385  </span>	}
-<span id="L386" class="ln">   386  </span>	return m
-<span id="L387" class="ln">   387  </span>}
-<span id="L388" class="ln">   388  </span>
-<span id="L389" class="ln">   389  </span><span class="comment">// isActiveExporter は、exporter 指定が送出を行う有効値かどうかを返します。</span>
-<span id="L390" class="ln">   390  </span><span class="comment">// 空文字（未設定）と &#34;none&#34; は無効（送出しない）とみなします。</span>
-<span id="L391" class="ln">   391  </span>func isActiveExporter(v string) bool {
-<span id="L392" class="ln">   392  </span>	return v != &#34;&#34; &amp;&amp; !strings.EqualFold(v, exporterNone)
-<span id="L393" class="ln">   393  </span>}
-<span id="L394" class="ln">   394  </span>
+<span id="L377" class="ln">   377  </span>
+<span id="L378" class="ln">   378  </span>	return nil
+<span id="L379" class="ln">   379  </span>}
+<span id="L380" class="ln">   380  </span>
+<span id="L381" class="ln">   381  </span><span class="comment">// parseCIDR は、CIDR 文字列を *net.IPNet へ解析します。解析が検証を兼ねる（parse, don&#39;t validate）ので</span>
+<span id="L382" class="ln">   382  </span><span class="comment">// validateConfig には CIDR の検査を置かず、値が要る New が一度だけ呼んで結果を Config へ格納します。</span>
+<span id="L383" class="ln">   383  </span>func parseCIDR(s string) (*net.IPNet, error) {
+<span id="L384" class="ln">   384  </span>	_, cidr, err := net.ParseCIDR(s)
+<span id="L385" class="ln">   385  </span>	if err != nil {
+<span id="L386" class="ln">   386  </span>		return nil, xerrors.Join(ErrFailedToParseCIDR, err)
+<span id="L387" class="ln">   387  </span>	}
+<span id="L388" class="ln">   388  </span>	return cidr, nil
+<span id="L389" class="ln">   389  </span>}
+<span id="L390" class="ln">   390  </span>
+<span id="L391" class="ln">   391  </span><span class="comment">// buildStatusCodeSet は、HTTPステータスコードのセットを構築します。</span>
+<span id="L392" class="ln">   392  </span>func buildStatusCodeSet(codes []int) map[int]bool {
+<span id="L393" class="ln">   393  </span>	m := make(map[int]bool, len(codes))
+<span id="L394" class="ln">   394  </span>	for _, code := range codes {
+<span id="L395" class="ln">   395  </span>		m[code] = true
+<span id="L396" class="ln">   396  </span>	}
+<span id="L397" class="ln">   397  </span>	return m
+<span id="L398" class="ln">   398  </span>}
+<span id="L399" class="ln">   399  </span>
+<span id="L400" class="ln">   400  </span><span class="comment">// isActiveExporter は、exporter 指定が送出を行う有効値かどうかを返します。</span>
+<span id="L401" class="ln">   401  </span><span class="comment">// 空文字（未設定）と &#34;none&#34; は無効（送出しない）とみなします。</span>
+<span id="L402" class="ln">   402  </span>func isActiveExporter(v string) bool {
+<span id="L403" class="ln">   403  </span>	return v != &#34;&#34; &amp;&amp; !strings.EqualFold(v, exporterNone)
+<span id="L404" class="ln">   404  </span>}
+<span id="L405" class="ln">   405  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/config/config.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

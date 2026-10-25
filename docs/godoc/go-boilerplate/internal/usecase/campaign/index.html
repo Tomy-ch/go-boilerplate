@@ -1,0 +1,452 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>campaign - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package campaign
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/campaign&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package campaign は、キャンペーンの定義・列挙・停止と、コードによる受け取りのユースケースを提供します。
+</p><p>受け取りはキャンペーンとクーポンの 2 集約を 1 つのトランザクションで書きます。書く行が識別子で
+名指しできるため Repository 経由で足り、CommandService は要りません
+（判定手順は docs/design/data-access-pattern.md）。テンプレートからクーポン 1 枚を導く解決は
+本パッケージの私有関数が持ちます（campaign_template.go）。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#CampaignListView">type CampaignListView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CampaignView">type CampaignView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ClaimedCouponView">type ClaimedCouponView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#DefineCampaignParams">type DefineCampaignParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Usecase">type Usecase</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(campaignRepo campaign.Repository, couponRepo coupon.Repository, clk clock.Clock, txm tx.Manager, authorizer authz.Authorizer, tf observability.TracerFactory) Usecase</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_claim_usecase.go.html">campaign_claim_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_define_usecase.go.html">campaign_define_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_template.go.html">campaign_template.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_usecase.go.html">campaign_usecase.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="CampaignListView">type <a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_usecase.go.html?s=3003:3194#L56">CampaignListView</a>
+				<a class="permalink" href="#CampaignListView">¶</a>
+				
+				
+			</h2>
+			<p>CampaignListView は、キャンペーン一覧と総件数の組です。
+
+			</p><pre>type CampaignListView struct {
+<span id="CampaignListView.Campaigns"></span>    <span class="comment">// Campaigns は、取得したキャンペーンです。</span>
+    Campaigns []<a href="#CampaignView">CampaignView</a>
+<span id="CampaignListView.Total"></span>    <span class="comment">// Total は、絞り込みを適用した総件数です。</span>
+    Total <a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CampaignView">type <a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_usecase.go.html?s=1299:2923#L20">CampaignView</a>
+				<a class="permalink" href="#CampaignView">¶</a>
+				
+				
+			</h2>
+			<p>CampaignView は、キャンペーン 1 件の出力です。
+
+			</p><pre>type CampaignView struct {
+<span id="CampaignView.ID"></span>    <span class="comment">// ID は、キャンペーン ID です。</span>
+    ID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CampaignView.Code"></span>    <span class="comment">// Code は、正規化済みのキャンペーンコードです。</span>
+    Code <a href="../../../../builtin/#string">string</a>
+<span id="CampaignView.DiscountKind"></span>    <span class="comment">// DiscountKind は、配るクーポンの値引きの決まり方の名前です。</span>
+    DiscountKind <a href="../../../../builtin/#string">string</a>
+<span id="CampaignView.DiscountValue"></span>    <span class="comment">// DiscountValue は、配るクーポンの種別における値です。</span>
+    DiscountValue <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="CampaignView.MaxAmount"></span>    <span class="comment">// MaxAmount は、配るクーポンの値引き上限（USD セント）です。上限が無い場合は nil です。</span>
+    MaxAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="CampaignView.ScopeKind"></span>    <span class="comment">// ScopeKind は、配るクーポンの適用範囲の決まり方の名前です。</span>
+    ScopeKind <a href="../../../../builtin/#string">string</a>
+<span id="CampaignView.ScopeTargetID"></span>    <span class="comment">// ScopeTargetID は、配るクーポンの適用範囲が絞る対象です。全体では nil です。</span>
+    ScopeTargetID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CampaignView.MinPurchaseAmount"></span>    <span class="comment">// MinPurchaseAmount は、配るクーポンの最低購入金額（USD セント）です。条件が無い場合は nil です。</span>
+    MinPurchaseAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="CampaignView.UsableFrom"></span>    <span class="comment">// UsableFrom は、配るクーポンの利用開始日時です。発行時点から使える場合は nil です。</span>
+    UsableFrom *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="CampaignView.CouponExpiresAt"></span>    <span class="comment">// CouponExpiresAt は、配るクーポンの有効期限です。</span>
+    CouponExpiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="CampaignView.StartsAt"></span>    <span class="comment">// StartsAt は、配布期間の開始日時です。</span>
+    StartsAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="CampaignView.EndsAt"></span>    <span class="comment">// EndsAt は、配布期間の終了日時です。</span>
+    EndsAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="CampaignView.TotalLimit"></span>    <span class="comment">// TotalLimit は、総枚数上限です。</span>
+    TotalLimit <a href="../../../../builtin/#int">int</a>
+<span id="CampaignView.PerUserLimit"></span>    <span class="comment">// PerUserLimit は、1 人あたり上限です。</span>
+    PerUserLimit <a href="../../../../builtin/#int">int</a>
+<span id="CampaignView.IssuedCount"></span>    <span class="comment">// IssuedCount は、発行済み枚数です。</span>
+    IssuedCount <a href="../../../../builtin/#int">int</a>
+<span id="CampaignView.SuspendedAt"></span>    <span class="comment">// SuspendedAt は、停止日時です。停止していない場合は nil です。</span>
+    SuspendedAt *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ClaimedCouponView">type <a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_usecase.go.html?s=3496:4628#L67">ClaimedCouponView</a>
+				<a class="permalink" href="#ClaimedCouponView">¶</a>
+				
+				
+			</h2>
+			<p>ClaimedCouponView は、受け取りで発行されたクーポン 1 枚の出力です。
+</p><p>保有クーポン一覧（internal/usecase/coupon の CouponView）と同じ内容を返します
+（写像をこちらが持つ理由は docs/spec/usecase/campaign.md の DTOs 節を参照）。
+
+			</p><pre>type ClaimedCouponView struct {
+<span id="ClaimedCouponView.ID"></span>    <span class="comment">// ID は、クーポン ID です。</span>
+    ID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ClaimedCouponView.DiscountKind"></span>    <span class="comment">// DiscountKind は、値引きの決まり方の名前です。</span>
+    DiscountKind <a href="../../../../builtin/#string">string</a>
+<span id="ClaimedCouponView.DiscountValue"></span>    <span class="comment">// DiscountValue は、種別における値です。</span>
+    DiscountValue <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ClaimedCouponView.MaxAmount"></span>    <span class="comment">// MaxAmount は、定率の値引きが 1 回に引ける額の上限（USD セント）です。上限が無い場合は nil です。</span>
+    MaxAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="ClaimedCouponView.ScopeKind"></span>    <span class="comment">// ScopeKind は、適用範囲の決まり方の名前です。</span>
+    ScopeKind <a href="../../../../builtin/#string">string</a>
+<span id="ClaimedCouponView.ScopeTargetID"></span>    <span class="comment">// ScopeTargetID は、適用範囲が絞る対象の識別子です。全体では nil です。</span>
+    ScopeTargetID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ClaimedCouponView.MinPurchaseAmount"></span>    <span class="comment">// MinPurchaseAmount は、使うために必要な購入額の下限（USD セント）です。条件が無い場合は nil です。</span>
+    MinPurchaseAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="ClaimedCouponView.UsableFrom"></span>    <span class="comment">// UsableFrom は、使えるようになる日時です。発行時点から使える場合は nil です。</span>
+    UsableFrom *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="ClaimedCouponView.ExpiresAt"></span>    <span class="comment">// ExpiresAt は、有効期限です。</span>
+    ExpiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="ClaimedCouponView.UsedAt"></span>    <span class="comment">// UsedAt は、使用日時です。発行直後は nil です。</span>
+    UsedAt *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="ClaimedCouponView.IssuedAt"></span>    <span class="comment">// IssuedAt は、発行日時です。</span>
+    IssuedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="DefineCampaignParams">type <a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_define_usecase.go.html?s=373:1983#L6">DefineCampaignParams</a>
+				<a class="permalink" href="#DefineCampaignParams">¶</a>
+				
+				
+			</h2>
+			<p>DefineCampaignParams は、キャンペーンを 1 件定義する要求の入力です。
+
+			</p><pre>type DefineCampaignParams struct {
+<span id="DefineCampaignParams.Code"></span>    <span class="comment">// Code は、利用者が示す符号です。正規化はドメインが行うため、受け取った値をそのまま渡します。</span>
+    Code <a href="../../../../builtin/#string">string</a>
+<span id="DefineCampaignParams.DiscountKind"></span>    <span class="comment">// DiscountKind は、配るクーポンの値引きの決まり方の名前です（&#34;flat&#34; / &#34;rate&#34;）。</span>
+    DiscountKind <a href="../../../../builtin/#string">string</a>
+<span id="DefineCampaignParams.DiscountValue"></span>    <span class="comment">// DiscountValue は、配るクーポンの種別における値です。</span>
+    DiscountValue <a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="DefineCampaignParams.MaxAmount"></span>    <span class="comment">// MaxAmount は、配るクーポンの値引き上限（USD セント）です。上限を設けない場合は nil です。</span>
+    MaxAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="DefineCampaignParams.ScopeKind"></span>    <span class="comment">// ScopeKind は、配るクーポンの適用範囲の決まり方の名前です（&#34;all&#34; / &#34;category&#34; / &#34;product&#34;）。</span>
+    ScopeKind <a href="../../../../builtin/#string">string</a>
+<span id="DefineCampaignParams.ScopeTargetID"></span>    <span class="comment">// ScopeTargetID は、配るクーポンの適用範囲が絞る対象です。全体では nil です。</span>
+    ScopeTargetID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="DefineCampaignParams.MinPurchaseAmount"></span>    <span class="comment">// MinPurchaseAmount は、配るクーポンの最低購入金額（USD セント）です。条件を課さない場合は nil です。</span>
+    MinPurchaseAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="DefineCampaignParams.UsableFrom"></span>    <span class="comment">// UsableFrom は、配るクーポンの利用開始日時です。発行時点から使えるようにする場合は nil です。</span>
+    UsableFrom *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="DefineCampaignParams.CouponExpiresAt"></span>    <span class="comment">// CouponExpiresAt は、配るクーポンの有効期限です。配布期間の終了より後である必要があります。</span>
+    CouponExpiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="DefineCampaignParams.StartsAt"></span>    <span class="comment">// StartsAt は、配布期間の開始日時です。</span>
+    StartsAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="DefineCampaignParams.EndsAt"></span>    <span class="comment">// EndsAt は、配布期間の終了日時です。</span>
+    EndsAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="DefineCampaignParams.TotalLimit"></span>    <span class="comment">// TotalLimit は、総枚数上限です。</span>
+    TotalLimit <a href="../../../../builtin/#int">int</a>
+<span id="DefineCampaignParams.PerUserLimit"></span>    <span class="comment">// PerUserLimit は、1 人あたり上限です。</span>
+    PerUserLimit <a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_usecase.go.html?s=4750:6099#L93">Usecase</a>
+				<a class="permalink" href="#Usecase">¶</a>
+				
+				
+			</h2>
+			<p>Usecase は、キャンペーンの定義・列挙・停止と受け取りのユースケースを定義します。
+
+			</p><pre>type Usecase interface {
+    <span class="comment">// DefineCampaign は、キャンペーンを 1 件定義し、定義したキャンペーンを返します。</span>
+    <span class="comment">// admin のみ実行できます。コードが既に使われている場合は Conflict を返します。</span>
+    DefineCampaign(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="#DefineCampaignParams">DefineCampaignParams</a>) (<a href="#CampaignView">CampaignView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// ListCampaigns は、キャンペーンを配布期間の開始が新しい順で返します。停止済みも含みます。</span>
+    <span class="comment">// admin のみ実行できます。</span>
+    ListCampaigns(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, page *<a href="../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/paging/#Page">Page</a>) (<a href="#CampaignListView">CampaignListView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// SuspendCampaign は、キャンペーンの受け取りを打ち切ります。admin のみ実行できます。</span>
+    <span class="comment">// 存在しない場合は NotFound、既に停止済みの場合は Conflict を返します。</span>
+    SuspendCampaign(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#CampaignView">CampaignView</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// ClaimCoupon は、認証主体がコードを示してクーポンを 1 枚受け取ります。</span>
+    <span class="comment">//</span>
+    <span class="comment">// 受け取れない理由はすべて同じ検証エラーへ畳まれ、呼び出し元からは区別できません</span>
+    <span class="comment">// （docs/spec/usecase/campaign.md の「受け取れない理由を区別しない」）。</span>
+    ClaimCoupon(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, code <a href="../../../../builtin/#string">string</a>) (<a href="#ClaimedCouponView">ClaimedCouponView</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/campaign/campaign_usecase.go.html?s=6397:6580#L120">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(
+    campaignRepo <a href="../../../../go-boilerplate/internal/domain/campaign/">campaign</a>.<a href="../../../../go-boilerplate/internal/domain/campaign/#Repository">Repository</a>,
+    couponRepo <a href="../../../../go-boilerplate/internal/domain/coupon/">coupon</a>.<a href="../../../../go-boilerplate/internal/domain/coupon/#Repository">Repository</a>,
+    clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
+    txm <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>,
+    authorizer <a href="../../../../go-boilerplate/internal/usecase/boundary/authz/">authz</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/authz/#Authorizer">Authorizer</a>,
+    tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+) <a href="#Usecase">Usecase</a></pre>
+				<p>New は、キャンペーンのユースケースを生成して返します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

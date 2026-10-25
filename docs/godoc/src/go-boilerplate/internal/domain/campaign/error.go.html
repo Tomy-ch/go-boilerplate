@@ -1,0 +1,135 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>campaign - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/domain">domain</a>/<a href="../../../../../src/go-boilerplate/internal/domain/campaign">campaign</a>/<span class="text-muted">error.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/domain/campaign">go-boilerplate/internal/domain/campaign</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package campaign
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L5" class="ln">     5  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L6" class="ln">     6  </span>)
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>var (
+<span id="L9" class="ln">     9  </span>	errInvalid = xerrors.Wrap(apperror.ErrValidation, &#34;invalid campaign&#34;)
+<span id="L10" class="ln">    10  </span>	<span class="comment">// ErrInvalidID は、キャンペーン ID の検証に失敗した場合のエラーです。</span>
+<span id="L11" class="ln">    11  </span>	ErrInvalidID = xerrors.Wrap(errInvalid, &#34;id failed&#34;)
+<span id="L12" class="ln">    12  </span>	<span class="comment">// ErrInvalidCode は、キャンペーンコードの検証に失敗した場合のエラーです。</span>
+<span id="L13" class="ln">    13  </span>	ErrInvalidCode = xerrors.Wrap(errInvalid, &#34;code failed&#34;)
+<span id="L14" class="ln">    14  </span>	<span class="comment">// ErrInvalidTemplate は、配るクーポンのテンプレートが未設定の場合のエラーです。</span>
+<span id="L15" class="ln">    15  </span>	ErrInvalidTemplate = xerrors.Wrap(errInvalid, &#34;template is required&#34;)
+<span id="L16" class="ln">    16  </span>	<span class="comment">// ErrInvalidDiscountKind は、テンプレートの値引き種別の検証に失敗した場合のエラーです。</span>
+<span id="L17" class="ln">    17  </span>	ErrInvalidDiscountKind = xerrors.Wrap(errInvalid, &#34;discountKind failed&#34;)
+<span id="L18" class="ln">    18  </span>	<span class="comment">// ErrInvalidDiscountValue は、テンプレートの値引きの値の検証に失敗した場合のエラーです。</span>
+<span id="L19" class="ln">    19  </span>	ErrInvalidDiscountValue = xerrors.Wrap(errInvalid, &#34;discountValue failed&#34;)
+<span id="L20" class="ln">    20  </span>	<span class="comment">// ErrInvalidMaxAmount は、テンプレートの値引き上限の検証に失敗した場合のエラーです。</span>
+<span id="L21" class="ln">    21  </span>	ErrInvalidMaxAmount = xerrors.Wrap(errInvalid, &#34;maxAmount failed&#34;)
+<span id="L22" class="ln">    22  </span>	<span class="comment">// ErrInvalidScopeKind は、テンプレートの適用範囲種別の検証に失敗した場合のエラーです。</span>
+<span id="L23" class="ln">    23  </span>	ErrInvalidScopeKind = xerrors.Wrap(errInvalid, &#34;scopeKind failed&#34;)
+<span id="L24" class="ln">    24  </span>	<span class="comment">// ErrInvalidMinPurchaseAmount は、テンプレートの最低購入金額の検証に失敗した場合のエラーです。</span>
+<span id="L25" class="ln">    25  </span>	ErrInvalidMinPurchaseAmount = xerrors.Wrap(errInvalid, &#34;minPurchaseAmount failed&#34;)
+<span id="L26" class="ln">    26  </span>	<span class="comment">// ErrInvalidUsableFrom は、テンプレートの利用開始日時の検証に失敗した場合のエラーです。</span>
+<span id="L27" class="ln">    27  </span>	ErrInvalidUsableFrom = xerrors.Wrap(errInvalid, &#34;usableFrom failed&#34;)
+<span id="L28" class="ln">    28  </span>	<span class="comment">// ErrInvalidCouponExpiresAt は、テンプレートの有効期限の検証に失敗した場合のエラーです。</span>
+<span id="L29" class="ln">    29  </span>	ErrInvalidCouponExpiresAt = xerrors.Wrap(errInvalid, &#34;couponExpiresAt failed&#34;)
+<span id="L30" class="ln">    30  </span>	<span class="comment">// ErrInvalidPeriod は、配布期間の検証に失敗した場合のエラーです。</span>
+<span id="L31" class="ln">    31  </span>	ErrInvalidPeriod = xerrors.Wrap(errInvalid, &#34;period failed&#34;)
+<span id="L32" class="ln">    32  </span>	<span class="comment">// ErrInvalidTotalLimit は、総枚数上限の検証に失敗した場合のエラーです。</span>
+<span id="L33" class="ln">    33  </span>	ErrInvalidTotalLimit = xerrors.Wrap(errInvalid, &#34;totalLimit failed&#34;)
+<span id="L34" class="ln">    34  </span>	<span class="comment">// ErrInvalidPerUserLimit は、1 人あたり上限の検証に失敗した場合のエラーです。</span>
+<span id="L35" class="ln">    35  </span>	ErrInvalidPerUserLimit = xerrors.Wrap(errInvalid, &#34;perUserLimit failed&#34;)
+<span id="L36" class="ln">    36  </span>	<span class="comment">// ErrInvalidIssuedCount は、発行済み枚数の検証に失敗した場合のエラーです。</span>
+<span id="L37" class="ln">    37  </span>	ErrInvalidIssuedCount = xerrors.Wrap(errInvalid, &#34;issuedCount failed&#34;)
+<span id="L38" class="ln">    38  </span>	<span class="comment">// ErrInvalidClaimedByUser は、既に受け取った枚数の検証に失敗した場合のエラーです。</span>
+<span id="L39" class="ln">    39  </span>	ErrInvalidClaimedByUser = xerrors.Wrap(errInvalid, &#34;claimedByUser failed&#34;)
+<span id="L40" class="ln">    40  </span>	<span class="comment">// ErrInvalidCampaignID は、受け取り記録が指すキャンペーン ID の検証に失敗した場合のエラーです。</span>
+<span id="L41" class="ln">    41  </span>	ErrInvalidCampaignID = xerrors.Wrap(errInvalid, &#34;campaignID failed&#34;)
+<span id="L42" class="ln">    42  </span>	<span class="comment">// ErrInvalidUserID は、受け取り記録が指す利用者 ID の検証に失敗した場合のエラーです。</span>
+<span id="L43" class="ln">    43  </span>	ErrInvalidUserID = xerrors.Wrap(errInvalid, &#34;userID failed&#34;)
+<span id="L44" class="ln">    44  </span>	<span class="comment">// ErrInvalidCouponID は、受け取り記録が指すクーポン ID の検証に失敗した場合のエラーです。</span>
+<span id="L45" class="ln">    45  </span>	ErrInvalidCouponID = xerrors.Wrap(errInvalid, &#34;couponID failed&#34;)
+<span id="L46" class="ln">    46  </span>	<span class="comment">// ErrInvalidClaimedAt は、受け取り日時の検証に失敗した場合のエラーです。</span>
+<span id="L47" class="ln">    47  </span>	ErrInvalidClaimedAt = xerrors.Wrap(errInvalid, &#34;claimedAt failed&#34;)
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	<span class="comment">// ErrCodeUnknown は、そのコードのキャンペーンが存在しない場合のエラーです。</span>
+<span id="L50" class="ln">    50  </span>	<span class="comment">// 永続化層の NotFound をここへ写し替えるのは、応答で「存在しない」を「受け取れない」と</span>
+<span id="L51" class="ln">    51  </span>	<span class="comment">// 同じ形に畳むためです（理由は docs/spec/usecase/campaign.md の ClaimCoupon を参照）。</span>
+<span id="L52" class="ln">    52  </span>	ErrCodeUnknown = xerrors.Wrap(errInvalid, &#34;campaign code is unknown&#34;)
+<span id="L53" class="ln">    53  </span>	<span class="comment">// ErrNotDistributing は、配布期間の外で受け取ろうとした場合のエラーです。</span>
+<span id="L54" class="ln">    54  </span>	ErrNotDistributing = xerrors.Wrap(errInvalid, &#34;campaign is not distributing&#34;)
+<span id="L55" class="ln">    55  </span>	<span class="comment">// ErrSuspended は、停止済みのキャンペーンから受け取ろうとした場合のエラーです。</span>
+<span id="L56" class="ln">    56  </span>	ErrSuspended = xerrors.Wrap(errInvalid, &#34;campaign is suspended&#34;)
+<span id="L57" class="ln">    57  </span>	<span class="comment">// ErrTotalLimitReached は、総枚数上限に達したキャンペーンから受け取ろうとした場合のエラーです。</span>
+<span id="L58" class="ln">    58  </span>	ErrTotalLimitReached = xerrors.Wrap(errInvalid, &#34;campaign reached its total limit&#34;)
+<span id="L59" class="ln">    59  </span>	<span class="comment">// ErrPerUserLimitReached は、1 人あたり上限に達した利用者が受け取ろうとした場合のエラーです。</span>
+<span id="L60" class="ln">    60  </span>	ErrPerUserLimitReached = xerrors.Wrap(errInvalid, &#34;user reached the per-user limit&#34;)
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>	<span class="comment">// ErrAlreadySuspended は、停止済みのキャンペーンを重ねて停止しようとした場合のエラーです。</span>
+<span id="L63" class="ln">    63  </span>	<span class="comment">// 停止は取り消せない一方向の遷移であるため、要求の不正ではなく状態の衝突として扱います。</span>
+<span id="L64" class="ln">    64  </span>	ErrAlreadySuspended = xerrors.Wrap(apperror.ErrConflict, &#34;campaign is already suspended&#34;)
+<span id="L65" class="ln">    65  </span>	<span class="comment">// ErrIssuedConcurrently は、受け取りの最中に他の書き手が総枚数上限を埋めた場合のエラーです</span>
+<span id="L66" class="ln">    66  </span>	<span class="comment">// （到達条件は docs/spec/domain/campaign.md の Repository Methods &gt; RecordClaim を参照）。</span>
+<span id="L67" class="ln">    67  </span>	ErrIssuedConcurrently = xerrors.Wrap(apperror.ErrConflict, &#34;campaign was exhausted concurrently&#34;)
+<span id="L68" class="ln">    68  </span>)
+<span id="L69" class="ln">    69  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/domain/campaign/error.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

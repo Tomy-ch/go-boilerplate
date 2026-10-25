@@ -187,7 +187,7 @@
 		
 			
 			
-			<h2 id="CartCouponView">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_usecase.go.html?s=2164:2377#L42">CartCouponView</a>
+			<h2 id="CartCouponView">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_usecase.go.html?s=2617:2830#L48">CartCouponView</a>
 				<a class="permalink" href="#CartCouponView">¶</a>
 				
 				
@@ -216,7 +216,7 @@
 		
 			
 			
-			<h2 id="CouponView">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_usecase.go.html?s=1327:2050#L22">CouponView</a>
+			<h2 id="CouponView">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_usecase.go.html?s=1327:2503#L22">CouponView</a>
 				<a class="permalink" href="#CouponView">¶</a>
 				
 				
@@ -234,6 +234,12 @@
     ScopeKind <a href="../../../../builtin/#string">string</a>
 <span id="CouponView.ScopeTargetID"></span>    <span class="comment">// ScopeTargetID は、適用範囲が絞る対象の識別子です。全体では nil です。</span>
     ScopeTargetID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CouponView.MaxAmount"></span>    <span class="comment">// MaxAmount は、定率の値引きが 1 回に引ける額の上限（USD セント）です。上限が無い場合は nil です。</span>
+    MaxAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="CouponView.MinPurchaseAmount"></span>    <span class="comment">// MinPurchaseAmount は、使うために必要な購入額の下限（USD セント）です。条件が無い場合は nil です。</span>
+    MinPurchaseAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="CouponView.UsableFrom"></span>    <span class="comment">// UsableFrom は、使えるようになる日時です。発行時点から使える場合は nil です。</span>
+    UsableFrom *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
 <span id="CouponView.ExpiresAt"></span>    <span class="comment">// ExpiresAt は、有効期限です。</span>
     ExpiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
 <span id="CouponView.UsedAt"></span>    <span class="comment">// UsedAt は、使用日時です。未使用の場合は nil です。</span>
@@ -257,7 +263,7 @@
 		
 			
 			
-			<h2 id="IssueCouponParams">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_issue_usecase.go.html?s=387:1124#L6">IssueCouponParams</a>
+			<h2 id="IssueCouponParams">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_issue_usecase.go.html?s=387:1604#L6">IssueCouponParams</a>
 				<a class="permalink" href="#IssueCouponParams">¶</a>
 				
 				
@@ -275,6 +281,12 @@
     ScopeKind <a href="../../../../builtin/#string">string</a>
 <span id="IssueCouponParams.ScopeTargetID"></span>    <span class="comment">// ScopeTargetID は、適用範囲が絞る対象の識別子です。全体では nil です。</span>
     ScopeTargetID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="IssueCouponParams.MaxAmount"></span>    <span class="comment">// MaxAmount は、定率の値引きが 1 回に引ける額の上限（USD セント）です。上限を設けない場合は nil です。</span>
+    MaxAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="IssueCouponParams.MinPurchaseAmount"></span>    <span class="comment">// MinPurchaseAmount は、使うために必要な購入額の下限（USD セント）です。条件を課さない場合は nil です。</span>
+    MinPurchaseAmount *<a href="../../../../builtin/#int64">int64</a>
+<span id="IssueCouponParams.UsableFrom"></span>    <span class="comment">// UsableFrom は、使えるようになる日時です。発行時点から使えるようにする場合は nil です。</span>
+    UsableFrom *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
 <span id="IssueCouponParams.ExpiresAt"></span>    <span class="comment">// ExpiresAt は、発行するクーポンの有効期限です。締切を名指しするため絶対時刻で受けます。</span>
     ExpiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
 }
@@ -294,7 +306,7 @@
 		
 			
 			
-			<h2 id="IssuePromotionalCouponsParams">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_bulk_issue_usecase.go.html?s=2293:2996#L31">IssuePromotionalCouponsParams</a>
+			<h2 id="IssuePromotionalCouponsParams">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_bulk_issue_usecase.go.html?s=2293:2984#L31">IssuePromotionalCouponsParams</a>
 				<a class="permalink" href="#IssuePromotionalCouponsParams">¶</a>
 				
 				
@@ -310,7 +322,7 @@
     ScopeKind <a href="../../../../builtin/#string">string</a>
 <span id="IssuePromotionalCouponsParams.ScopeTargetID"></span>    <span class="comment">// ScopeTargetID は、適用範囲が絞る対象の識別子です。全体では nil です。</span>
     ScopeTargetID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="IssuePromotionalCouponsParams.ExpiresAt"></span>    <span class="comment">// ExpiresAt は、発行するクーポンの有効期限です。キャンペーンの終了日を名指しするため絶対時刻で受けます。</span>
+<span id="IssuePromotionalCouponsParams.ExpiresAt"></span>    <span class="comment">// ExpiresAt は、発行するクーポンの有効期限です。販促の終了日を名指しするため絶対時刻で受けます。</span>
     ExpiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
 }
 </pre>
@@ -329,7 +341,7 @@
 		
 			
 			
-			<h2 id="IssuePromotionalCouponsView">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_bulk_issue_usecase.go.html?s=3072:3482#L45">IssuePromotionalCouponsView</a>
+			<h2 id="IssuePromotionalCouponsView">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_bulk_issue_usecase.go.html?s=3060:3470#L45">IssuePromotionalCouponsView</a>
 				<a class="permalink" href="#IssuePromotionalCouponsView">¶</a>
 				
 				
@@ -362,7 +374,7 @@
 		
 			
 			
-			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_usecase.go.html?s=2475:3963#L50">Usecase</a>
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_usecase.go.html?s=2928:4416#L56">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -398,7 +410,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_usecase.go.html?s=4409:4717#L83">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/coupon/coupon_usecase.go.html?s=4862:5170#L89">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					

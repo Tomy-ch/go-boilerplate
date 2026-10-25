@@ -66,8 +66,8 @@
 
 	
 		
-		<p>Package main は harden-runner の allowed-endpoints を SSOT から生成・検証するツール。
-</p><pre>apply: .github/egress.toml を元に各 workflow の allowed-endpoints ブロックを書き換える。
+		<p>Package main は bullfrog の通信制限ステップの入力を SSOT から生成・検証するツール。
+</p><pre>apply: .github/egress.toml を元に各 workflow の bullfrog ステップの with ブロックを書き換える。
 check: apply と同じ判定を書き換えなしで行い、ドリフトがあれば非ゼロ終了する（CI / hook 用）。
 </pre>
 <p>詳細は .github/workflows/README.md の Runner Hardening 節を参照。

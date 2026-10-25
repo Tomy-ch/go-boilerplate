@@ -128,7 +128,7 @@
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|SECURITY_ALLOWED_ORIGINS|CORS許可|csv|`http://localhost:3000,http://localhost:8000`|Per-environment value — 各環境のフロントエンド origin|
+|SECURITY_ALLOWED_ORIGINS|CORS許可|csv|`*`|Per-environment value — `local` はオリジンを限定しないので、フロントエンドの dev server が既定でどのポートに立っても通る: 同梱の Grafana（`3000`）と DynamoDB Local（`8000`）が、dev server が取りがちなポートを先に握っているためである。`ci` が同じ値を持つのは 2 つのファイルを無用に食い違わせないためだけで、CI はブラウザを動かさないためこの値はどのテストにも届かない。`AllowCredentials` は false なので（`internal/controller/httpstack/cors`）、`*` でも資格情報付きのアクセスは許可されない。`dast` と各デプロイ環境は origin を明示し、DAST のスキャンはその厳格な経路を検査する|
 |SECURITY_CIDR|許可IPレンジ|string|127.0.0.0/8||
 |SECURITY_CONTENT_TYPE_NOSNIFF|X-Content-Type-Options|string|nosniff||
 |SECURITY_X_FRAME_OPTIONS|clickjacking対策|string|DENY||
@@ -234,7 +234,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 ### Realtime Delivery
 
-Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../docs/design/realtime-delivery.ja.md)）の背後にある DynamoDB 互換 store — EventLog（有界の replay）、stream ticket、instance lease — と、全 serve instance を起こす SNS / SQS 互換の fan-out の設定です。usecase は vendor 非依存の `realtime` 境界に依存し、adapter は DynamoDB と SNS / SQS（AWS SDK v2）なので、`local` / `ci` は DynamoDB Local と GoAWS へ、デプロイ環境は `ENDPOINT_REALTIME` / `ENDPOINT_REALTIME_PUBSUB` を空にして AWS へ繋ぎます。table 名は固定名（`realtime_event_log` / `realtime_stream_ticket` / `realtime_instance_lease`）に `_<REALTIME_TABLE_SUFFIX>` を付けた形で、1 つの DynamoDB（あるいは共有の DynamoDB Local）に複数環境を並べられます。table と topic は one-shot の `make realtime-init` が作り、application の起動時には作りません。instance ごとの queue だけは application 自身が serve 起動時に `REALTIME_QUEUE_PREFIX` の下で作ります。
+Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../docs/design/realtime-delivery.ja.md)）の背後にある DynamoDB 互換 store — EventLog（有界の replay）、stream ticket、instance lease — と、全 serve instance を起こす SNS / SQS 互換の fan-out の設定です。usecase は vendor 非依存の `realtime` 境界に依存し、adapter は DynamoDB と SNS / SQS（AWS SDK v2）なので、`local` / `ci` は DynamoDB Local と GoAWS へ、デプロイ環境は `ENDPOINT_REALTIME` / `ENDPOINT_REALTIME_PUBSUB` を空にして AWS へ繋ぎます。table 名は固定名（`realtime_event_log` / `realtime_stream_ticket` / `realtime_instance_lease`）に `_<REALTIME_TABLE_SUFFIX>` を付けた形で、1 つの DynamoDB（あるいは共有の DynamoDB Local）に複数環境を並べられます。table と topic は application の起動時には作りません。IaC が用意する環境では IaC が持ち主で、それ以外（`local`、`ci`、IaC を持たない環境）では one-shot の `realtime-init` が作ります。instance ごとの queue だけは application 自身が serve 起動時に `REALTIME_QUEUE_PREFIX` の下で作ります。
 
 |変数名|説明|型|例|Notes|
 |---|---|---|---|---|
@@ -272,3 +272,4 @@ Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../docs/design/realt
 - 新規サブシステム節を作る際もテーブル列構成（`変数名 | 説明 | 型 | 例 | 備考`）を維持してスキャン性を保つこと
 - env ファイルはビルド時にバイナリへ埋め込まれる（`embed.go`）。`env/.env` がローカル既定かつ唯一の埋め込み対象で、`env/.env.<env>` は各環境のソース。Docker の `builder` ステージが `APP_ENV` ビルド引数で対象を材料化する（`go build` 前に `cp env/.env.${APP_ENV} env/.env`）。Docker 以外（`go run` / `go test`）はコミット済みの local `env/.env` を埋め込むため、別環境が必要な CI は同様に焼き直す（例: `cp env/.env.ci env/.env`）。実行時の環境変数は埋め込み値より優先される
 - 埋め込み env の素性ガード: ローカルの `env/.env`（`APP_ENV=local`）が既定の埋め込み対象であるため、本番ビルド前に材料化し忘れるとローカル既定が黙ってバイナリへ焼き込まれる。これを捕捉するため、config の検証はランタイム env のマージ前に埋め込み値の `APP_ENV` を確保し、実効 `APP_MODE` が `production` のときに非本番の素性を拒否する（deny-list: `local` / `ci` / `test` / `dast` / `dev` / 空）。deny 方式なので新しい環境ラベルは既定で許容され、`development` モードは無条件で通す（そこではランタイム注入を信頼する）。環境別の `APP_ENV` の値（`local` / `ci` / `dast` / `dev` / `stg` / `prd`）が正であり、`internal/config/constant.go` の `Env*` 定数はそれを写したもので乖離させてはならない。このガードはランタイムが `APP_MODE=production` を注入したときにのみ発火する。本番デプロイで注入し損ねると実効モードは `development` のままガードは沈黙するため、本番ランタイムでは必ず `APP_MODE=production` を設定すること
+- ワイルドカード origin のガード: `local` と `ci` は `SECURITY_ALLOWED_ORIGINS=*` を置くが、この値自体は「local 専用である」ことを何も名乗らない — `url.Parse("*")` は scheme を持たない相対参照になるため、localhost 限定の HTTP 判定にも掛からず、デプロイ系ファイルへ写しても素通りで起動してしまう。そこで config の検証は、実効 `APP_MODE` が `production` のとき `*` を無条件で拒否する。上の埋め込み env ガードと同じモード軸を使う。`development` モードは通すので `local` / `ci` / `dev` はそのまま動く。ガードが見るのはファイルではなく値なので、ランタイムで注入された `*` も捕まえる
