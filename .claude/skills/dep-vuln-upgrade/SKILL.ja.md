@@ -253,6 +253,8 @@ pnpm install --lockfile-only
 
 **pnpm — 推移的依存**: `<dir>/pnpm-workspace.yaml`（`package.json` ではない）に `overrides` エントリを追加し、本ファイル冒頭の注意に従って解決版域として書いてから `pnpm install --lockfile-only`。同一 major フロアの原則と暫定債務の原則は上で述べたままに適用する。
 
+override の上に置くコメントには、**その override の現在の下限が直す advisory だけ**と、その package を引く親を書く。既にある override の下限を advisory が引き上げるときは、コメントに書き足さず書き換える。新しい下限より下で直った advisory はすべて新しい下限が覆うので、それを名指す行が残っていると、pin が今そこにある理由ではなく経緯を記録することになり、読み手は pin を外せるかを判断するためにその経緯をかき分けることになる。除外（exclusion）のコメントも同じで、その 1 版が買う advisory だけを書く。
+
 **pnpm — cooldown が阻む版を、Step 5 でユーザーが例外を承認した後に入れる場合**: そのパッケージの `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` へ、既存エントリと同じ形式で追加する。
 
 ```yaml

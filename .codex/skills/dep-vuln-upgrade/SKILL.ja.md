@@ -119,6 +119,8 @@ pnpm install --lockfile-only
 
 **pnpm 推移的依存:** override は `<dir>/pnpm-workspace.yaml` にだけ足す。`package.json` には決して書かない。範囲内のより新しいバージョンが壊れていると分かっている場合を除き、厳密 pin ではなく同一メジャー内の下限（`">=<fixed> <<next-major>"`）を使う。既存の override は保ったまま、lockfile のみのコマンドを実行する。**pnpm のセレクタは入れ子 override の翻訳ではない** —— ローカルの解決範囲の形に従い、必要なセレクタを明確に表現できない場合は人間の判断へ回す。**すべての override は暫定的な負債として扱うこと。**
 
+override の直上のコメントには、その現在の下限が修正対象としている advisory だけと、そのパッケージを引き込む親を記す。新しい advisory によって既存 override の下限を引き上げる場合は、コメントへ追記せず書き換える。新しい下限は、それより低い下限で修正済みだった advisory もすべて包含するため、その advisory を残した行は pin が存在する現在の理由ではなく履歴を記録することになり、読者は pin を撤去できるか判断するためにその履歴を選別しなければならない。除外のコメントにも同じ規則を適用し、その 1 バージョンを採用することで解消される advisory だけを記す。
+
 **承認された blocked な pnpm バージョン:** 影響する各パッケージの `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` へ `<pkg>@<version>` を足す。既存のエントリはすべて残す。**素のパッケージ名を使わないこと。** JST での撤去時刻（`公開日 + 経過閾値`）・advisory・実行時の暴露面（ブラウザバンドル / tool-runner のビルドステップ / サービスの実行時）を併記する。release-age の方針そのものは変更しない。
 
 **Go:** 承認されたモジュールを 1 回の `go get module@version ...` にまとめ、続けて `go mod tidy` を実行する。`go mod vendor` は `vendor/modules.txt` が存在する場合にのみ実行する。

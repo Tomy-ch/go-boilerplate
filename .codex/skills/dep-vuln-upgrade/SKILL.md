@@ -190,6 +190,13 @@ command. A pnpm selector is not a nested-override translation: follow the local 
 form, and when the needed selector is not clearly expressible, report it for human decision. Treat
 every override as provisional debt.
 
+The comment above an override names only the advisories its current floor is the fix for, plus the
+parent that pulls the package. When an advisory raises the floor of an existing override, rewrite
+that comment instead of appending to it: every advisory fixed below the new floor is covered by the
+new floor, so a line still naming one records history rather than the reason the pin is there, and a
+reader has to sift through that history to decide whether the pin can go. The same rule applies to
+an exclusion's comment: name only the advisory that adopting that one version resolves.
+
 **Approved blocked pnpm version:** add `<pkg>@<version>` to `minimumReleaseAgeExclude` in every
 affected package's `pnpm-workspace.yaml`, retaining all existing entries. Never use a bare package
 name. Include its JST removal time (`publish date + age threshold`), advisory, and runtime exposure

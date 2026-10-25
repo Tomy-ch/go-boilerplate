@@ -278,6 +278,13 @@ pnpm install --lockfile-only
 
 **pnpm — transitive dependency**: add an `overrides` entry to `<dir>/pnpm-workspace.yaml` (not `package.json`), written as a resolution range per the caution at the top of this file, then `pnpm install --lockfile-only`. The same-major-floor rule and the provisional-debt rule stated above apply unchanged.
 
+The comment above an override names **only the advisories its current floor is the fix for**, plus
+the parent that pulls the package. When an advisory raises the floor of an override that already
+exists, rewrite that comment rather than append to it: every advisory fixed below the new floor is
+covered by the new floor too, so a line still naming one records history, not the reason the pin is
+there — and that history is what a reader then has to sift through to decide whether the pin can go.
+The same holds for an exclusion's comment, which names only the advisory that one version buys.
+
 **pnpm — a version the cooldown blocks, after the user approved the exclusion at Step 5**: add the entry to `minimumReleaseAgeExclude` in that package's `pnpm-workspace.yaml`, matching the form of the entries already there.
 
 ```yaml
