@@ -581,398 +581,394 @@
 <span id="L524" class="ln">   524  </span>	})
 <span id="L525" class="ln">   525  </span>}
 <span id="L526" class="ln">   526  </span>
-<span id="L527" class="ln">   527  </span><span class="comment">//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可</span>
-<span id="L528" class="ln">   528  </span>func Test_remoteBranchExists(t *testing.T) {
-<span id="L529" class="ln">   529  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L530" class="ln">   530  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L531" class="ln">   531  </span>		<span class="comment">// 既存ブランチを見落とすと、リリースブランチを取り違えたまま push まで進む。</span>
-<span id="L532" class="ln">   532  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L533" class="ln">   533  </span>		t.Run(&#34;origin に同名ブランチがあれば真を返す&#34;, func(t *testing.T) {
-<span id="L534" class="ln">   534  </span>			dir := newRepo(t)
-<span id="L535" class="ln">   535  </span>			t.Chdir(dir)
-<span id="L536" class="ln">   536  </span>			assert.True(t, remoteBranchExists(&#34;production&#34;))
-<span id="L537" class="ln">   537  </span>		})
-<span id="L538" class="ln">   538  </span>
-<span id="L539" class="ln">   539  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L540" class="ln">   540  </span>		t.Run(&#34;origin に無いブランチには偽を返す&#34;, func(t *testing.T) {
-<span id="L541" class="ln">   541  </span>			dir := newRepo(t)
-<span id="L542" class="ln">   542  </span>			t.Chdir(dir)
-<span id="L543" class="ln">   543  </span>			assert.False(t, remoteBranchExists(&#34;release/v9.9.9&#34;))
-<span id="L544" class="ln">   544  </span>		})
-<span id="L545" class="ln">   545  </span>	})
-<span id="L546" class="ln">   546  </span>}
-<span id="L547" class="ln">   547  </span>
-<span id="L548" class="ln">   548  </span>func Test_resolveNext(t *testing.T) {
-<span id="L549" class="ln">   549  </span>	t.Parallel()
-<span id="L550" class="ln">   550  </span>
-<span id="L551" class="ln">   551  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L552" class="ln">   552  </span>		t.Parallel()
-<span id="L553" class="ln">   553  </span>
-<span id="L554" class="ln">   554  </span>		<span class="comment">// origin のタグを取り直さずに判定すると、他所で打たれた最新タグを見落として</span>
-<span id="L555" class="ln">   555  </span>		<span class="comment">// 既存のバージョンへ二重にタグを打つ。</span>
-<span id="L556" class="ln">   556  </span>		t.Run(&#34;タグを取り直してから最新のタグを起点に次バージョンを決める&#34;, func(t *testing.T) {
-<span id="L557" class="ln">   557  </span>			t.Parallel()
-<span id="L558" class="ln">   558  </span>			f := &amp;fakeRunner{outputs: map[string]string{tagListCall: &#34;v1.2.3\nv1.10.0\n&#34;}}
-<span id="L559" class="ln">   559  </span>
-<span id="L560" class="ln">   560  </span>			current, next, err := resolveNext(f.runner(), &#34;minor&#34;)
-<span id="L561" class="ln">   561  </span>			require.NoError(t, err)
-<span id="L562" class="ln">   562  </span>			assert.Equal(t, &#34;v1.10.0&#34;, current.String())
-<span id="L563" class="ln">   563  </span>			assert.Equal(t, &#34;v1.11.0&#34;, next.String())
-<span id="L564" class="ln">   564  </span>			assert.Equal(t, []string{fetchTagsCall, tagListCall}, f.calls)
-<span id="L565" class="ln">   565  </span>		})
-<span id="L566" class="ln">   566  </span>	})
-<span id="L567" class="ln">   567  </span>
-<span id="L568" class="ln">   568  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L569" class="ln">   569  </span>		t.Parallel()
+<span id="L527" class="ln">   527  </span>func Test_remoteBranchExists(t *testing.T) {
+<span id="L528" class="ln">   528  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L529" class="ln">   529  </span>		<span class="comment">// 既存ブランチを見落とすと、リリースブランチを取り違えたまま push まで進む。</span>
+<span id="L530" class="ln">   530  </span>		t.Run(&#34;origin に同名ブランチがあれば真を返す&#34;, func(t *testing.T) {
+<span id="L531" class="ln">   531  </span>			dir := newRepo(t)
+<span id="L532" class="ln">   532  </span>			t.Chdir(dir)
+<span id="L533" class="ln">   533  </span>			assert.True(t, remoteBranchExists(&#34;production&#34;))
+<span id="L534" class="ln">   534  </span>		})
+<span id="L535" class="ln">   535  </span>
+<span id="L536" class="ln">   536  </span>		t.Run(&#34;origin に無いブランチには偽を返す&#34;, func(t *testing.T) {
+<span id="L537" class="ln">   537  </span>			dir := newRepo(t)
+<span id="L538" class="ln">   538  </span>			t.Chdir(dir)
+<span id="L539" class="ln">   539  </span>			assert.False(t, remoteBranchExists(&#34;release/v9.9.9&#34;))
+<span id="L540" class="ln">   540  </span>		})
+<span id="L541" class="ln">   541  </span>	})
+<span id="L542" class="ln">   542  </span>}
+<span id="L543" class="ln">   543  </span>
+<span id="L544" class="ln">   544  </span>func Test_resolveNext(t *testing.T) {
+<span id="L545" class="ln">   545  </span>	t.Parallel()
+<span id="L546" class="ln">   546  </span>
+<span id="L547" class="ln">   547  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L548" class="ln">   548  </span>		t.Parallel()
+<span id="L549" class="ln">   549  </span>
+<span id="L550" class="ln">   550  </span>		<span class="comment">// origin のタグを取り直さずに判定すると、他所で打たれた最新タグを見落として</span>
+<span id="L551" class="ln">   551  </span>		<span class="comment">// 既存のバージョンへ二重にタグを打つ。</span>
+<span id="L552" class="ln">   552  </span>		t.Run(&#34;タグを取り直してから最新のタグを起点に次バージョンを決める&#34;, func(t *testing.T) {
+<span id="L553" class="ln">   553  </span>			t.Parallel()
+<span id="L554" class="ln">   554  </span>			f := &amp;fakeRunner{outputs: map[string]string{tagListCall: &#34;v1.2.3\nv1.10.0\n&#34;}}
+<span id="L555" class="ln">   555  </span>
+<span id="L556" class="ln">   556  </span>			current, next, err := resolveNext(f.runner(), &#34;minor&#34;)
+<span id="L557" class="ln">   557  </span>			require.NoError(t, err)
+<span id="L558" class="ln">   558  </span>			assert.Equal(t, &#34;v1.10.0&#34;, current.String())
+<span id="L559" class="ln">   559  </span>			assert.Equal(t, &#34;v1.11.0&#34;, next.String())
+<span id="L560" class="ln">   560  </span>			assert.Equal(t, []string{fetchTagsCall, tagListCall}, f.calls)
+<span id="L561" class="ln">   561  </span>		})
+<span id="L562" class="ln">   562  </span>	})
+<span id="L563" class="ln">   563  </span>
+<span id="L564" class="ln">   564  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L565" class="ln">   565  </span>		t.Parallel()
+<span id="L566" class="ln">   566  </span>
+<span id="L567" class="ln">   567  </span>		t.Run(&#34;タグを取り直せなければタグ一覧を見ない&#34;, func(t *testing.T) {
+<span id="L568" class="ln">   568  </span>			t.Parallel()
+<span id="L569" class="ln">   569  </span>			f := &amp;fakeRunner{failOn: fetchTagsCall}
 <span id="L570" class="ln">   570  </span>
-<span id="L571" class="ln">   571  </span>		t.Run(&#34;タグを取り直せなければタグ一覧を見ない&#34;, func(t *testing.T) {
-<span id="L572" class="ln">   572  </span>			t.Parallel()
-<span id="L573" class="ln">   573  </span>			f := &amp;fakeRunner{failOn: fetchTagsCall}
-<span id="L574" class="ln">   574  </span>
-<span id="L575" class="ln">   575  </span>			_, _, err := resolveNext(f.runner(), &#34;patch&#34;)
-<span id="L576" class="ln">   576  </span>			require.ErrorIs(t, err, errFakeCommand)
-<span id="L577" class="ln">   577  </span>			assert.Equal(t, []string{fetchTagsCall}, f.calls)
-<span id="L578" class="ln">   578  </span>		})
+<span id="L571" class="ln">   571  </span>			_, _, err := resolveNext(f.runner(), &#34;patch&#34;)
+<span id="L572" class="ln">   572  </span>			require.ErrorIs(t, err, errFakeCommand)
+<span id="L573" class="ln">   573  </span>			assert.Equal(t, []string{fetchTagsCall}, f.calls)
+<span id="L574" class="ln">   574  </span>		})
+<span id="L575" class="ln">   575  </span>
+<span id="L576" class="ln">   576  </span>		t.Run(&#34;タグ一覧を取得できなければエラーにする&#34;, func(t *testing.T) {
+<span id="L577" class="ln">   577  </span>			t.Parallel()
+<span id="L578" class="ln">   578  </span>			f := &amp;fakeRunner{failOn: tagListCall}
 <span id="L579" class="ln">   579  </span>
-<span id="L580" class="ln">   580  </span>		t.Run(&#34;タグ一覧を取得できなければエラーにする&#34;, func(t *testing.T) {
-<span id="L581" class="ln">   581  </span>			t.Parallel()
-<span id="L582" class="ln">   582  </span>			f := &amp;fakeRunner{failOn: tagListCall}
+<span id="L580" class="ln">   580  </span>			_, _, err := resolveNext(f.runner(), &#34;patch&#34;)
+<span id="L581" class="ln">   581  </span>			require.ErrorIs(t, err, errFakeCommand)
+<span id="L582" class="ln">   582  </span>		})
 <span id="L583" class="ln">   583  </span>
-<span id="L584" class="ln">   584  </span>			_, _, err := resolveNext(f.runner(), &#34;patch&#34;)
-<span id="L585" class="ln">   585  </span>			require.ErrorIs(t, err, errFakeCommand)
-<span id="L586" class="ln">   586  </span>		})
-<span id="L587" class="ln">   587  </span>
-<span id="L588" class="ln">   588  </span>		t.Run(&#34;起点となるタグが無ければ初期タグを促す&#34;, func(t *testing.T) {
-<span id="L589" class="ln">   589  </span>			t.Parallel()
+<span id="L584" class="ln">   584  </span>		t.Run(&#34;起点となるタグが無ければ初期タグを促す&#34;, func(t *testing.T) {
+<span id="L585" class="ln">   585  </span>			t.Parallel()
+<span id="L586" class="ln">   586  </span>
+<span id="L587" class="ln">   587  </span>			_, _, err := resolveNext((&amp;fakeRunner{}).runner(), &#34;patch&#34;)
+<span id="L588" class="ln">   588  </span>			require.ErrorIs(t, err, errNoTag)
+<span id="L589" class="ln">   589  </span>		})
 <span id="L590" class="ln">   590  </span>
-<span id="L591" class="ln">   591  </span>			_, _, err := resolveNext((&amp;fakeRunner{}).runner(), &#34;patch&#34;)
-<span id="L592" class="ln">   592  </span>			require.ErrorIs(t, err, errNoTag)
-<span id="L593" class="ln">   593  </span>		})
-<span id="L594" class="ln">   594  </span>
-<span id="L595" class="ln">   595  </span>		t.Run(&#34;未知の粒度は次バージョンを決めずに返す&#34;, func(t *testing.T) {
-<span id="L596" class="ln">   596  </span>			t.Parallel()
-<span id="L597" class="ln">   597  </span>
-<span id="L598" class="ln">   598  </span>			_, _, err := resolveNext(taggableRunner().runner(), &#34;hotfix&#34;)
-<span id="L599" class="ln">   599  </span>			require.ErrorIs(t, err, errUnknownBump)
-<span id="L600" class="ln">   600  </span>		})
-<span id="L601" class="ln">   601  </span>	})
-<span id="L602" class="ln">   602  </span>}
-<span id="L603" class="ln">   603  </span>
-<span id="L604" class="ln">   604  </span><span class="comment">//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可</span>
-<span id="L605" class="ln">   605  </span>func Test_runTag(t *testing.T) {
-<span id="L606" class="ln">   606  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L607" class="ln">   607  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L608" class="ln">   608  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L609" class="ln">   609  </span>		t.Run(&#34;production へ合わせ、ノートを確かめてからタグ・push・Release の順に進む&#34;, func(t *testing.T) {
-<span id="L610" class="ln">   610  </span>			writeNote(t)
-<span id="L611" class="ln">   611  </span>			f := taggableRunner()
-<span id="L612" class="ln">   612  </span>
-<span id="L613" class="ln">   613  </span>			require.NoError(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}))
-<span id="L614" class="ln">   614  </span>			assert.Equal(t, []string{
-<span id="L615" class="ln">   615  </span>				fetchTagsCall,
-<span id="L616" class="ln">   616  </span>				tagListCall,
-<span id="L617" class="ln">   617  </span>				&#34;git fetch origin production&#34;,
-<span id="L618" class="ln">   618  </span>				&#34;git switch production&#34;,
-<span id="L619" class="ln">   619  </span>				&#34;git reset --hard origin/production&#34;,
-<span id="L620" class="ln">   620  </span>				fetchTagsCall,
-<span id="L621" class="ln">   621  </span>				annotateTagCall,
-<span id="L622" class="ln">   622  </span>				tagPushCall,
-<span id="L623" class="ln">   623  </span>				releaseCreateCall,
-<span id="L624" class="ln">   624  </span>			}, f.calls)
-<span id="L625" class="ln">   625  </span>		})
-<span id="L626" class="ln">   626  </span>	})
-<span id="L627" class="ln">   627  </span>
-<span id="L628" class="ln">   628  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L629" class="ln">   629  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L630" class="ln">   630  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L631" class="ln">   631  </span>		t.Run(&#34;解釈できないフラグでは手順を 1 つも実行しない&#34;, func(t *testing.T) {
-<span id="L632" class="ln">   632  </span>			writeNote(t)
-<span id="L633" class="ln">   633  </span>			f := taggableRunner()
-<span id="L634" class="ln">   634  </span>
-<span id="L635" class="ln">   635  </span>			err := runTag(f.runner(), []string{&#34;-no-such-flag&#34;})
-<span id="L636" class="ln">   636  </span>			require.Error(t, err)
-<span id="L637" class="ln">   637  </span>			assert.Contains(t, err.Error(), &#34;failed to parse flags&#34;)
-<span id="L638" class="ln">   638  </span>			assert.Empty(t, f.calls)
-<span id="L639" class="ln">   639  </span>		})
-<span id="L640" class="ln">   640  </span>
-<span id="L641" class="ln">   641  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L642" class="ln">   642  </span>		t.Run(&#34;未知の粒度では production へ切り替える前に中止する&#34;, func(t *testing.T) {
-<span id="L643" class="ln">   643  </span>			writeNote(t)
-<span id="L644" class="ln">   644  </span>			f := taggableRunner()
+<span id="L591" class="ln">   591  </span>		t.Run(&#34;未知の粒度は次バージョンを決めずに返す&#34;, func(t *testing.T) {
+<span id="L592" class="ln">   592  </span>			t.Parallel()
+<span id="L593" class="ln">   593  </span>
+<span id="L594" class="ln">   594  </span>			_, _, err := resolveNext(taggableRunner().runner(), &#34;hotfix&#34;)
+<span id="L595" class="ln">   595  </span>			require.ErrorIs(t, err, errUnknownBump)
+<span id="L596" class="ln">   596  </span>		})
+<span id="L597" class="ln">   597  </span>	})
+<span id="L598" class="ln">   598  </span>}
+<span id="L599" class="ln">   599  </span>
+<span id="L600" class="ln">   600  </span><span class="comment">//nolint:paralleltest // t.Chdir でプロセスの作業ディレクトリを変えるため並列化不可</span>
+<span id="L601" class="ln">   601  </span>func Test_runTag(t *testing.T) {
+<span id="L602" class="ln">   602  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L603" class="ln">   603  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L604" class="ln">   604  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L605" class="ln">   605  </span>		t.Run(&#34;production へ合わせ、ノートを確かめてからタグ・push・Release の順に進む&#34;, func(t *testing.T) {
+<span id="L606" class="ln">   606  </span>			writeNote(t)
+<span id="L607" class="ln">   607  </span>			f := taggableRunner()
+<span id="L608" class="ln">   608  </span>
+<span id="L609" class="ln">   609  </span>			require.NoError(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}))
+<span id="L610" class="ln">   610  </span>			assert.Equal(t, []string{
+<span id="L611" class="ln">   611  </span>				fetchTagsCall,
+<span id="L612" class="ln">   612  </span>				tagListCall,
+<span id="L613" class="ln">   613  </span>				&#34;git fetch origin production&#34;,
+<span id="L614" class="ln">   614  </span>				&#34;git switch production&#34;,
+<span id="L615" class="ln">   615  </span>				&#34;git reset --hard origin/production&#34;,
+<span id="L616" class="ln">   616  </span>				fetchTagsCall,
+<span id="L617" class="ln">   617  </span>				annotateTagCall,
+<span id="L618" class="ln">   618  </span>				tagPushCall,
+<span id="L619" class="ln">   619  </span>				releaseCreateCall,
+<span id="L620" class="ln">   620  </span>			}, f.calls)
+<span id="L621" class="ln">   621  </span>		})
+<span id="L622" class="ln">   622  </span>	})
+<span id="L623" class="ln">   623  </span>
+<span id="L624" class="ln">   624  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L625" class="ln">   625  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L626" class="ln">   626  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L627" class="ln">   627  </span>		t.Run(&#34;解釈できないフラグでは手順を 1 つも実行しない&#34;, func(t *testing.T) {
+<span id="L628" class="ln">   628  </span>			writeNote(t)
+<span id="L629" class="ln">   629  </span>			f := taggableRunner()
+<span id="L630" class="ln">   630  </span>
+<span id="L631" class="ln">   631  </span>			err := runTag(f.runner(), []string{&#34;-no-such-flag&#34;})
+<span id="L632" class="ln">   632  </span>			require.Error(t, err)
+<span id="L633" class="ln">   633  </span>			assert.Contains(t, err.Error(), &#34;failed to parse flags&#34;)
+<span id="L634" class="ln">   634  </span>			assert.Empty(t, f.calls)
+<span id="L635" class="ln">   635  </span>		})
+<span id="L636" class="ln">   636  </span>
+<span id="L637" class="ln">   637  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L638" class="ln">   638  </span>		t.Run(&#34;未知の粒度では production へ切り替える前に中止する&#34;, func(t *testing.T) {
+<span id="L639" class="ln">   639  </span>			writeNote(t)
+<span id="L640" class="ln">   640  </span>			f := taggableRunner()
+<span id="L641" class="ln">   641  </span>
+<span id="L642" class="ln">   642  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;bogus&#34;}), errUnknownBump)
+<span id="L643" class="ln">   643  </span>			assert.NotContains(t, f.calls, &#34;git switch production&#34;)
+<span id="L644" class="ln">   644  </span>		})
 <span id="L645" class="ln">   645  </span>
-<span id="L646" class="ln">   646  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;bogus&#34;}), errUnknownBump)
-<span id="L647" class="ln">   647  </span>			assert.NotContains(t, f.calls, &#34;git switch production&#34;)
-<span id="L648" class="ln">   648  </span>		})
-<span id="L649" class="ln">   649  </span>
-<span id="L650" class="ln">   650  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L651" class="ln">   651  </span>		t.Run(&#34;production へ合わせられなければノートを見ずにタグを打たない&#34;, func(t *testing.T) {
-<span id="L652" class="ln">   652  </span>			writeNote(t)
-<span id="L653" class="ln">   653  </span>			f := taggableRunner()
-<span id="L654" class="ln">   654  </span>			f.failOn = &#34;git reset --hard origin/production&#34;
+<span id="L646" class="ln">   646  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L647" class="ln">   647  </span>		t.Run(&#34;production へ合わせられなければノートを見ずにタグを打たない&#34;, func(t *testing.T) {
+<span id="L648" class="ln">   648  </span>			writeNote(t)
+<span id="L649" class="ln">   649  </span>			f := taggableRunner()
+<span id="L650" class="ln">   650  </span>			f.failOn = &#34;git reset --hard origin/production&#34;
+<span id="L651" class="ln">   651  </span>
+<span id="L652" class="ln">   652  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}), errFakeCommand)
+<span id="L653" class="ln">   653  </span>			assert.NotContains(t, f.calls, annotateTagCall)
+<span id="L654" class="ln">   654  </span>		})
 <span id="L655" class="ln">   655  </span>
-<span id="L656" class="ln">   656  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}), errFakeCommand)
-<span id="L657" class="ln">   657  </span>			assert.NotContains(t, f.calls, annotateTagCall)
-<span id="L658" class="ln">   658  </span>		})
-<span id="L659" class="ln">   659  </span>
-<span id="L660" class="ln">   660  </span>		<span class="comment">// ノートはタグと Release の本文になるので、無いまま進むと本文の無いリリースが残る。</span>
-<span id="L661" class="ln">   661  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L662" class="ln">   662  </span>		t.Run(&#34;production にノートが無ければ production へ合わせた後で中止する&#34;, func(t *testing.T) {
-<span id="L663" class="ln">   663  </span>			t.Chdir(t.TempDir())
-<span id="L664" class="ln">   664  </span>			f := taggableRunner()
-<span id="L665" class="ln">   665  </span>
-<span id="L666" class="ln">   666  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}), errNoReleaseNote)
-<span id="L667" class="ln">   667  </span>			assert.Contains(t, f.calls, &#34;git switch production&#34;)
-<span id="L668" class="ln">   668  </span>			assert.NotContains(t, f.calls, annotateTagCall)
-<span id="L669" class="ln">   669  </span>			assert.NotContains(t, f.calls, tagPushCall)
-<span id="L670" class="ln">   670  </span>			assert.NotContains(t, f.calls, releaseCreateCall)
-<span id="L671" class="ln">   671  </span>		})
-<span id="L672" class="ln">   672  </span>
-<span id="L673" class="ln">   673  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L674" class="ln">   674  </span>		t.Run(&#34;タグを作れなければ push も Release 作成も行わない&#34;, func(t *testing.T) {
-<span id="L675" class="ln">   675  </span>			writeNote(t)
-<span id="L676" class="ln">   676  </span>			f := taggableRunner()
-<span id="L677" class="ln">   677  </span>			f.failOn = annotateTagCall
-<span id="L678" class="ln">   678  </span>
-<span id="L679" class="ln">   679  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}), errFakeCommand)
-<span id="L680" class="ln">   680  </span>			assert.NotContains(t, f.calls, tagPushCall)
-<span id="L681" class="ln">   681  </span>			assert.NotContains(t, f.calls, releaseCreateCall)
-<span id="L682" class="ln">   682  </span>		})
-<span id="L683" class="ln">   683  </span>
-<span id="L684" class="ln">   684  </span>		<span class="comment">// push できていないタグで Release を作ると、参照先の無いリリースが GitHub に残る。</span>
-<span id="L685" class="ln">   685  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L686" class="ln">   686  </span>		t.Run(&#34;タグを push できなければ Release を作らない&#34;, func(t *testing.T) {
-<span id="L687" class="ln">   687  </span>			writeNote(t)
-<span id="L688" class="ln">   688  </span>			f := taggableRunner()
-<span id="L689" class="ln">   689  </span>			f.failOn = tagPushCall
-<span id="L690" class="ln">   690  </span>
-<span id="L691" class="ln">   691  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}), errFakeCommand)
-<span id="L692" class="ln">   692  </span>			assert.NotContains(t, f.calls, releaseCreateCall)
-<span id="L693" class="ln">   693  </span>		})
-<span id="L694" class="ln">   694  </span>	})
-<span id="L695" class="ln">   695  </span>}
-<span id="L696" class="ln">   696  </span>
-<span id="L697" class="ln">   697  </span>func Test_runBranch(t *testing.T) {
-<span id="L698" class="ln">   698  </span>	t.Parallel()
-<span id="L699" class="ln">   699  </span>
-<span id="L700" class="ln">   700  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L701" class="ln">   701  </span>		t.Parallel()
+<span id="L656" class="ln">   656  </span>		<span class="comment">// ノートはタグと Release の本文になるので、無いまま進むと本文の無いリリースが残る。</span>
+<span id="L657" class="ln">   657  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L658" class="ln">   658  </span>		t.Run(&#34;production にノートが無ければ production へ合わせた後で中止する&#34;, func(t *testing.T) {
+<span id="L659" class="ln">   659  </span>			t.Chdir(t.TempDir())
+<span id="L660" class="ln">   660  </span>			f := taggableRunner()
+<span id="L661" class="ln">   661  </span>
+<span id="L662" class="ln">   662  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}), errNoReleaseNote)
+<span id="L663" class="ln">   663  </span>			assert.Contains(t, f.calls, &#34;git switch production&#34;)
+<span id="L664" class="ln">   664  </span>			assert.NotContains(t, f.calls, annotateTagCall)
+<span id="L665" class="ln">   665  </span>			assert.NotContains(t, f.calls, tagPushCall)
+<span id="L666" class="ln">   666  </span>			assert.NotContains(t, f.calls, releaseCreateCall)
+<span id="L667" class="ln">   667  </span>		})
+<span id="L668" class="ln">   668  </span>
+<span id="L669" class="ln">   669  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L670" class="ln">   670  </span>		t.Run(&#34;タグを作れなければ push も Release 作成も行わない&#34;, func(t *testing.T) {
+<span id="L671" class="ln">   671  </span>			writeNote(t)
+<span id="L672" class="ln">   672  </span>			f := taggableRunner()
+<span id="L673" class="ln">   673  </span>			f.failOn = annotateTagCall
+<span id="L674" class="ln">   674  </span>
+<span id="L675" class="ln">   675  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}), errFakeCommand)
+<span id="L676" class="ln">   676  </span>			assert.NotContains(t, f.calls, tagPushCall)
+<span id="L677" class="ln">   677  </span>			assert.NotContains(t, f.calls, releaseCreateCall)
+<span id="L678" class="ln">   678  </span>		})
+<span id="L679" class="ln">   679  </span>
+<span id="L680" class="ln">   680  </span>		<span class="comment">// push できていないタグで Release を作ると、参照先の無いリリースが GitHub に残る。</span>
+<span id="L681" class="ln">   681  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L682" class="ln">   682  </span>		t.Run(&#34;タグを push できなければ Release を作らない&#34;, func(t *testing.T) {
+<span id="L683" class="ln">   683  </span>			writeNote(t)
+<span id="L684" class="ln">   684  </span>			f := taggableRunner()
+<span id="L685" class="ln">   685  </span>			f.failOn = tagPushCall
+<span id="L686" class="ln">   686  </span>
+<span id="L687" class="ln">   687  </span>			require.ErrorIs(t, runTag(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;}), errFakeCommand)
+<span id="L688" class="ln">   688  </span>			assert.NotContains(t, f.calls, releaseCreateCall)
+<span id="L689" class="ln">   689  </span>		})
+<span id="L690" class="ln">   690  </span>	})
+<span id="L691" class="ln">   691  </span>}
+<span id="L692" class="ln">   692  </span>
+<span id="L693" class="ln">   693  </span>func Test_runBranch(t *testing.T) {
+<span id="L694" class="ln">   694  </span>	t.Parallel()
+<span id="L695" class="ln">   695  </span>
+<span id="L696" class="ln">   696  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L697" class="ln">   697  </span>		t.Parallel()
+<span id="L698" class="ln">   698  </span>
+<span id="L699" class="ln">   699  </span>		t.Run(&#34;衝突も汚れも無ければブランチを切って push しデフォルトブランチを移す&#34;, func(t *testing.T) {
+<span id="L700" class="ln">   700  </span>			t.Parallel()
+<span id="L701" class="ln">   701  </span>			f := taggableRunner()
 <span id="L702" class="ln">   702  </span>
-<span id="L703" class="ln">   703  </span>		t.Run(&#34;衝突も汚れも無ければブランチを切って push しデフォルトブランチを移す&#34;, func(t *testing.T) {
-<span id="L704" class="ln">   704  </span>			t.Parallel()
-<span id="L705" class="ln">   705  </span>			f := taggableRunner()
-<span id="L706" class="ln">   706  </span>
-<span id="L707" class="ln">   707  </span>			require.NoError(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}))
-<span id="L708" class="ln">   708  </span>			assert.Equal(t, []string{
-<span id="L709" class="ln">   709  </span>				fetchTagsCall,
-<span id="L710" class="ln">   710  </span>				tagListCall,
-<span id="L711" class="ln">   711  </span>				&#34;git status --porcelain&#34;,
-<span id="L712" class="ln">   712  </span>				&#34;git fetch origin production&#34;,
-<span id="L713" class="ln">   713  </span>				branchCreateCall,
-<span id="L714" class="ln">   714  </span>				branchPushCall,
-<span id="L715" class="ln">   715  </span>				defaultBranchCall,
-<span id="L716" class="ln">   716  </span>			}, f.calls)
-<span id="L717" class="ln">   717  </span>		})
+<span id="L703" class="ln">   703  </span>			require.NoError(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}))
+<span id="L704" class="ln">   704  </span>			assert.Equal(t, []string{
+<span id="L705" class="ln">   705  </span>				fetchTagsCall,
+<span id="L706" class="ln">   706  </span>				tagListCall,
+<span id="L707" class="ln">   707  </span>				&#34;git status --porcelain&#34;,
+<span id="L708" class="ln">   708  </span>				&#34;git fetch origin production&#34;,
+<span id="L709" class="ln">   709  </span>				branchCreateCall,
+<span id="L710" class="ln">   710  </span>				branchPushCall,
+<span id="L711" class="ln">   711  </span>				defaultBranchCall,
+<span id="L712" class="ln">   712  </span>			}, f.calls)
+<span id="L713" class="ln">   713  </span>		})
+<span id="L714" class="ln">   714  </span>
+<span id="L715" class="ln">   715  </span>		t.Run(&#34;接頭辞と分岐元はフラグで差し替えられる&#34;, func(t *testing.T) {
+<span id="L716" class="ln">   716  </span>			t.Parallel()
+<span id="L717" class="ln">   717  </span>			f := taggableRunner()
 <span id="L718" class="ln">   718  </span>
-<span id="L719" class="ln">   719  </span>		t.Run(&#34;接頭辞と分岐元はフラグで差し替えられる&#34;, func(t *testing.T) {
-<span id="L720" class="ln">   720  </span>			t.Parallel()
-<span id="L721" class="ln">   721  </span>			f := taggableRunner()
-<span id="L722" class="ln">   722  </span>
-<span id="L723" class="ln">   723  </span>			require.NoError(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;, &#34;-prefix&#34;, &#34;hotfix&#34;, &#34;-base&#34;, &#34;staging&#34;}))
-<span id="L724" class="ln">   724  </span>			assert.Contains(t, f.calls, &#34;git switch -c hotfix/v1.2.4 origin/staging&#34;)
-<span id="L725" class="ln">   725  </span>			assert.Contains(t, f.calls, &#34;gh repo edit --default-branch hotfix/v1.2.4&#34;)
-<span id="L726" class="ln">   726  </span>		})
-<span id="L727" class="ln">   727  </span>	})
-<span id="L728" class="ln">   728  </span>
-<span id="L729" class="ln">   729  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L730" class="ln">   730  </span>		t.Parallel()
+<span id="L719" class="ln">   719  </span>			require.NoError(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;, &#34;-prefix&#34;, &#34;hotfix&#34;, &#34;-base&#34;, &#34;staging&#34;}))
+<span id="L720" class="ln">   720  </span>			assert.Contains(t, f.calls, &#34;git switch -c hotfix/v1.2.4 origin/staging&#34;)
+<span id="L721" class="ln">   721  </span>			assert.Contains(t, f.calls, &#34;gh repo edit --default-branch hotfix/v1.2.4&#34;)
+<span id="L722" class="ln">   722  </span>		})
+<span id="L723" class="ln">   723  </span>	})
+<span id="L724" class="ln">   724  </span>
+<span id="L725" class="ln">   725  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L726" class="ln">   726  </span>		t.Parallel()
+<span id="L727" class="ln">   727  </span>
+<span id="L728" class="ln">   728  </span>		t.Run(&#34;解釈できないフラグでは手順を 1 つも実行しない&#34;, func(t *testing.T) {
+<span id="L729" class="ln">   729  </span>			t.Parallel()
+<span id="L730" class="ln">   730  </span>			f := taggableRunner()
 <span id="L731" class="ln">   731  </span>
-<span id="L732" class="ln">   732  </span>		t.Run(&#34;解釈できないフラグでは手順を 1 つも実行しない&#34;, func(t *testing.T) {
-<span id="L733" class="ln">   733  </span>			t.Parallel()
-<span id="L734" class="ln">   734  </span>			f := taggableRunner()
-<span id="L735" class="ln">   735  </span>
-<span id="L736" class="ln">   736  </span>			err := runBranch(f.runner(), []string{&#34;-no-such-flag&#34;})
-<span id="L737" class="ln">   737  </span>			require.Error(t, err)
-<span id="L738" class="ln">   738  </span>			assert.Contains(t, err.Error(), &#34;failed to parse flags&#34;)
-<span id="L739" class="ln">   739  </span>			assert.Empty(t, f.calls)
-<span id="L740" class="ln">   740  </span>		})
+<span id="L732" class="ln">   732  </span>			err := runBranch(f.runner(), []string{&#34;-no-such-flag&#34;})
+<span id="L733" class="ln">   733  </span>			require.Error(t, err)
+<span id="L734" class="ln">   734  </span>			assert.Contains(t, err.Error(), &#34;failed to parse flags&#34;)
+<span id="L735" class="ln">   735  </span>			assert.Empty(t, f.calls)
+<span id="L736" class="ln">   736  </span>		})
+<span id="L737" class="ln">   737  </span>
+<span id="L738" class="ln">   738  </span>		<span class="comment">// タグ不在は tag 側と原因が同じでも復旧手順が違うため、案内を差し替える。</span>
+<span id="L739" class="ln">   739  </span>		t.Run(&#34;起点となるタグが無ければ初期タグ作成の案内へ差し替える&#34;, func(t *testing.T) {
+<span id="L740" class="ln">   740  </span>			t.Parallel()
 <span id="L741" class="ln">   741  </span>
-<span id="L742" class="ln">   742  </span>		<span class="comment">// タグ不在は tag 側と原因が同じでも復旧手順が違うため、案内を差し替える。</span>
-<span id="L743" class="ln">   743  </span>		t.Run(&#34;起点となるタグが無ければ初期タグ作成の案内へ差し替える&#34;, func(t *testing.T) {
-<span id="L744" class="ln">   744  </span>			t.Parallel()
-<span id="L745" class="ln">   745  </span>
-<span id="L746" class="ln">   746  </span>			err := runBranch((&amp;fakeRunner{}).runner(), []string{&#34;-bump&#34;, &#34;patch&#34;})
-<span id="L747" class="ln">   747  </span>			require.ErrorIs(t, err, errNoTagForBranch)
-<span id="L748" class="ln">   748  </span>			require.NotErrorIs(t, err, errNoTag)
-<span id="L749" class="ln">   749  </span>		})
-<span id="L750" class="ln">   750  </span>
-<span id="L751" class="ln">   751  </span>		<span class="comment">// 差し替えるのはタグ不在だけ。取得そのものの失敗まで案内へ丸めると原因が消える。</span>
-<span id="L752" class="ln">   752  </span>		t.Run(&#34;タグの取得に失敗した場合は案内へ差し替えない&#34;, func(t *testing.T) {
-<span id="L753" class="ln">   753  </span>			t.Parallel()
-<span id="L754" class="ln">   754  </span>			f := &amp;fakeRunner{failOn: tagListCall}
-<span id="L755" class="ln">   755  </span>
-<span id="L756" class="ln">   756  </span>			err := runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;})
-<span id="L757" class="ln">   757  </span>			require.ErrorIs(t, err, errFakeCommand)
-<span id="L758" class="ln">   758  </span>			require.NotErrorIs(t, err, errNoTagForBranch)
-<span id="L759" class="ln">   759  </span>		})
-<span id="L760" class="ln">   760  </span>
-<span id="L761" class="ln">   761  </span>		t.Run(&#34;origin に同名ブランチが既にあればブランチを切らずに中止する&#34;, func(t *testing.T) {
-<span id="L762" class="ln">   762  </span>			t.Parallel()
-<span id="L763" class="ln">   763  </span>			f := taggableRunner()
-<span id="L764" class="ln">   764  </span>			f.remoteBranches = map[string]bool{&#34;release/v1.3.0&#34;: true}
-<span id="L765" class="ln">   765  </span>
-<span id="L766" class="ln">   766  </span>			require.ErrorIs(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}), errBranchExists)
-<span id="L767" class="ln">   767  </span>			assert.NotContains(t, f.calls, &#34;git status --porcelain&#34;)
-<span id="L768" class="ln">   768  </span>			assert.NotContains(t, f.calls, branchCreateCall)
-<span id="L769" class="ln">   769  </span>		})
-<span id="L770" class="ln">   770  </span>
-<span id="L771" class="ln">   771  </span>		t.Run(&#34;作業ツリーの状態を取得できなければブランチを切らない&#34;, func(t *testing.T) {
-<span id="L772" class="ln">   772  </span>			t.Parallel()
-<span id="L773" class="ln">   773  </span>			f := taggableRunner()
-<span id="L774" class="ln">   774  </span>			f.failOn = &#34;git status --porcelain&#34;
+<span id="L742" class="ln">   742  </span>			err := runBranch((&amp;fakeRunner{}).runner(), []string{&#34;-bump&#34;, &#34;patch&#34;})
+<span id="L743" class="ln">   743  </span>			require.ErrorIs(t, err, errNoTagForBranch)
+<span id="L744" class="ln">   744  </span>			require.NotErrorIs(t, err, errNoTag)
+<span id="L745" class="ln">   745  </span>		})
+<span id="L746" class="ln">   746  </span>
+<span id="L747" class="ln">   747  </span>		<span class="comment">// 差し替えるのはタグ不在だけ。取得そのものの失敗まで案内へ丸めると原因が消える。</span>
+<span id="L748" class="ln">   748  </span>		t.Run(&#34;タグの取得に失敗した場合は案内へ差し替えない&#34;, func(t *testing.T) {
+<span id="L749" class="ln">   749  </span>			t.Parallel()
+<span id="L750" class="ln">   750  </span>			f := &amp;fakeRunner{failOn: tagListCall}
+<span id="L751" class="ln">   751  </span>
+<span id="L752" class="ln">   752  </span>			err := runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;patch&#34;})
+<span id="L753" class="ln">   753  </span>			require.ErrorIs(t, err, errFakeCommand)
+<span id="L754" class="ln">   754  </span>			require.NotErrorIs(t, err, errNoTagForBranch)
+<span id="L755" class="ln">   755  </span>		})
+<span id="L756" class="ln">   756  </span>
+<span id="L757" class="ln">   757  </span>		t.Run(&#34;origin に同名ブランチが既にあればブランチを切らずに中止する&#34;, func(t *testing.T) {
+<span id="L758" class="ln">   758  </span>			t.Parallel()
+<span id="L759" class="ln">   759  </span>			f := taggableRunner()
+<span id="L760" class="ln">   760  </span>			f.remoteBranches = map[string]bool{&#34;release/v1.3.0&#34;: true}
+<span id="L761" class="ln">   761  </span>
+<span id="L762" class="ln">   762  </span>			require.ErrorIs(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}), errBranchExists)
+<span id="L763" class="ln">   763  </span>			assert.NotContains(t, f.calls, &#34;git status --porcelain&#34;)
+<span id="L764" class="ln">   764  </span>			assert.NotContains(t, f.calls, branchCreateCall)
+<span id="L765" class="ln">   765  </span>		})
+<span id="L766" class="ln">   766  </span>
+<span id="L767" class="ln">   767  </span>		t.Run(&#34;作業ツリーの状態を取得できなければブランチを切らない&#34;, func(t *testing.T) {
+<span id="L768" class="ln">   768  </span>			t.Parallel()
+<span id="L769" class="ln">   769  </span>			f := taggableRunner()
+<span id="L770" class="ln">   770  </span>			f.failOn = &#34;git status --porcelain&#34;
+<span id="L771" class="ln">   771  </span>
+<span id="L772" class="ln">   772  </span>			require.ErrorIs(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}), errFakeCommand)
+<span id="L773" class="ln">   773  </span>			assert.NotContains(t, f.calls, branchCreateCall)
+<span id="L774" class="ln">   774  </span>		})
 <span id="L775" class="ln">   775  </span>
-<span id="L776" class="ln">   776  </span>			require.ErrorIs(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}), errFakeCommand)
-<span id="L777" class="ln">   777  </span>			assert.NotContains(t, f.calls, branchCreateCall)
-<span id="L778" class="ln">   778  </span>		})
-<span id="L779" class="ln">   779  </span>
-<span id="L780" class="ln">   780  </span>		<span class="comment">// 未コミットの変更を抱えたままブランチを切ると、切り替え先へ変更が付いて回る。</span>
-<span id="L781" class="ln">   781  </span>		t.Run(&#34;作業ツリーが汚れていれば中止し何が汚れているかを見せる&#34;, func(t *testing.T) {
-<span id="L782" class="ln">   782  </span>			t.Parallel()
-<span id="L783" class="ln">   783  </span>			f := taggableRunner()
-<span id="L784" class="ln">   784  </span>			f.outputs[&#34;git status --porcelain&#34;] = &#34; M main.go\n&#34;
-<span id="L785" class="ln">   785  </span>
-<span id="L786" class="ln">   786  </span>			require.ErrorIs(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}), errDirtyWorktree)
-<span id="L787" class="ln">   787  </span>			assert.Contains(t, f.calls, &#34;git status --short&#34;)
-<span id="L788" class="ln">   788  </span>			assert.NotContains(t, f.calls, branchCreateCall)
-<span id="L789" class="ln">   789  </span>		})
-<span id="L790" class="ln">   790  </span>
-<span id="L791" class="ln">   791  </span>		t.Run(&#34;ブランチを push できなければデフォルトブランチを移さない&#34;, func(t *testing.T) {
-<span id="L792" class="ln">   792  </span>			t.Parallel()
-<span id="L793" class="ln">   793  </span>			f := taggableRunner()
-<span id="L794" class="ln">   794  </span>			f.failOn = branchPushCall
-<span id="L795" class="ln">   795  </span>
-<span id="L796" class="ln">   796  </span>			require.ErrorIs(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}), errFakeCommand)
-<span id="L797" class="ln">   797  </span>			assert.NotContains(t, f.calls, defaultBranchCall)
-<span id="L798" class="ln">   798  </span>		})
-<span id="L799" class="ln">   799  </span>	})
-<span id="L800" class="ln">   800  </span>}
-<span id="L801" class="ln">   801  </span>
-<span id="L802" class="ln">   802  </span>func Test_parseFlags(t *testing.T) {
-<span id="L803" class="ln">   803  </span>	t.Parallel()
-<span id="L804" class="ln">   804  </span>
-<span id="L805" class="ln">   805  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L806" class="ln">   806  </span>		t.Parallel()
-<span id="L807" class="ln">   807  </span>
-<span id="L808" class="ln">   808  </span>		t.Run(&#34;フラグを解釈して値を取り込む&#34;, func(t *testing.T) {
-<span id="L809" class="ln">   809  </span>			t.Parallel()
-<span id="L810" class="ln">   810  </span>			fs := flag.NewFlagSet(&#34;tag&#34;, flag.ContinueOnError)
-<span id="L811" class="ln">   811  </span>			fs.SetOutput(io.Discard)
-<span id="L812" class="ln">   812  </span>			bumpKind := fs.String(&#34;bump&#34;, &#34;&#34;, &#34;&#34;)
-<span id="L813" class="ln">   813  </span>
-<span id="L814" class="ln">   814  </span>			require.NoError(t, parseFlags(fs, []string{&#34;-bump&#34;, &#34;minor&#34;}))
-<span id="L815" class="ln">   815  </span>			assert.Equal(t, &#34;minor&#34;, *bumpKind)
-<span id="L816" class="ln">   816  </span>		})
-<span id="L817" class="ln">   817  </span>	})
-<span id="L818" class="ln">   818  </span>
-<span id="L819" class="ln">   819  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L820" class="ln">   820  </span>		t.Parallel()
-<span id="L821" class="ln">   821  </span>
-<span id="L822" class="ln">   822  </span>		t.Run(&#34;ヘルプ要求は通常のエラーと区別して返す&#34;, func(t *testing.T) {
-<span id="L823" class="ln">   823  </span>			t.Parallel()
-<span id="L824" class="ln">   824  </span>			fs := flag.NewFlagSet(&#34;tag&#34;, flag.ContinueOnError)
-<span id="L825" class="ln">   825  </span>			fs.SetOutput(io.Discard)
-<span id="L826" class="ln">   826  </span>
-<span id="L827" class="ln">   827  </span>			err := parseFlags(fs, []string{&#34;-h&#34;})
-<span id="L828" class="ln">   828  </span>
-<span id="L829" class="ln">   829  </span>			require.ErrorIs(t, err, errHelpRequested)
-<span id="L830" class="ln">   830  </span>		})
-<span id="L831" class="ln">   831  </span>
-<span id="L832" class="ln">   832  </span>		t.Run(&#34;未知のフラグはヘルプ要求と混同せずエラーにする&#34;, func(t *testing.T) {
-<span id="L833" class="ln">   833  </span>			t.Parallel()
-<span id="L834" class="ln">   834  </span>			fs := flag.NewFlagSet(&#34;tag&#34;, flag.ContinueOnError)
-<span id="L835" class="ln">   835  </span>			fs.SetOutput(io.Discard)
-<span id="L836" class="ln">   836  </span>
-<span id="L837" class="ln">   837  </span>			err := parseFlags(fs, []string{&#34;-bogus&#34;})
-<span id="L838" class="ln">   838  </span>
-<span id="L839" class="ln">   839  </span>			require.Error(t, err)
-<span id="L840" class="ln">   840  </span>			assert.NotErrorIs(t, err, errHelpRequested)
-<span id="L841" class="ln">   841  </span>		})
-<span id="L842" class="ln">   842  </span>	})
-<span id="L843" class="ln">   843  </span>}
-<span id="L844" class="ln">   844  </span>
-<span id="L845" class="ln">   845  </span><span class="comment">//nolint:paralleltest // t.Chdir を使うため並列化不可</span>
-<span id="L846" class="ln">   846  </span>func Test_execute(t *testing.T) {
-<span id="L847" class="ln">   847  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L848" class="ln">   848  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L849" class="ln">   849  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L850" class="ln">   850  </span>		t.Run(&#34;tag はタグ作成の手順へ振り分ける&#34;, func(t *testing.T) {
-<span id="L851" class="ln">   851  </span>			writeNote(t)
-<span id="L852" class="ln">   852  </span>			f := taggableRunner()
-<span id="L853" class="ln">   853  </span>
-<span id="L854" class="ln">   854  </span>			require.NoError(t, execute(f.runner(), []string{&#34;tag&#34;, &#34;-bump&#34;, &#34;patch&#34;}))
-<span id="L855" class="ln">   855  </span>			assert.Contains(t, f.calls, annotateTagCall)
-<span id="L856" class="ln">   856  </span>			assert.Contains(t, f.calls, tagPushCall)
-<span id="L857" class="ln">   857  </span>			assert.Contains(t, f.calls, releaseCreateCall)
-<span id="L858" class="ln">   858  </span>		})
+<span id="L776" class="ln">   776  </span>		<span class="comment">// 未コミットの変更を抱えたままブランチを切ると、切り替え先へ変更が付いて回る。</span>
+<span id="L777" class="ln">   777  </span>		t.Run(&#34;作業ツリーが汚れていれば中止し何が汚れているかを見せる&#34;, func(t *testing.T) {
+<span id="L778" class="ln">   778  </span>			t.Parallel()
+<span id="L779" class="ln">   779  </span>			f := taggableRunner()
+<span id="L780" class="ln">   780  </span>			f.outputs[&#34;git status --porcelain&#34;] = &#34; M main.go\n&#34;
+<span id="L781" class="ln">   781  </span>
+<span id="L782" class="ln">   782  </span>			require.ErrorIs(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}), errDirtyWorktree)
+<span id="L783" class="ln">   783  </span>			assert.Contains(t, f.calls, &#34;git status --short&#34;)
+<span id="L784" class="ln">   784  </span>			assert.NotContains(t, f.calls, branchCreateCall)
+<span id="L785" class="ln">   785  </span>		})
+<span id="L786" class="ln">   786  </span>
+<span id="L787" class="ln">   787  </span>		t.Run(&#34;ブランチを push できなければデフォルトブランチを移さない&#34;, func(t *testing.T) {
+<span id="L788" class="ln">   788  </span>			t.Parallel()
+<span id="L789" class="ln">   789  </span>			f := taggableRunner()
+<span id="L790" class="ln">   790  </span>			f.failOn = branchPushCall
+<span id="L791" class="ln">   791  </span>
+<span id="L792" class="ln">   792  </span>			require.ErrorIs(t, runBranch(f.runner(), []string{&#34;-bump&#34;, &#34;minor&#34;}), errFakeCommand)
+<span id="L793" class="ln">   793  </span>			assert.NotContains(t, f.calls, defaultBranchCall)
+<span id="L794" class="ln">   794  </span>		})
+<span id="L795" class="ln">   795  </span>	})
+<span id="L796" class="ln">   796  </span>}
+<span id="L797" class="ln">   797  </span>
+<span id="L798" class="ln">   798  </span>func Test_parseFlags(t *testing.T) {
+<span id="L799" class="ln">   799  </span>	t.Parallel()
+<span id="L800" class="ln">   800  </span>
+<span id="L801" class="ln">   801  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L802" class="ln">   802  </span>		t.Parallel()
+<span id="L803" class="ln">   803  </span>
+<span id="L804" class="ln">   804  </span>		t.Run(&#34;フラグを解釈して値を取り込む&#34;, func(t *testing.T) {
+<span id="L805" class="ln">   805  </span>			t.Parallel()
+<span id="L806" class="ln">   806  </span>			fs := flag.NewFlagSet(&#34;tag&#34;, flag.ContinueOnError)
+<span id="L807" class="ln">   807  </span>			fs.SetOutput(io.Discard)
+<span id="L808" class="ln">   808  </span>			bumpKind := fs.String(&#34;bump&#34;, &#34;&#34;, &#34;&#34;)
+<span id="L809" class="ln">   809  </span>
+<span id="L810" class="ln">   810  </span>			require.NoError(t, parseFlags(fs, []string{&#34;-bump&#34;, &#34;minor&#34;}))
+<span id="L811" class="ln">   811  </span>			assert.Equal(t, &#34;minor&#34;, *bumpKind)
+<span id="L812" class="ln">   812  </span>		})
+<span id="L813" class="ln">   813  </span>	})
+<span id="L814" class="ln">   814  </span>
+<span id="L815" class="ln">   815  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L816" class="ln">   816  </span>		t.Parallel()
+<span id="L817" class="ln">   817  </span>
+<span id="L818" class="ln">   818  </span>		t.Run(&#34;ヘルプ要求は通常のエラーと区別して返す&#34;, func(t *testing.T) {
+<span id="L819" class="ln">   819  </span>			t.Parallel()
+<span id="L820" class="ln">   820  </span>			fs := flag.NewFlagSet(&#34;tag&#34;, flag.ContinueOnError)
+<span id="L821" class="ln">   821  </span>			fs.SetOutput(io.Discard)
+<span id="L822" class="ln">   822  </span>
+<span id="L823" class="ln">   823  </span>			err := parseFlags(fs, []string{&#34;-h&#34;})
+<span id="L824" class="ln">   824  </span>
+<span id="L825" class="ln">   825  </span>			require.ErrorIs(t, err, errHelpRequested)
+<span id="L826" class="ln">   826  </span>		})
+<span id="L827" class="ln">   827  </span>
+<span id="L828" class="ln">   828  </span>		t.Run(&#34;未知のフラグはヘルプ要求と混同せずエラーにする&#34;, func(t *testing.T) {
+<span id="L829" class="ln">   829  </span>			t.Parallel()
+<span id="L830" class="ln">   830  </span>			fs := flag.NewFlagSet(&#34;tag&#34;, flag.ContinueOnError)
+<span id="L831" class="ln">   831  </span>			fs.SetOutput(io.Discard)
+<span id="L832" class="ln">   832  </span>
+<span id="L833" class="ln">   833  </span>			err := parseFlags(fs, []string{&#34;-bogus&#34;})
+<span id="L834" class="ln">   834  </span>
+<span id="L835" class="ln">   835  </span>			require.Error(t, err)
+<span id="L836" class="ln">   836  </span>			assert.NotErrorIs(t, err, errHelpRequested)
+<span id="L837" class="ln">   837  </span>		})
+<span id="L838" class="ln">   838  </span>	})
+<span id="L839" class="ln">   839  </span>}
+<span id="L840" class="ln">   840  </span>
+<span id="L841" class="ln">   841  </span><span class="comment">//nolint:paralleltest // t.Chdir を使うため並列化不可</span>
+<span id="L842" class="ln">   842  </span>func Test_execute(t *testing.T) {
+<span id="L843" class="ln">   843  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L844" class="ln">   844  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L845" class="ln">   845  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L846" class="ln">   846  </span>		t.Run(&#34;tag はタグ作成の手順へ振り分ける&#34;, func(t *testing.T) {
+<span id="L847" class="ln">   847  </span>			writeNote(t)
+<span id="L848" class="ln">   848  </span>			f := taggableRunner()
+<span id="L849" class="ln">   849  </span>
+<span id="L850" class="ln">   850  </span>			require.NoError(t, execute(f.runner(), []string{&#34;tag&#34;, &#34;-bump&#34;, &#34;patch&#34;}))
+<span id="L851" class="ln">   851  </span>			assert.Contains(t, f.calls, annotateTagCall)
+<span id="L852" class="ln">   852  </span>			assert.Contains(t, f.calls, tagPushCall)
+<span id="L853" class="ln">   853  </span>			assert.Contains(t, f.calls, releaseCreateCall)
+<span id="L854" class="ln">   854  </span>		})
+<span id="L855" class="ln">   855  </span>
+<span id="L856" class="ln">   856  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L857" class="ln">   857  </span>		t.Run(&#34;branch はブランチ作成の手順へ振り分ける&#34;, func(t *testing.T) {
+<span id="L858" class="ln">   858  </span>			f := taggableRunner()
 <span id="L859" class="ln">   859  </span>
-<span id="L860" class="ln">   860  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L861" class="ln">   861  </span>		t.Run(&#34;branch はブランチ作成の手順へ振り分ける&#34;, func(t *testing.T) {
-<span id="L862" class="ln">   862  </span>			f := taggableRunner()
-<span id="L863" class="ln">   863  </span>
-<span id="L864" class="ln">   864  </span>			require.NoError(t, execute(f.runner(), []string{&#34;branch&#34;, &#34;-bump&#34;, &#34;minor&#34;}))
-<span id="L865" class="ln">   865  </span>			assert.Contains(t, f.calls, branchCreateCall)
-<span id="L866" class="ln">   866  </span>			assert.Contains(t, f.calls, branchPushCall)
-<span id="L867" class="ln">   867  </span>			assert.Contains(t, f.calls, defaultBranchCall)
-<span id="L868" class="ln">   868  </span>		})
-<span id="L869" class="ln">   869  </span>
-<span id="L870" class="ln">   870  </span>		<span class="comment">// ヘルプを異常終了にすると、同じリポジトリの他ツールと終了コードが食い違う。</span>
-<span id="L871" class="ln">   871  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L872" class="ln">   872  </span>		t.Run(&#34;tag のヘルプ要求は失敗にせず手順を 1 つも実行しない&#34;, func(t *testing.T) {
-<span id="L873" class="ln">   873  </span>			f := taggableRunner()
+<span id="L860" class="ln">   860  </span>			require.NoError(t, execute(f.runner(), []string{&#34;branch&#34;, &#34;-bump&#34;, &#34;minor&#34;}))
+<span id="L861" class="ln">   861  </span>			assert.Contains(t, f.calls, branchCreateCall)
+<span id="L862" class="ln">   862  </span>			assert.Contains(t, f.calls, branchPushCall)
+<span id="L863" class="ln">   863  </span>			assert.Contains(t, f.calls, defaultBranchCall)
+<span id="L864" class="ln">   864  </span>		})
+<span id="L865" class="ln">   865  </span>
+<span id="L866" class="ln">   866  </span>		<span class="comment">// ヘルプを異常終了にすると、同じリポジトリの他ツールと終了コードが食い違う。</span>
+<span id="L867" class="ln">   867  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L868" class="ln">   868  </span>		t.Run(&#34;tag のヘルプ要求は失敗にせず手順を 1 つも実行しない&#34;, func(t *testing.T) {
+<span id="L869" class="ln">   869  </span>			f := taggableRunner()
+<span id="L870" class="ln">   870  </span>
+<span id="L871" class="ln">   871  </span>			require.NoError(t, execute(f.runner(), []string{&#34;tag&#34;, &#34;-h&#34;}))
+<span id="L872" class="ln">   872  </span>			assert.Empty(t, f.calls)
+<span id="L873" class="ln">   873  </span>		})
 <span id="L874" class="ln">   874  </span>
-<span id="L875" class="ln">   875  </span>			require.NoError(t, execute(f.runner(), []string{&#34;tag&#34;, &#34;-h&#34;}))
-<span id="L876" class="ln">   876  </span>			assert.Empty(t, f.calls)
-<span id="L877" class="ln">   877  </span>		})
+<span id="L875" class="ln">   875  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L876" class="ln">   876  </span>		t.Run(&#34;branch のヘルプ要求は失敗にせず手順を 1 つも実行しない&#34;, func(t *testing.T) {
+<span id="L877" class="ln">   877  </span>			f := taggableRunner()
 <span id="L878" class="ln">   878  </span>
-<span id="L879" class="ln">   879  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L880" class="ln">   880  </span>		t.Run(&#34;branch のヘルプ要求は失敗にせず手順を 1 つも実行しない&#34;, func(t *testing.T) {
-<span id="L881" class="ln">   881  </span>			f := taggableRunner()
-<span id="L882" class="ln">   882  </span>
-<span id="L883" class="ln">   883  </span>			require.NoError(t, execute(f.runner(), []string{&#34;branch&#34;, &#34;-h&#34;}))
-<span id="L884" class="ln">   884  </span>			assert.Empty(t, f.calls)
-<span id="L885" class="ln">   885  </span>		})
-<span id="L886" class="ln">   886  </span>	})
-<span id="L887" class="ln">   887  </span>
-<span id="L888" class="ln">   888  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L889" class="ln">   889  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L890" class="ln">   890  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L891" class="ln">   891  </span>		t.Run(&#34;サブコマンドが無ければ使い方を示して手順を 1 つも実行しない&#34;, func(t *testing.T) {
-<span id="L892" class="ln">   892  </span>			f := taggableRunner()
+<span id="L879" class="ln">   879  </span>			require.NoError(t, execute(f.runner(), []string{&#34;branch&#34;, &#34;-h&#34;}))
+<span id="L880" class="ln">   880  </span>			assert.Empty(t, f.calls)
+<span id="L881" class="ln">   881  </span>		})
+<span id="L882" class="ln">   882  </span>	})
+<span id="L883" class="ln">   883  </span>
+<span id="L884" class="ln">   884  </span>	<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L885" class="ln">   885  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L886" class="ln">   886  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L887" class="ln">   887  </span>		t.Run(&#34;サブコマンドが無ければ使い方を示して手順を 1 つも実行しない&#34;, func(t *testing.T) {
+<span id="L888" class="ln">   888  </span>			f := taggableRunner()
+<span id="L889" class="ln">   889  </span>
+<span id="L890" class="ln">   890  </span>			require.ErrorIs(t, execute(f.runner(), nil), errUsage)
+<span id="L891" class="ln">   891  </span>			assert.Empty(t, f.calls)
+<span id="L892" class="ln">   892  </span>		})
 <span id="L893" class="ln">   893  </span>
-<span id="L894" class="ln">   894  </span>			require.ErrorIs(t, execute(f.runner(), nil), errUsage)
-<span id="L895" class="ln">   895  </span>			assert.Empty(t, f.calls)
-<span id="L896" class="ln">   896  </span>		})
+<span id="L894" class="ln">   894  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L895" class="ln">   895  </span>		t.Run(&#34;未知のサブコマンドでは手順を 1 つも実行しない&#34;, func(t *testing.T) {
+<span id="L896" class="ln">   896  </span>			f := taggableRunner()
 <span id="L897" class="ln">   897  </span>
-<span id="L898" class="ln">   898  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L899" class="ln">   899  </span>		t.Run(&#34;未知のサブコマンドでは手順を 1 つも実行しない&#34;, func(t *testing.T) {
-<span id="L900" class="ln">   900  </span>			f := taggableRunner()
+<span id="L898" class="ln">   898  </span>			require.ErrorIs(t, execute(f.runner(), []string{&#34;bogus&#34;}), errUnknownSubcommand)
+<span id="L899" class="ln">   899  </span>			assert.Empty(t, f.calls)
+<span id="L900" class="ln">   900  </span>		})
 <span id="L901" class="ln">   901  </span>
-<span id="L902" class="ln">   902  </span>			require.ErrorIs(t, execute(f.runner(), []string{&#34;bogus&#34;}), errUnknownSubcommand)
-<span id="L903" class="ln">   903  </span>			assert.Empty(t, f.calls)
-<span id="L904" class="ln">   904  </span>		})
-<span id="L905" class="ln">   905  </span>
-<span id="L906" class="ln">   906  </span>		<span class="comment">// ヘルプ要求だけを飲み込む。失敗まで飲み込むと、タグを打てていないのに 0 で終わる。</span>
-<span id="L907" class="ln">   907  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L908" class="ln">   908  </span>		t.Run(&#34;tag の失敗はヘルプ要求と区別してそのまま返す&#34;, func(t *testing.T) {
-<span id="L909" class="ln">   909  </span>			require.ErrorIs(t, execute((&amp;fakeRunner{}).runner(), []string{&#34;tag&#34;, &#34;-bump&#34;, &#34;patch&#34;}), errNoTag)
-<span id="L910" class="ln">   910  </span>		})
-<span id="L911" class="ln">   911  </span>
-<span id="L912" class="ln">   912  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
-<span id="L913" class="ln">   913  </span>		t.Run(&#34;branch の失敗はヘルプ要求と区別してそのまま返す&#34;, func(t *testing.T) {
-<span id="L914" class="ln">   914  </span>			require.ErrorIs(t, execute((&amp;fakeRunner{}).runner(), []string{&#34;branch&#34;, &#34;-bump&#34;, &#34;patch&#34;}), errNoTagForBranch)
-<span id="L915" class="ln">   915  </span>		})
-<span id="L916" class="ln">   916  </span>	})
-<span id="L917" class="ln">   917  </span>}
-<span id="L918" class="ln">   918  </span>
+<span id="L902" class="ln">   902  </span>		<span class="comment">// ヘルプ要求だけを飲み込む。失敗まで飲み込むと、タグを打てていないのに 0 で終わる。</span>
+<span id="L903" class="ln">   903  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L904" class="ln">   904  </span>		t.Run(&#34;tag の失敗はヘルプ要求と区別してそのまま返す&#34;, func(t *testing.T) {
+<span id="L905" class="ln">   905  </span>			require.ErrorIs(t, execute((&amp;fakeRunner{}).runner(), []string{&#34;tag&#34;, &#34;-bump&#34;, &#34;patch&#34;}), errNoTag)
+<span id="L906" class="ln">   906  </span>		})
+<span id="L907" class="ln">   907  </span>
+<span id="L908" class="ln">   908  </span>		<span class="comment">//nolint:paralleltest // 親が t.Chdir を使うため並列化不可</span>
+<span id="L909" class="ln">   909  </span>		t.Run(&#34;branch の失敗はヘルプ要求と区別してそのまま返す&#34;, func(t *testing.T) {
+<span id="L910" class="ln">   910  </span>			require.ErrorIs(t, execute((&amp;fakeRunner{}).runner(), []string{&#34;branch&#34;, &#34;-bump&#34;, &#34;patch&#34;}), errNoTagForBranch)
+<span id="L911" class="ln">   911  </span>		})
+<span id="L912" class="ln">   912  </span>	})
+<span id="L913" class="ln">   913  </span>}
+<span id="L914" class="ln">   914  </span>
 </pre><p><a href="../../../../src/go-boilerplate/scripts/release/main_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
