@@ -89,7 +89,7 @@ CMD []
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
 # 補助スクリプトが依存するパッケージを pnpm でローカル node_modules にインストールしておく
 # ------------------------------
-FROM node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS node_tools
+FROM node:26.12.0-alpine@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5 AS node_tools
 
 RUN apk add --no-cache \
     bash \
