@@ -69,7 +69,7 @@ jobs:
       # repository declares no allow / deny license list, so no allow-licenses /
       # deny-licenses input is set here.
       - name: Dependency Review
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           # Trivy (trivy-fs) and govulncheck already report MEDIUM and above.
           # This workflow is a merge blocker, so it is narrowed to HIGH and

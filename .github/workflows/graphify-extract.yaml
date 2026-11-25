@@ -137,7 +137,7 @@ jobs:
 
       - name: Run semantic extraction
         if: steps.config.outputs.configured == 'true'
-        uses: anthropics/claude-code-action@16f9f71ab9c490faf367f94dd294897edc25be33 # v1.0.261
+        uses: anthropics/claude-code-action@c84e279f859e2591391e95bd309286eb111c345f # v1.0.284
         env:
           # The skill resolves its own interpreter, and its first branch is
           # `uv tool run --from graphifyy`, which takes the newest release from PyPI rather than the
@@ -217,7 +217,7 @@ jobs:
       - name: Mint the auto-PR app token
         id: app-token
         if: steps.config.outputs.configured == 'true' && steps.diff.outputs.has_diff == 'true' && steps.app-config.outputs.configured == 'true'
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3
         with:
           app-id: ${{ secrets.AUTO_PR_APP_ID }}
           private-key: ${{ secrets.AUTO_PR_APP_PRIVATE_KEY }}
@@ -228,7 +228,7 @@ jobs:
 
       - name: Create PR
         if: steps.config.outputs.configured == 'true' && steps.diff.outputs.has_diff == 'true'
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8
         with:
           # Falls back to GITHUB_TOKEN when the app is not configured: the pull request still opens,
           # it just carries no checks. A skipped step leaves an empty output, which is falsy, so the
