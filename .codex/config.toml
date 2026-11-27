@@ -3,7 +3,7 @@
 
 # Keep work autonomous inside the trusted workspace.
 sandbox_mode = "workspace-write"
-approval_policy = "never"
+approval_policy = "on-request"
 allow_login_shell = false
 
 [sandbox_workspace_write]
