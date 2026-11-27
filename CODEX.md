@@ -31,6 +31,9 @@ authoritative unless this file states a Codex-specific execution detail.
   Do not modify `AGENTS.md` for Codex-only behavior unless the user explicitly asks.
 - Before changing behavior outside the user's stated scope, report the consequence and ask for
   direction.
+- When a skill asks the user to choose, show the choices in the user-facing response as a numbered
+  list. Put the recommended choice first as `1. (推奨) ...`; number the remaining choices in order.
+  Make a numeric reply sufficient even when the interface shows no separate choice controls.
 
 ## Execution and approval policy
 

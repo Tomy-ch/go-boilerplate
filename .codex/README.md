@@ -72,6 +72,10 @@ commands stay local versus call an LLM API, and the uninstall caveat — are in
   runtime output follows `AGENTS.md` and is Japanese by default.
 - **Use `$manage-skill` to author or revise a repository skill.** Keep the skill concise and place
   reusable deterministic work in bundled scripts rather than duplicating it in prompts.
+- **Make skill choices answerable by number.** When a skill asks a human to choose, show the options
+  as a numbered list in the user-facing response. Put the recommended option first as
+  `1. (推奨) <choice>`, followed by `2. <choice>` and so on, so a numeric reply is unambiguous even
+  when no separate choice UI appears.
 - **Keep agent roles narrow and read-only.** The integrating skill owns user confirmation and any
   writes, so delegated work can safely run in parallel.
 - **Skills and agent roles correspond one-to-one with `.claude/`, and `make md-skill-lint` enforces

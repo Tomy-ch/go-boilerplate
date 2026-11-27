@@ -13,6 +13,10 @@ This skill pushes the current branch to `origin` and ensures a GitHub pull reque
 
 The PR body is filled from `.github/pull_request_template.md`. The skill never auto-pushes, never overwrites an existing PR's title/body, and never force-pushes.
 
+At every confirmation with choices, show a numbered list in the user-facing response. Put the
+recommended choice first as `1. (推奨) ...`, followed by the remaining choices in order, so a numeric
+reply suffices even if no choice UI appears.
+
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
 
 ## Preconditions
