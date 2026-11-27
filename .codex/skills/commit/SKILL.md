@@ -28,6 +28,9 @@ Use exactly one prefix per commit:
 
 Create one commit per semantic change. Tests can accompany the implementation they validate; documentation is otherwise independent; unrelated formatting is a separate `Style:` commit. Propose the result in Japanese, with every file and a short rationale. State that each commit uses `--no-verify`, then that the complete pre-commit gate runs once after the final commit.
 
+When asking for approval, show numbered choices in the user-facing response. Put the recommended
+grouping first as `1. (推奨) ...`; make a numeric reply sufficient even if no choice UI appears.
+
 For `--dry-run`, provide the proposal only.
 
 ## Create approved commits

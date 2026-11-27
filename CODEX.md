@@ -31,6 +31,9 @@ authoritative unless this file states a Codex-specific execution detail.
   Do not modify `AGENTS.md` for Codex-only behavior unless the user explicitly asks.
 - Before changing behavior outside the user's stated scope, report the consequence and ask for
   direction.
+- When a skill asks the user to choose, show the choices in the user-facing response as a numbered
+  list. Put the recommended choice first as `1. (推奨) ...`; number the remaining choices in order.
+  Make a numeric reply sufficient even when the interface shows no separate choice controls.
 
 ## Execution and approval policy
 
@@ -82,6 +85,6 @@ authoritative unless this file states a Codex-specific execution detail.
   as the work's required starting point, not as a later synchronization step.
 - Never implement directly on a release branch. Create the task feature branch from the updated
   release branch.
-- Perform every implementation task in a Git worktree beneath `.codex/worktrees/`. Do not use the
-  primary checkout as the implementation location. When a task already has an assigned worktree,
-  continue there rather than creating or modifying another checkout.
+- Perform every implementation task in a Git worktree beneath `$CODEX_HOME/worktrees/` (default:
+  `~/.codex/worktrees/`). Do not use the primary checkout as the implementation location. When a task
+  already has an assigned worktree, continue there rather than creating or modifying another checkout.
