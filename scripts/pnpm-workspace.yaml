@@ -65,7 +65,10 @@ overrides:
   "zod@<4.6.6": ">=4.6.6 <5"
   # Windows で launch-editor の存在確認を迂回される（GHSA-587h-7wmj-h5pm ほか）。vitest が引く。
   "vite@<8.2.4": ">=8.2.4 <9"
-  "lodash@<4.18.0": 4.18.0
+  # glob 解析の ReDoS（GHSA-g3hv-75wg-m249）。eslint と typedoc が引く。
+  "minimatch@10": ">=11.0.1 <12"
+  # _.unset / _.omit の prototype pollution（GHSA-f23m-r3pf-42rh）。@stoplight/spectral-cli が引く。
+  "lodash@<4.18.1": ">=4.18.1 <5"
   # domain host の禁止文字の見逃しと相対参照の正規化不備による URI の取り違え（GHSA-w74x-v6f9-j3xg /
   # wjr9-j795-jxcr / 333x-w4r6-6crp / xhq7-xmqj-769h）。ajv が引く。
   "fast-uri@<3.1.9": ">=3.1.9 <4"
