@@ -10,7 +10,7 @@
 
 |ターゲット|ベースイメージ|担当範囲|
 |---|---|---|
-|`go_tools`|`golang:1.27.3-alpine`|Go のコード生成・lint・セキュリティスキャン・ドキュメント生成（[ツール](#go_tools)）|
+|`go_tools`|`golang:1.27.4-alpine`|Go のコード生成・lint・セキュリティスキャン・ドキュメント生成（[ツール](#go_tools)）|
 |`node_tools`|`node:24.22.1-alpine`|OpenAPI バンドル、Markdown / コミットの lint、ポータルのビルドとスクリプトのテスト（[ツール](#node_tools)）|
 |`python_tools`|`python:3.14.9-slim`|SQL の lint（[ツール](#python_tools)）|
 

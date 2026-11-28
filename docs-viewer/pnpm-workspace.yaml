@@ -52,6 +52,8 @@ overrides:
   "dompurify@<3.4.17": ">=3.4.17 <4"
   # parseCommaParts の無制限再帰による DoS（GHSA-6j4f-fj2g-mc7p）。minimatch が引く。
   "brace-expansion@5": ">=5.0.10 <6"
+  # glob 解析の ReDoS（GHSA-g3hv-75wg-m249）。eslint が引く。
+  "minimatch@10": ">=11.0.1 <12"
   # TLS 証明書検証の迂回・WebSocket 経由の DoS・Set-Cookie のキャッシュによる別ユーザーへの漏洩ほか
   # （GHSA-w293-vg96-wgc3 / rfgv-xxqx-mfg5 ほか計 10 件）。jsdom が引く。
   "undici@<7.29.1": ">=7.29.1 <8"
