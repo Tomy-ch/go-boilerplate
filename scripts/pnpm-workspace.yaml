@@ -11,8 +11,6 @@ minimumReleaseAge: 10080
 # 期限は .github/pnpm-cooldown-bypass.toml が持つ。ここへ足したら向こうにも expires / issue / reason を
 # 書くこと。期限の無い例外・期限切れ・上限 3 ヶ月超過・lockfile が解決していない版は
 # make pnpm-cooldown-check が落とす。
-minimumReleaseAgeExclude:
-  - fast-uri@3.1.9 # 2026-10-27 08:05 JST 以降に削除する。GHSA-w74x-v6f9-j3xg ほか 3 件の修正版で、tool-runner 内の spectral / orval（ajv 経由）で動く。
 # 冷却期間を満たす版が無ければ解決を失敗させる。
 minimumReleaseAgeStrict: true
 # 公開日時を返さないレジストリの依存は解決を失敗させる。
